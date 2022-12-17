@@ -383,6 +383,8 @@ normal_done:
 
 	rtw89_fw_recognize_features(rtwdev);
 
+	rtw89_coex_recognize_ver(rtwdev);
+
 	return 0;
 }
 
