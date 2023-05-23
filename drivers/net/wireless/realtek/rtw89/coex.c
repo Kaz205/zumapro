@@ -201,7 +201,7 @@ static const struct rtw89_btc_ver rtw89_btc_ver_defs[] = {
 struct rtw89_btc_btf_tlv {
 	u8 type;
 	u8 len;
-	u8 val[1];
+	u8 val[];
 } __packed;
 
 struct rtw89_btc_btf_tlv_v7 {
