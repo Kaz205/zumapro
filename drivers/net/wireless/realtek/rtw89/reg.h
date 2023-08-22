@@ -3578,6 +3578,8 @@
 #define B_AX_GNT_BT_TX_SW_VAL BIT(1)
 #define B_AX_GNT_BT_TX_SW_CTRL BIT(0)
 
+#define R_BE_FILTER_MODEL_ADDR 0x0C04
+
 #define R_BE_BT_BREAK_TABLE 0x0E344
 
 #define RR_MOD 0x00
