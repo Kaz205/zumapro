@@ -1444,6 +1444,9 @@ static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
 	u32 phy_page = addr >> 8;
 	u32 ofst = 0;
 
+	if (rtwdev->chip->chip_gen == RTW89_CHIP_BE)
+		return addr < 0x10000 ? 0x20000 : 0;
+
 	switch (phy_page) {
 	case 0x6:
 	case 0x7:
@@ -4909,3 +4912,8 @@ void rtw89_phy_edcca_track(struct rtw89_dev *rtwdev)
 	rtw89_phy_edcca_thre_calc(rtwdev);
 	rtw89_phy_edcca_log(rtwdev);
 }
+
+const struct rtw89_phy_gen_def rtw89_phy_gen_ax = {
+	.cr_base = 0x10000,
+};
+EXPORT_SYMBOL(rtw89_phy_gen_ax);
