@@ -1766,6 +1766,7 @@ static void replace_sub_page(struct size_class *class, struct zspage *zspage,
 
 static bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 {
+	struct size_class *class;
 	struct zspage *zspage;
 
 	/*
@@ -1776,10 +1777,10 @@ static bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 	VM_BUG_ON_PAGE(PageIsolated(page), page);
 
 	zspage = get_zspage(page);
-	migrate_write_lock(zspage);
+	class = zspage_class(zspage->pool, zspage);
+	spin_lock(&class->lock);
 	inc_zspage_isolation(zspage);
-	migrate_write_unlock(zspage);
-
+	spin_unlock(&class->lock);
 	return true;
 }
 
@@ -1854,8 +1855,8 @@ static int zs_page_migrate(struct page *newpage, struct page *page,
 	 * it's okay to release migration_lock.
 	 */
 	write_unlock(&pool->migrate_lock);
-	spin_unlock(&class->lock);
 	dec_zspage_isolation(zspage);
+	spin_unlock(&class->lock);
 	migrate_write_unlock(zspage);
 
 	get_page(newpage);
@@ -1872,15 +1873,17 @@ static int zs_page_migrate(struct page *newpage, struct page *page,
 
 static void zs_page_putback(struct page *page)
 {
+	struct size_class *class;
 	struct zspage *zspage;
 
 	VM_BUG_ON_PAGE(!PageMovable(page), page);
 	VM_BUG_ON_PAGE(!PageIsolated(page), page);
 
 	zspage = get_zspage(page);
-	migrate_write_lock(zspage);
+	class = zspage_class(zspage->pool, zspage);
+	spin_lock(&class->lock);
 	dec_zspage_isolation(zspage);
-	migrate_write_unlock(zspage);
+	spin_unlock(&class->lock);
 }
 
 static const struct movable_operations zsmalloc_mops = {
