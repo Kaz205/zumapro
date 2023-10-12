@@ -5588,8 +5588,9 @@ int rtw89_mac_get_tx_retry_limit(struct rtw89_dev *rtwdev,
 int rtw89_mac_set_hw_muedca_ctrl(struct rtw89_dev *rtwdev,
 				 struct rtw89_vif *rtwvif, bool en)
 {
+	const struct rtw89_mac_gen_def *mac = rtwdev->chip->mac_def;
 	u8 mac_idx = rtwvif->mac_idx;
-	u16 set = B_AX_MUEDCA_EN_0 | B_AX_SET_MUEDCATIMER_TF_0;
+	u16 set = mac->muedca_ctrl.mask;
 	u32 reg;
 	u32 ret;
 
@@ -5597,7 +5598,7 @@ int rtw89_mac_set_hw_muedca_ctrl(struct rtw89_dev *rtwdev,
 	if (ret)
 		return ret;
 
-	reg = rtw89_mac_reg_by_idx(rtwdev, R_AX_MUEDCA_EN, mac_idx);
+	reg = rtw89_mac_reg_by_idx(rtwdev, mac->muedca_ctrl.addr, mac_idx);
 	if (en)
 		rtw89_write16_set(rtwdev, reg, set);
 	else
@@ -5748,6 +5749,11 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_ax = {
 	.rx_fltr = R_AX_RX_FLTR_OPT,
 	.port_base = &rtw89_port_base_ax,
 	.agg_len_ht = R_AX_AGG_LEN_HT_0,
+
+	.muedca_ctrl = {
+		.addr = R_AX_MUEDCA_EN,
+		.mask = B_AX_MUEDCA_EN_0 | B_AX_SET_MUEDCATIMER_TF_0,
+	},
 
 	.disable_cpu = rtw89_mac_disable_cpu_ax,
 	.fwdl_enable_wcpu = rtw89_mac_enable_cpu_ax,
