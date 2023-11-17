@@ -7,7 +7,8 @@
 
 #include "core.h"
 
-int rtw89_parse_efuse_map(struct rtw89_dev *rtwdev);
-int rtw89_parse_phycap_map(struct rtw89_dev *rtwdev);
+int rtw89_parse_efuse_map_ax(struct rtw89_dev *rtwdev);
+int rtw89_parse_phycap_map_ax(struct rtw89_dev *rtwdev);
+int rtw89_cnv_efuse_state_ax(struct rtw89_dev *rtwdev, bool idle);
 
 #endif
