@@ -1550,13 +1550,13 @@ static const struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 static bool mac_is_txq_empty(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_mac_dle_dfi_qempty qempty;
-	u32 qnum, qtmp, val32, msk32;
+	u32 grpnum, qtmp, val32, msk32;
 	int i, j, ret;
 
-	qnum = rtwdev->chip->wde_qempty_acq_num;
+	grpnum = rtwdev->chip->wde_qempty_acq_grpnum;
 	qempty.dle_type = DLE_CTRL_TYPE_WDE;
 
-	for (i = 0; i < qnum; i++) {
+	for (i = 0; i < grpnum; i++) {
 		qempty.grpsel = i;
 		ret = dle_dfi_qempty(rtwdev, &qempty);
 		if (ret) {
@@ -1572,7 +1572,7 @@ static bool mac_is_txq_empty(struct rtw89_dev *rtwdev)
 		}
 	}
 
-	qempty.grpsel = rtwdev->chip->wde_qempty_mgq_sel;
+	qempty.grpsel = rtwdev->chip->wde_qempty_mgq_grpsel;
 	ret = dle_dfi_qempty(rtwdev, &qempty);
 	if (ret) {
 		rtw89_warn(rtwdev, "dle dfi mgq empty %d\n", ret);
