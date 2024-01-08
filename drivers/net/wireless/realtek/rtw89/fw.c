@@ -2342,6 +2342,7 @@ int rtw89_fw_h2c_update_beacon(struct rtw89_dev *rtwdev,
 
 	return 0;
 }
+EXPORT_SYMBOL(rtw89_fw_h2c_update_beacon);
 
 int rtw89_fw_h2c_update_beacon_be(struct rtw89_dev *rtwdev,
 				  struct rtw89_vif *rtwvif)
@@ -2424,6 +2425,7 @@ fail:
 
 	return ret;
 }
+EXPORT_SYMBOL(rtw89_fw_h2c_update_beacon_be);
 
 #define H2C_ROLE_MAINTAIN_LEN 4
 int rtw89_fw_h2c_role_maintain(struct rtw89_dev *rtwdev,
