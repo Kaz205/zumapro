@@ -6086,5 +6086,7 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_ax = {
 	.cnv_efuse_state = rtw89_cnv_efuse_state_ax,
 
 	.get_txpwr_cr = rtw89_mac_get_txpwr_cr_ax,
+
+	.add_chan_list = rtw89_hw_scan_add_chan_list,
 };
 EXPORT_SYMBOL(rtw89_mac_gen_ax);

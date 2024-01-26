@@ -916,6 +916,9 @@ struct rtw89_mac_gen_def {
 	bool (*get_txpwr_cr)(struct rtw89_dev *rtwdev,
 			     enum rtw89_phy_idx phy_idx,
 			     u32 reg_base, u32 *cr);
+
+	int (*add_chan_list)(struct rtw89_dev *rtwdev,
+			     struct rtw89_vif *rtwvif, bool connected);
 };
 
 extern const struct rtw89_mac_gen_def rtw89_mac_gen_ax;
