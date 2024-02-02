@@ -16,6 +16,7 @@ struct rtw89_dev;
 struct rtw89_pci_info;
 struct rtw89_mac_gen_def;
 struct rtw89_phy_gen_def;
+struct rtw89_h2c_rf_tssi;
 struct rtw89_fw_txpwr_track_cfg;
 struct rtw89_phy_rfk_log_fmt;
 
@@ -4700,6 +4701,11 @@ struct rtw89_cfo_tracking_info {
 	u8 x_cap_lb;
 	u8 x_cap_ub;
 	u8 lock_cnt;
+};
+
+enum rtw89_tssi_mode {
+	RTW89_TSSI_NORMAL = 0,
+	RTW89_TSSI_SCAN = 1,
 };
 
 enum rtw89_tssi_alimk_band {
