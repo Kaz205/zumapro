@@ -8,6 +8,7 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-heap.h>
 #include <linux/err.h>
+#include <linux/scatterlist.h>
 #include <linux/slab.h>
 
 #include "restricted_heap.h"
@@ -69,7 +70,7 @@ static int restricted_heap_attach(struct dma_buf *dmabuf, struct dma_buf_attachm
 	ret = sg_alloc_table(table, 1, GFP_KERNEL);
 	if (ret)
 		goto err_free_sgt;
-	sg_set_page(table->sgl, NULL, restricted_buf->size, 0);
+	sg_dma_mark_restricted(table->sgl);
 
 	a->table = table;
 	attachment->priv = a;
@@ -109,7 +110,7 @@ restricted_heap_map_dma_buf(struct dma_buf_attachment *attachment, enum dma_data
 	 *
 	 * Note: CONFIG_DMA_API_DEBUG requires this to be aligned with PAGE_SIZE.
 	 */
-	if (restricted_buf->restricted_addr) {
+	if (sg_dma_is_restricted(table->sgl) && restricted_buf->restricted_addr) {
 		sg_dma_address(table->sgl) = restricted_buf->restricted_addr;
 		sg_dma_len(table->sgl) = restricted_buf->size;
 	}
