@@ -13,6 +13,13 @@
 #include "txrx.h"
 #include "util.h"
 
+static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
+{
+	const struct rtw89_phy_gen_def *phy = rtwdev->chip->phy_def;
+
+	return phy->phy0_phy1_offset(rtwdev, addr);
+}
+
 static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 			     const struct rtw89_ra_report *report)
 {
@@ -1441,13 +1448,10 @@ static void rtw89_phy_init_rf_nctl(struct rtw89_dev *rtwdev)
 	rtw89_phy_init_reg(rtwdev, nctl_table, rtw89_phy_config_bb_reg, NULL);
 }
 
-static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
+static u32 rtw89_phy0_phy1_offset_ax(struct rtw89_dev *rtwdev, u32 addr)
 {
 	u32 phy_page = addr >> 8;
 	u32 ofst = 0;
-
-	if (rtwdev->chip->chip_gen == RTW89_CHIP_BE)
-		return addr < 0x10000 ? 0x20000 : 0;
 
 	switch (phy_page) {
 	case 0x6:
@@ -6074,6 +6078,7 @@ const struct rtw89_phy_gen_def rtw89_phy_gen_ax = {
 	.ccx = &rtw89_ccx_regs_ax,
 	.physts = &rtw89_physts_regs_ax,
 	.cfo = &rtw89_cfo_regs_ax,
+	.phy0_phy1_offset = rtw89_phy0_phy1_offset_ax,
 	.config_bb_gain = rtw89_phy_config_bb_gain_ax,
 
 	.set_txpwr_byrate = rtw89_phy_set_txpwr_byrate_ax,
