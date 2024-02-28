@@ -2808,7 +2808,7 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
 		}
 		snprintf(name, sizeof(name), "%pg", p->bdev);
 		if (!disk_based_swap_enabled && strncmp(name, "zram", strlen("zram"))) {
-			iput(p->bdev->bd_inode);
+			blkdev_put(p->bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
 			p->bdev = NULL;
 			return -EINVAL;
 		}
