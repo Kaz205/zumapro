@@ -8,6 +8,7 @@
 #include "core.h"
 
 #define BTC_H2C_MAXLEN 2020
+#define BTC_TLV_SLOT_ID_LEN_V7 1
 
 enum btc_mode {
 	BTC_MODE_NORMAL,
@@ -268,6 +269,53 @@ static inline u8 rtw89_btc_path_phymap(struct rtw89_dev *rtwdev,
 				       enum rtw89_rf_path path)
 {
 	return rtw89_btc_phymap(rtwdev, phy_idx, BIT(path));
+}
+
+static inline
+void _slot_set_le(struct rtw89_btc *btc, u8 sid, __le16 dura, __le32 tbl, __le16 type)
+{
+	if (btc->ver->fcxslots == 1) {
+		btc->dm.slot.v1[sid].dur = dura;
+		btc->dm.slot.v1[sid].cxtbl = tbl;
+		btc->dm.slot.v1[sid].cxtype = type;
+	} else if (btc->ver->fcxslots == 7) {
+		btc->dm.slot.v7[sid].dur = dura;
+		btc->dm.slot.v7[sid].cxtype = type;
+		btc->dm.slot.v7[sid].cxtbl = tbl;
+	}
+}
+
+static inline
+void _slot_set(struct rtw89_btc *btc, u8 sid, u16 dura, u32 tbl, u16 type)
+{
+	_slot_set_le(btc, sid, cpu_to_le16(dura), cpu_to_le32(tbl), cpu_to_le16(type));
+}
+
+static inline
+void _slot_set_dur(struct rtw89_btc *btc, u8 sid, u16 dura)
+{
+	if (btc->ver->fcxslots == 1)
+		btc->dm.slot.v1[sid].dur = cpu_to_le16(dura);
+	else if (btc->ver->fcxslots == 7)
+		btc->dm.slot.v7[sid].dur = cpu_to_le16(dura);
+}
+
+static inline
+void _slot_set_type(struct rtw89_btc *btc, u8 sid, u16 type)
+{
+	if (btc->ver->fcxslots == 1)
+		btc->dm.slot.v1[sid].cxtype = cpu_to_le16(type);
+	else if (btc->ver->fcxslots == 7)
+		btc->dm.slot.v7[sid].cxtype = cpu_to_le16(type);
+}
+
+static inline
+void _slot_set_tbl(struct rtw89_btc *btc, u8 sid, u32 tbl)
+{
+	if (btc->ver->fcxslots == 1)
+		btc->dm.slot.v1[sid].cxtbl = cpu_to_le32(tbl);
+	else if (btc->ver->fcxslots == 7)
+		btc->dm.slot.v7[sid].cxtbl = cpu_to_le32(tbl);
 }
 
 #endif
