@@ -927,6 +927,35 @@ struct iwl_time_sync_data {
 	bool active;
 };
 
+/**
+ * struct iwl_mvm_acs_survey_channel - per-channel survey information
+ *
+ * Stripped down version of &struct survey_info.
+ *
+ * @time: time in ms the radio was on the channel
+ * @time_busy: time in ms the channel was sensed busy
+ * @time_tx: time in ms spent transmitting data
+ * @time_rx: time in ms spent receiving data
+ * @noise: channel noise in dBm
+ */
+struct iwl_mvm_acs_survey_channel {
+	u32 time;
+	u32 time_busy;
+	u32 time_tx;
+	u32 time_rx;
+	s8 noise;
+};
+
+struct iwl_mvm_acs_survey {
+	struct iwl_mvm_acs_survey_channel *bands[NUM_NL80211_BANDS];
+
+	/* Overall number of channels */
+	int n_channels;
+
+	/* Storage space for per-channel information follows */
+	struct iwl_mvm_acs_survey_channel channels[] __counted_by(n_channels);
+};
+
 struct iwl_mvm {
 	/* for logger access */
 	struct device *dev;
@@ -1332,6 +1361,8 @@ struct iwl_mvm {
 	bool mld_api_is_used;
 
 	struct iwl_time_sync_data time_sync;
+
+	struct iwl_mvm_acs_survey *acs_survey;
 
 	/* Firmware RFI state &enum iwl_rfi_support_reason */
 	u32 fw_rfi_state;
@@ -2163,6 +2194,8 @@ int iwl_mvm_max_scan_ie_len(struct iwl_mvm *mvm);
 void iwl_mvm_report_scan_aborted(struct iwl_mvm *mvm);
 void iwl_mvm_scan_timeout_wk(struct work_struct *work);
 int iwl_mvm_int_mlo_scan(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+void iwl_mvm_rx_channel_survey_notif(struct iwl_mvm *mvm,
+				     struct iwl_rx_cmd_buffer *rxb);
 
 /* Scheduled scan */
 void iwl_mvm_rx_lmac_scan_complete_notif(struct iwl_mvm *mvm,
