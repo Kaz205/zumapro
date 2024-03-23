@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2024 MediaTek Inc.
  */
+#define pr_fmt(fmt)     "rheap_mtk: " fmt
 #include <linux/cma.h>
 #include <linux/dma-buf.h>
 #include <linux/err.h>
@@ -34,6 +35,12 @@ enum mtk_secure_mem_type {
 	MTK_SECURE_MEMORY_TYPE_CM_CMA	= 2,
 };
 
+/* This structure also is sync with tee, thus not use the phys_addr_t */
+struct mtk_tee_scatterlist {
+	u64		pa;
+	u32		length;
+}__packed;
+
 enum mtk_secure_buffer_tee_cmd {
 	/*
 	 * Allocate the zeroed secure memory from TEE.
@@ -41,8 +48,10 @@ enum mtk_secure_buffer_tee_cmd {
 	 * [in]  value[0].a: The buffer size.
 	 *       value[0].b: alignment.
 	 * [in]  value[1].a: enum mtk_secure_mem_type.
-	 * [in]  value[2].a: pa base in cma case.
-	 *       value[2].b: The buffer size in cma case.
+	 * [inout] [in]  value[2].a: pa base in cma case.
+	 *               value[2].b: The buffer size in cma case.
+	 *         [out] value[2].a: numbers of mem block. 1 means the memory is continuous.
+	 *               value[2].b: buffer PA base.
 	 * [out] value[3].a: The secure handle.
 	 */
 	MTK_TZCMD_SECMEM_ZALLOC	= 0x10000, /* MTK TEE Command ID Base */
@@ -55,6 +64,15 @@ enum mtk_secure_buffer_tee_cmd {
 	 * [out] value[1].a: return value, 0 means successful, otherwise fail.
 	 */
 	MTK_TZCMD_SECMEM_FREE	= 0x10001,
+
+	/*
+	 * Get secure memory sg-list.
+	 *
+	 * [in]  value[0].a: The secure handle of this buffer, It's value[3].a of
+	 *                   MTK_TZCMD_SECMEM_ZALLOC.
+	 * [out] value[1].a: The array of sg items (struct mtk_tee_scatterlist).
+	 */
+	MTK_TZCMD_SECMEM_RETRIEVE_SG	= 0x10002,
 };
 
 struct mtk_restricted_heap_data {
@@ -121,7 +139,7 @@ static int mtk_tee_service_call(struct tee_context *tee_ctx, u32 session,
 
 	ret = tee_client_invoke_func(tee_ctx, &arg, params);
 	if (ret < 0 || arg.ret) {
-		pr_err("%s: cmd %d ret %d:%x.\n", __func__, command, ret, arg.ret);
+		pr_err("%s: cmd 0x%x ret %d:%x.\n", __func__, command, ret, arg.ret);
 		ret = -EOPNOTSUPP;
 	}
 	return ret;
@@ -131,14 +149,22 @@ static int mtk_tee_restrict_memory(struct restricted_heap *heap, struct restrict
 {
 	struct mtk_restricted_heap_data *data = heap->priv_data;
 	struct tee_param params[TEE_PARAM_NUM] = {0};
+	struct mtk_tee_scatterlist *tee_sg_item;
+	struct mtk_tee_scatterlist *tee_sg_buf;
+	unsigned int sg_num, size, i;
+	struct tee_shm *sg_shm;
+	struct scatterlist *sg;
+	phys_addr_t pa_tee;
+	u64 r_addr;
 	int ret;
 
+	/* Alloc the secure buffer and get the sg-list number from TEE */
 	params[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 	params[0].u.value.a = buf->size;
 	params[0].u.value.b = PAGE_SIZE;
 	params[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 	params[1].u.value.a = data->mem_type;
-	params[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	params[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
 	if (heap->cma && data->mem_type == MTK_SECURE_MEMORY_TYPE_CM_CMA) {
 		params[2].u.value.a = heap->cma_paddr;
 		params[2].u.value.b = heap->cma_size;
@@ -149,14 +175,79 @@ static int mtk_tee_restrict_memory(struct restricted_heap *heap, struct restrict
 	if (ret)
 		return -ENOMEM;
 
-	buf->restricted_addr = params[3].u.value.a;
+	r_addr = params[3].u.value.a;
+
+	sg_num = params[2].u.value.a;
+
+	/* If there is only one time, It means the buffer is continous,Get the PA directly. */
+	if (sg_num == 1) {
+		pa_tee = params[2].u.value.b;
+		if (sg_alloc_table(&buf->sg_table, 1, GFP_KERNEL))
+			goto tee_secmem_free;
+		sg_set_page(buf->sg_table.sgl, phys_to_page(pa_tee), buf->size, 0);
+		buf->restricted_addr = r_addr;
+		return 0;
+	}
+
+	/*
+	 * If the buffer inside TEE are discontinuous, Use sharemem to retrieve
+	 * the detail sg list from TEE.
+	 */
+	tee_sg_buf = kmalloc_array(sg_num, sizeof(*tee_sg_item), GFP_KERNEL);
+	if (!tee_sg_buf) {
+		ret = -ENOMEM;
+		goto tee_secmem_free;
+	}
+
+	size = sg_num * sizeof(*tee_sg_item);
+        sg_shm = tee_shm_register_kernel_buf(data->tee_ctx, tee_sg_buf, size);
+        if (!sg_shm)
+		goto free_sg_buf;
+
+	memset(params, 0, sizeof(params));
+	params[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	params[0].u.value.a = r_addr;
+	params[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT;
+	params[1].u.memref.shm = sg_shm;
+        params[1].u.memref.size = size;
+	ret = mtk_tee_service_call(data->tee_ctx, data->tee_session,
+				   MTK_TZCMD_SECMEM_RETRIEVE_SG, params);
+	if (ret)
+		goto put_shm;
+
+	if (sg_alloc_table(&buf->sg_table, sg_num, GFP_KERNEL))
+		goto put_shm;
+
+	for_each_sgtable_sg(&buf->sg_table, sg, i) {
+		tee_sg_item = tee_sg_buf + i;
+		sg_set_page(sg, phys_to_page(tee_sg_item->pa),
+			    tee_sg_item->length, 0);
+	}
+
+	tee_shm_put(sg_shm);
+	kfree(tee_sg_buf);
+	buf->restricted_addr = r_addr;
 	return 0;
+
+put_shm:
+	tee_shm_put(sg_shm);
+free_sg_buf:
+	kfree(tee_sg_buf);
+tee_secmem_free:
+	params[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	params[0].u.value.a = r_addr;
+	params[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
+	mtk_tee_service_call(data->tee_ctx, data->tee_session,
+			     MTK_TZCMD_SECMEM_FREE, params);
+	return ret;
 }
 
 static void mtk_tee_unrestrict_memory(struct restricted_heap *heap, struct restricted_buffer *buf)
 {
 	struct mtk_restricted_heap_data *data = heap->priv_data;
 	struct tee_param params[TEE_PARAM_NUM] = {0};
+
+	sg_free_table(&buf->sg_table);
 
 	params[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 	params[0].u.value.a = buf->restricted_addr;
@@ -289,7 +380,7 @@ static int __init mtk_restricted_cma_init(struct reserved_mem *rmem)
 	ret = cma_init_reserved_mem(rmem->base, rmem->size, 0, rmem->name,
 				    &cma);
 	if (ret) {
-		pr_err("%s: %s set up CMA fail\n", __func__, rmem->name);
+		pr_err("%s: %s set up CMA fail. ret %d.\n", __func__, rmem->name, ret);
 		return ret;
 	}
 
