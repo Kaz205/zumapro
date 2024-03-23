@@ -314,6 +314,28 @@ static void mtk_restricted_memory_cma_free(struct restricted_heap *heap,
 	mutex_unlock(&data->lock);
 }
 
+static struct sg_table
+*mtk_restricted_map_dma_buf(struct sg_table *table, struct restricted_buffer *buf,
+			   enum dma_data_direction direct)
+{
+	struct scatterlist *buf_sg = buf->sg_table.sgl;
+	struct scatterlist *sg;
+	unsigned int i;
+
+	for_each_sgtable_sg(table, sg, i) {
+		sg_dma_address(sg) = sg_phys(buf_sg);
+		sg_dma_len(sg) = buf_sg->length;
+		buf_sg = sg_next(buf_sg);
+	}
+	return table;
+}
+
+static void
+mtk_restricted_unmap_dma_buf(struct sg_table *table, struct restricted_buffer *buf,
+			     enum dma_data_direction direct)
+{
+}
+
 static int mtk_restricted_heap_init(struct restricted_heap *heap)
 {
 	struct mtk_restricted_heap_data *data = heap->priv_data;
@@ -329,6 +351,8 @@ static const struct restricted_heap_ops mtk_restricted_heap_ops = {
 	.memory_free		= mtk_restricted_memory_free,
 	.memory_restrict	= mtk_tee_restrict_memory,
 	.memory_unrestrict	= mtk_tee_unrestrict_memory,
+	.map_dma_buf		= mtk_restricted_map_dma_buf,
+	.unmap_dma_buf		= mtk_restricted_unmap_dma_buf,
 };
 
 static struct mtk_restricted_heap_data mtk_restricted_heap_data = {
@@ -341,6 +365,8 @@ static const struct restricted_heap_ops mtk_restricted_heap_ops_cma = {
 	.memory_free		= mtk_restricted_memory_cma_free,
 	.memory_restrict	= mtk_tee_restrict_memory,
 	.memory_unrestrict	= mtk_tee_unrestrict_memory,
+	.map_dma_buf		= mtk_restricted_map_dma_buf,
+	.unmap_dma_buf		= mtk_restricted_unmap_dma_buf,
 };
 
 static struct mtk_restricted_heap_data mtk_restricted_heap_data_cma = {

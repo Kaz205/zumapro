@@ -15,7 +15,33 @@
 
 struct restricted_heap_attachment {
 	struct sg_table			*table;
+	struct device			*dev;
 };
+
+static struct sg_table *dup_sg_table(struct sg_table *table)
+{
+	struct sg_table *new_table;
+	int ret, i;
+	struct scatterlist *sg, *new_sg;
+
+	new_table = kzalloc(sizeof(*new_table), GFP_KERNEL);
+	if (!new_table)
+		return ERR_PTR(-ENOMEM);
+
+	ret = sg_alloc_table(new_table, table->orig_nents, GFP_KERNEL);
+	if (ret) {
+		kfree(new_table);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	new_sg = new_table->sgl;
+	for_each_sgtable_sg(table, sg, i) {
+		sg_set_page(new_sg, sg_page(sg), sg->length, sg->offset);
+		new_sg = sg_next(new_sg);
+	}
+
+	return new_table;
+}
 
 static int
 restricted_heap_memory_allocate(struct restricted_heap *heap, struct restricted_buffer *buf)
@@ -55,33 +81,23 @@ static int restricted_heap_attach(struct dma_buf *dmabuf, struct dma_buf_attachm
 	struct restricted_buffer *restricted_buf = dmabuf->priv;
 	struct restricted_heap_attachment *a;
 	struct sg_table *table;
-	int ret;
 
 	a = kzalloc(sizeof(*a), GFP_KERNEL);
 	if (!a)
 		return -ENOMEM;
 
-	table = kzalloc(sizeof(*table), GFP_KERNEL);
+	table = dup_sg_table(&restricted_buf->sg_table);
 	if (!table) {
-		ret = -ENOMEM;
-		goto err_free_attach;
+		kfree(a);
+		return -ENOMEM;
 	}
 
-	ret = sg_alloc_table(table, 1, GFP_KERNEL);
-	if (ret)
-		goto err_free_sgt;
 	sg_dma_mark_restricted(table->sgl);
-
 	a->table = table;
+	a->dev = attachment->dev;
 	attachment->priv = a;
 
 	return 0;
-
-err_free_sgt:
-	kfree(table);
-err_free_attach:
-	kfree(a);
-	return ret;
 }
 
 static void restricted_heap_detach(struct dma_buf *dmabuf, struct dma_buf_attachment *attachment)
@@ -94,26 +110,22 @@ static void restricted_heap_detach(struct dma_buf *dmabuf, struct dma_buf_attach
 }
 
 static struct sg_table *
-restricted_heap_map_dma_buf(struct dma_buf_attachment *attachment, enum dma_data_direction direct)
+restricted_heap_map_dma_buf(struct dma_buf_attachment *attachment, enum dma_data_direction direction)
 {
 	struct restricted_heap_attachment *a = attachment->priv;
 	struct dma_buf *dmabuf = attachment->dmabuf;
 	struct restricted_buffer *restricted_buf = dmabuf->priv;
 	struct sg_table *table = a->table;
+	struct restricted_heap *restricted_heap = dma_heap_get_drvdata(restricted_buf->heap);
+	const struct restricted_heap_ops *ops = restricted_heap->ops;
+	int ret;
 
-	/*
-	 * Technically dma_address refers to the address used by HW, But for restricted buffer
-	 * we don't know its dma_address in kernel, Instead, we may know its restricted address
-	 * which refers to the real buffer in the trusted or secure world. Here use this property
-	 * to save the restricted address, and the user will use it to obtain the real address in
-	 * trusted or secure world.
-	 *
-	 * Note: CONFIG_DMA_API_DEBUG requires this to be aligned with PAGE_SIZE.
-	 */
-	if (sg_dma_is_restricted(table->sgl) && restricted_buf->restricted_addr) {
-		sg_dma_address(table->sgl) = restricted_buf->restricted_addr;
-		sg_dma_len(table->sgl) = restricted_buf->size;
-	}
+	if (ops->map_dma_buf)
+		return ops->map_dma_buf(table, restricted_buf, direction);
+
+	ret = dma_map_sgtable(attachment->dev, table, direction, 0);
+	if (ret)
+		return ERR_PTR(ret);
 	return table;
 }
 
@@ -122,10 +134,19 @@ restricted_heap_unmap_dma_buf(struct dma_buf_attachment *attachment, struct sg_t
 			      enum dma_data_direction direction)
 {
 	struct restricted_heap_attachment *a = attachment->priv;
+	struct dma_buf *dmabuf = attachment->dmabuf;
+	struct restricted_buffer *restricted_buf = dmabuf->priv;
+	struct restricted_heap *restricted_heap = dma_heap_get_drvdata(restricted_buf->heap);
+	const struct restricted_heap_ops *ops = restricted_heap->ops;
 
 	WARN_ON(a->table != table);
-	sg_dma_address(table->sgl) = 0;
-	sg_dma_len(table->sgl) = 0;
+
+	if (ops->unmap_dma_buf) {
+		ops->unmap_dma_buf(table, restricted_buf, direction);
+		return;
+	}
+
+	dma_unmap_sgtable(attachment->dev, table, direction, 0);
 }
 
 static int

@@ -38,6 +38,9 @@ struct restricted_heap_ops {
 
 	int	(*memory_restrict)(struct restricted_heap *heap, struct restricted_buffer *buf);
 	void	(*memory_unrestrict)(struct restricted_heap *heap, struct restricted_buffer *buf);
+
+	struct sg_table	*(*map_dma_buf)(struct sg_table *table, struct restricted_buffer *buf, enum dma_data_direction direct);
+	void	(*unmap_dma_buf)(struct sg_table *table, struct restricted_buffer *buf, enum dma_data_direction direct);
 };
 
 int restricted_heap_add(struct restricted_heap *rstrd_heap);
