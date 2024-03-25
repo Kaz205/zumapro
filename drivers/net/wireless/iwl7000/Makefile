@@ -45,7 +45,7 @@ subdir-ccflags-y += $(call cc-option,-Wno-unused-variable)
 # variable declarations in for loops
 subdir-ccflags-y += -std=gnu11
 # and these are then also done in correspondence by upstream
-subdir-ccflags=y += $(call cc-option,-Wdeclaration-after-statement)
+subdir-ccflags-y += $(call cc-option,-Wno-declaration-after-statement)
 subdir-ccflags-y += $(call cc-option,-Wno-shift-negative-value)
 
 obj-$(CONFIG_IWL7000) += mac80211/

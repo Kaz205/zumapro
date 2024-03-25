@@ -246,6 +246,10 @@ static inline void backport_led_trigger_blink(struct led_trigger *trigger,
 }
 #define led_trigger_blink LINUX_BACKPORT(led_trigger_blink)
 
+#ifndef __cleanup
+#define __cleanup(func) __attribute__((__cleanup__(func)))
+#endif
+
 void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id);
 
 static inline void
