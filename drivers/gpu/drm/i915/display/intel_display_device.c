@@ -1028,8 +1028,9 @@ static void __intel_display_device_info_runtime_init(struct drm_i915_private *i9
 		if (DISPLAY_VER(i915) >= 11 && (dfsm & ICL_DFSM_DMC_DISABLE))
 			display_runtime->has_dmc = 0;
 
-		if (IS_DISPLAY_VER(i915, 10, 12) &&
-		    (dfsm & GLK_DFSM_DISPLAY_DSC_DISABLE))
+		if ((IS_DISPLAY_VER(i915, 10, 12) &&
+		     (dfsm & GLK_DFSM_DISPLAY_DSC_DISABLE)) ||
+		    DISPLAY_VER(i915) > 13)
 			display_runtime->has_dsc = 0;
 	}
 
