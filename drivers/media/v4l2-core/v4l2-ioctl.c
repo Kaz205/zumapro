@@ -1527,6 +1527,7 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 		case V4L2_PIX_FMT_MT2110T:	descr = "Mediatek 10bit Tile Mode"; break;
 		case V4L2_PIX_FMT_MT2110R:	descr = "Mediatek 10bit Raster Mode"; break;
 		case V4L2_PIX_FMT_MS21:         descr = "Mediatek One Plane Format"; break;
+		case V4L2_PIX_FMT_MS2110T:	descr = "Mediatek 10bit One Plane Raster Mode"; break;
 		default:
 			if (fmt->description[0])
 				return;
