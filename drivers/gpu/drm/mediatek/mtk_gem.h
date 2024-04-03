@@ -27,9 +27,11 @@ struct mtk_gem_obj {
 	void			*cookie;
 	void			*kvaddr;
 	dma_addr_t		dma_addr;
+	size_t			size;
 	unsigned long		dma_attrs;
 	struct sg_table		*sg;
 	struct page		**pages;
+	bool			secure;
 };
 
 #define to_mtk_gem_obj(x) container_of(x, struct mtk_gem_obj, base)
@@ -37,6 +39,8 @@ struct mtk_gem_obj {
 void mtk_gem_free_object(struct drm_gem_object *gem);
 struct mtk_gem_obj *mtk_gem_create(struct drm_device *dev, size_t size,
 				   bool alloc_kmap);
+struct mtk_gem_obj *mtk_gem_create_from_heap(struct drm_device *dev,
+					     const char *heap, size_t size);
 int mtk_gem_dumb_create(struct drm_file *file_priv, struct drm_device *dev,
 			struct drm_mode_create_dumb *args);
 struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj);
