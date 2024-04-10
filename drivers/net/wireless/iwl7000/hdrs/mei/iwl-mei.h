@@ -85,7 +85,7 @@ static inline void iwl_mei_set_power_limit(const __le16 *power_limit)
 
 static inline int iwl_mei_register(void *priv,
 				   const struct iwl_mei_ops *ops)
-{ return 0; }
+{ return -EOPNOTSUPP; }
 
 static inline void iwl_mei_start_unregister(void)
 {}
