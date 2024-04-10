@@ -280,8 +280,7 @@ int iwl_mvm_link_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 					ht_flag, LINK_PROT_FLG_TGG_PROTECT);
 
 	iwl_mvm_set_fw_qos_params(mvm, vif, link_conf, cmd.ac,
-				  &cmd.qos_flags);
-
+				  &cmd.qos_flags, 3);
 
 	cmd.bi = cpu_to_le32(link_conf->beacon_int);
 	cmd.dtim_interval = cpu_to_le32(link_conf->beacon_int *
