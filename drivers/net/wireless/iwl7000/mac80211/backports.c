@@ -194,20 +194,6 @@ void ieee80211_mgmt_frame_register(struct wiphy *wiphy,
 #endif /* < 5.8 */
 
 #ifdef CONFIG_THERMAL
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
-struct thermal_zone_device *
-thermal_zone_device_register_with_trips(const char *type,
-					struct thermal_trip *trips,
-					int num_trips, int mask, void *devdata,
-					struct thermal_zone_device_ops *ops,
-					struct thermal_zone_params *tzp, int passive_delay,
-					int polling_delay)
-{
-	return thermal_zone_device_register(type, num_trips, mask, devdata, ops, tzp,
-					    passive_delay, polling_delay);
-}
-EXPORT_SYMBOL_GPL(thermal_zone_device_register_with_trips);
-#endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(6,4,0)
 void *thermal_zone_device_priv(struct thermal_zone_device *tzd)

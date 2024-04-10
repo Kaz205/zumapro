@@ -1813,13 +1813,17 @@ struct cfg80211_set_hw_timestamp {
 #endif
 
 #ifdef CONFIG_THERMAL
-#if LINUX_VERSION_IS_GEQ(5,10,0) && LINUX_VERSION_IS_LESS(6,0,0)
+#if LINUX_VERSION_IS_LESS(6,9,0)
 #include <linux/thermal.h>
-struct thermal_trip {
+struct backport_thermal_trip {
 	int temperature;
 	int hysteresis;
+	int threshold;
 	enum thermal_trip_type type;
+	u8 flags;
+	void *priv;
 };
+#define thermal_trip backport_thermal_trip
 #endif
 #endif
 
@@ -1935,17 +1939,6 @@ cfg80211_get_iftype_ext_capa(struct wiphy *wiphy, enum nl80211_iftype type)
 #define cfg80211_req_link_bss(req, link)	NULL
 #define cfg80211_req_link_id(req)		-1
 #define cfg80211_req_link_elems_len(req, link)	0
-
-#ifdef CONFIG_THERMAL
-#include <linux/thermal.h>
-struct thermal_zone_device *
-thermal_zone_device_register_with_trips(const char *type,
-					struct thermal_trip *trips,
-					int num_trips, int mask, void *devdata,
-					struct thermal_zone_device_ops *ops,
-					struct thermal_zone_params *tzp, int passive_delay,
-					int polling_delay);
-#endif /* CONFIG_THERMAL */
 
 #else /* CFG80211 < 6.0 */
 #define link_sta_params_link_id(params) ((params)->link_sta_params.link_id)
@@ -2351,3 +2344,66 @@ static inline u16 *chandef_punctured_ptr(struct cfg80211_chan_def *chandef)
 	return &chandef->punctured;
 }
 #endif /* cfg < 6.8 */
+
+#ifdef CONFIG_THERMAL
+#if LINUX_VERSION_IS_LESS(6,9,0)
+#define THERMAL_TRIP_FLAG_RW_TEMP       BIT(0)
+static inline struct thermal_zone_device *
+backport_thermal_zone_device_register_with_trips(const char *type,
+						 struct thermal_trip *trips,
+						 int num_trips, void *devdata,
+						 struct thermal_zone_device_ops *ops,
+						 struct thermal_zone_params *tzp,
+						 int passive_delay,
+						 int polling_delay)
+{
+#if LINUX_VERSION_IS_LESS(6,0,0)
+	return thermal_zone_device_register(type, num_trips, 0, devdata, ops, tzp,
+					    passive_delay, polling_delay);
+#else
+#undef thermal_trip
+	return thermal_zone_device_register_with_trips(type,
+						       (struct thermal_trip *)(void *) trips,
+						       num_trips,
+						       0, devdata,
+						       ops, tzp, passive_delay,
+						       polling_delay);
+#define thermal_trip backport_thermal_trip
+#endif /* < 6,6,0 */
+#define thermal_zone_device_register_with_trips LINUX_BACKPORT(thermal_zone_device_register_with_trips)
+}
+#endif /* <6,9,0 */
+
+/* This function was added in 6,6,0 already, but struct thermal_trip isn't */
+#if LINUX_VERSION_IS_LESS(6,9,0) && LINUX_VERSION_IS_GEQ(6,0,0)
+#define for_each_thermal_trip LINUX_BACKPORT(for_each_thermal_trip)
+static inline
+int for_each_thermal_trip(struct thermal_zone_device *tz,
+			  int (*cb)(struct thermal_trip *, void *),
+			  void *data)
+{
+	struct thermal_trip *trip;
+	struct thermal_trip *trips = (void *)tz->trips;
+	int ret;
+
+	for (trip = trips; trip - trips < tz->num_trips; trip++) {
+		ret = cb(trip, data);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+#endif /* < 6,9,0 && >= 6,0,0 */
+
+/* for < 6,0,0 the trips are invalid anyway*/
+#if LINUX_VERSION_IS_LESS(6,0,0)
+static inline
+int for_each_thermal_trip(struct thermal_zone_device *tz,
+			  int (*cb)(struct thermal_trip *, void *),
+			  void *data)
+{
+	return 0;
+}
+#endif
+#endif /* CONFIG_THERMAL*/

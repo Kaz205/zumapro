@@ -14,9 +14,6 @@
 #define arc4_setkey __iwl7000_arc4_setkey
 #define arc4_crypt __iwl7000_arc4_crypt
 #ifdef CONFIG_THERMAL
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
-#define thermal_zone_device_register_with_trips __iwl7000_thermal_zone_device_register_with_trips
-#endif
 #if CFG80211_VERSION < KERNEL_VERSION(6,4,0)
 #define thermal_zone_device_priv __iwl7000_thermal_zone_device_priv
 #endif /* < 6.4 */
