@@ -25,6 +25,13 @@ enum {
 	MTK_DP_CAL_MAX,
 };
 
+enum mtk_dp_color_format {
+	MTK_DP_COLOR_FORMAT_RGB = 0,
+	MTK_DP_COLOR_FORMAT_YUV422 = 0x1,
+	MTK_DP_COLOR_FORMAT_YUV444 = 0x2,
+	MTK_DP_PIXELFORMAT_YUV420 = 0x3,
+};
+
 struct mtk_dp_audio_cfg {
 	bool detect_monitor;
 	int sad_count;
@@ -34,7 +41,7 @@ struct mtk_dp_audio_cfg {
 };
 
 struct mtk_dp_info {
-	enum dp_pixelformat format;
+	enum mtk_dp_color_format format;
 	struct videomode vm;
 	struct mtk_dp_audio_cfg audio_cur_cfg;
 };

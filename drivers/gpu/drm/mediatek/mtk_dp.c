@@ -561,7 +561,7 @@ static void mtk_dp_set_msa(struct mtk_dp *mtk_dp)
 }
 
 static int mtk_dp_set_color_format(struct mtk_dp *mtk_dp,
-				   enum dp_pixelformat color_format)
+				   enum mtk_dp_color_format color_format)
 {
 	u32 val;
 
@@ -571,10 +571,10 @@ static int mtk_dp_set_color_format(struct mtk_dp *mtk_dp,
 			   DP_TEST_COLOR_FORMAT_MASK);
 
 	switch (color_format) {
-	case DP_PIXELFORMAT_YUV422:
+	case MTK_DP_COLOR_FORMAT_YUV422:
 		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_YCBCR422;
 		break;
-	case DP_PIXELFORMAT_RGB:
+	case MTK_DP_COLOR_FORMAT_RGB:
 		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_RGB;
 		break;
 	default:
@@ -1426,7 +1426,7 @@ static void mtk_dp_initialize_priv_data(struct mtk_dp *mtk_dp)
 	mtk_dp->train_info.lane_count = mtk_dp->max_lanes;
 	mtk_dp->train_info.cable_plugged_in = plugged_in;
 
-	mtk_dp->info.format = DP_PIXELFORMAT_RGB;
+	mtk_dp->info.format = MTK_DP_COLOR_FORMAT_YUV422;
 	memset(&mtk_dp->info.vm, 0, sizeof(struct videomode));
 	mtk_dp->audio_enable = false;
 }
@@ -1475,7 +1475,7 @@ static void mtk_dp_sdp_set_down_cnt_init_in_hblank(struct mtk_dp *mtk_dp)
 
 	drm_display_mode_from_videomode(vm, &mode);
 
-	pix_clk_mhz = mtk_dp->info.format == DP_PIXELFORMAT_YUV420 ?
+	pix_clk_mhz = mtk_dp->info.format == MTK_DP_PIXELFORMAT_YUV420 ?
 		      mode.clock / 2000 : mode.clock / 1000;
 
 	switch (mtk_dp->train_info.lane_count) {
@@ -2631,7 +2631,7 @@ mtk_dp_bridge_mode_valid(struct drm_bridge *bridge,
 			 const struct drm_display_mode *mode)
 {
 	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
-	u32 bpp = mtk_dp->info.format & DRM_COLOR_FORMAT_YCBCR422 ? 16 : 24;
+	u32 bpp = info->color_formats & DRM_COLOR_FORMAT_YCBCR422 ? 16 : 24;
 	u32 lane_count_min = mtk_dp->train_info.lane_count;
 	u32 rate = drm_dp_bw_code_to_link_rate(mtk_dp->train_info.link_rate) *
 			 lane_count_min;
@@ -2677,10 +2677,9 @@ static u32 *mtk_dp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
 	struct drm_display_info *display_info =
 		&conn_state->connector->display_info;
-	u32 rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
-			      drm_dp_max_lane_count(mtk_dp->rx_cap),
-			 drm_dp_bw_code_to_link_rate(mtk_dp->max_linkrate) *
-			 mtk_dp->max_lanes);
+	u32 lane_count_min = mtk_dp->train_info.lane_count;
+	u32 rate = drm_dp_bw_code_to_link_rate(mtk_dp->train_info.link_rate) *
+			 lane_count_min;
 
 	*num_input_fmts = 0;
 
@@ -2727,9 +2726,9 @@ static int mtk_dp_bridge_atomic_check(struct drm_bridge *bridge,
 		 bridge_state->output_bus_cfg.format);
 
 	if (input_bus_format == MEDIA_BUS_FMT_YUYV8_1X16)
-		mtk_dp->info.format = DP_PIXELFORMAT_YUV422;
+		mtk_dp->info.format = MTK_DP_COLOR_FORMAT_YUV422;
 	else
-		mtk_dp->info.format = DP_PIXELFORMAT_RGB;
+		mtk_dp->info.format = MTK_DP_COLOR_FORMAT_RGB;
 
 	if (!crtc) {
 		drm_err(mtk_dp->drm_dev,
