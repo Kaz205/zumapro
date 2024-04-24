@@ -1740,7 +1740,7 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 		kfree(local->hw.wiphy->bands[band]);
 	}
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,5,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
 	wiphy_work_teardown(local);
 #endif
 
