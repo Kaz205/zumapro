@@ -79,6 +79,6 @@ mac80211-y += wbrf.o
 
 ccflags-y += -DDEBUG
 
-mac80211-y += backports.o cfg-utils.o
+mac80211-y += backports.o
 
 iwl7000_mac80211-objs := $(mac80211-objs) $(mac80211-y)
