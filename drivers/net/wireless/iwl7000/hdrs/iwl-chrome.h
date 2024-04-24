@@ -36,14 +36,6 @@
 
 #include <hdrs/net/dropreason.h>
 
-#if LINUX_VERSION_IS_LESS(3,20,0)
-#define get_net_ns_by_fd LINUX_BACKPORT(get_net_ns_by_fd)
-static inline struct net *get_net_ns_by_fd(int fd)
-{
-	return ERR_PTR(-EINVAL);
-}
-#endif
-
 #ifndef DECLARE_FLEX_ARRAY
 /**
  * __DECLARE_FLEX_ARRAY() - Declare a flexible array usable in a union
