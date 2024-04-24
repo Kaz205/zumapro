@@ -20,10 +20,6 @@
 
 #include "version.h"
 
-/* Dummy RHEL macros */
-#define RHEL_RELEASE_CODE 0
-#define RHEL_RELEASE_VERSION(a,b) 1
-
 /* backport artifacts */
 #define netdev_tstats(dev)	dev->tstats
 #define netdev_assign_tstats(dev, e)	dev->tstats = (e);
