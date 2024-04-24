@@ -331,7 +331,7 @@ struct cfg80211_ftm_responder_stats {
 #define ETH_P_PREAUTH  0x88C7	/* 802.11 Preauthentication */
 #endif
 
-#if LINUX_VERSION_IS_LESS(4,21,0)
+#if LINUX_VERSION_IS_LESS(5,0,0)
 enum nl80211_preamble {
 	NL80211_PREAMBLE_LEGACY,
 	NL80211_PREAMBLE_HT,
@@ -469,7 +469,7 @@ static inline void cfg80211_pmsr_complete(struct wireless_dev *wdev,
 	kfree(req);
 }
 
-#endif /* LINUX_VERSION_IS_LESS(4,21,0) */
+#endif /* LINUX_VERSION_IS_LESS(5,0,0) */
 
 #if LINUX_VERSION_IS_LESS(5,1,0)
 static inline int cfg80211_vendor_cmd_get_sender(struct wiphy *wiphy)

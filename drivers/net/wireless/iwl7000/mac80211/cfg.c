@@ -4826,7 +4826,7 @@ ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
 }
 #endif
 
-#if LINUX_VERSION_IS_GEQ(4,21,0)
+#if LINUX_VERSION_IS_GEQ(5,0,0)
 static int
 ieee80211_start_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 		     struct cfg80211_pmsr_request *request)
@@ -4838,7 +4838,7 @@ ieee80211_start_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 }
 #endif
 
-#if LINUX_VERSION_IS_GEQ(4,21,0)
+#if LINUX_VERSION_IS_GEQ(5,0,0)
 static void
 ieee80211_abort_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 		     struct cfg80211_pmsr_request *request)
@@ -5430,10 +5430,10 @@ const struct cfg80211_ops mac80211_config_ops = {
 #if LINUX_VERSION_IS_GEQ(4,20,0)
 	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif
-#if LINUX_VERSION_IS_GEQ(4,21,0)
+#if LINUX_VERSION_IS_GEQ(5,0,0)
 	.start_pmsr = ieee80211_start_pmsr,
 #endif
-#if LINUX_VERSION_IS_GEQ(4,21,0)
+#if LINUX_VERSION_IS_GEQ(5,0,0)
 	.abort_pmsr = ieee80211_abort_pmsr,
 #endif
 #if LINUX_VERSION_IS_GEQ(5,2,0)
