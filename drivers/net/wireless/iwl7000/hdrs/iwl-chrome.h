@@ -34,6 +34,7 @@
 #include <linux/if_vlan.h>
 #include "net/fq.h"
 
+#include <hdrs/linux/compiler_attributes.h>
 #include <hdrs/net/dropreason.h>
 
 #ifndef DECLARE_FLEX_ARRAY

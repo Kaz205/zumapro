@@ -175,9 +175,6 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	};
 	struct cfg80211_inform_bss bss_meta = {
 		.boottime_ns = rx_status->boottime_ns,
-#if LINUX_VERSION_IS_GEQ(6,5,0)
-		.drv_data = (void *)&update_data,
-#endif
 	};
 	bool signal_valid;
 	struct ieee80211_sub_if_data *scan_sdata;
@@ -225,15 +222,12 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	}
 	rcu_read_unlock();
 
-#if LINUX_VERSION_IS_LESS(6,8,0)
 	if (!ieee80211_uhb_power_type_valid(mgmt, len, channel))cbss = NULL;
 	else
-#endif
 
 		cbss = cfg80211_inform_bss_frame_data(local->hw.wiphy,
 						      &bss_meta,
 						      mgmt, len, GFP_ATOMIC);
-#if LINUX_VERSION_IS_LESS(6,5,0)
 	if (cbss) {
 		struct cfg80211_bss *non_tx_cbss;
 		rcu_read_lock();
@@ -251,7 +245,6 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 
 		rcu_read_unlock();
 	}
-#endif
 	if (!cbss)
 		return NULL;
 
@@ -317,12 +310,8 @@ void ieee80211_scan_rx(struct ieee80211_local *local, struct sk_buff *skb)
 		wiphy_delayed_work_queue(local->hw.wiphy, &local->scan_work, 0);
 	}
 
-#if LINUX_VERSION_IS_GEQ(5,8,0)
 	channel = ieee80211_get_channel_khz(local->hw.wiphy,
 					    ieee80211_rx_status_to_khz(rx_status));
-#else
-	channel = ieee80211_get_channel(local->hw.wiphy, rx_status->freq);
-#endif
 
 	if (!channel || channel->flags & IEEE80211_CHAN_DISABLED)
 		return;
@@ -393,7 +382,7 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_sub_if_data *sdata)
 	u32 flags = 0;
 
 	req = rcu_dereference_protected(local->scan_req,
-					lockdep_is_wiphy_held(local->hw.wiphy));
+					lockdep_is_held(&local->hw.wiphy->mtx));
 
 	if (test_bit(SCAN_HW_CANCELLED, &local->scanning))
 		return false;
@@ -475,7 +464,7 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
 		return;
 
 	scan_sdata = rcu_dereference_protected(local->scan_sdata,
-					       lockdep_is_wiphy_held(local->hw.wiphy));
+					       lockdep_is_held(&local->hw.wiphy->mtx));
 
 	if (hw_scan && !aborted &&
 	    !ieee80211_hw_check(&local->hw, SINGLE_SCAN_ON_ALL_BANDS) &&
@@ -484,7 +473,7 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
 
 		rc = drv_hw_scan(local,
 			rcu_dereference_protected(local->scan_sdata,
-						  lockdep_is_wiphy_held(local->hw.wiphy)),
+						  lockdep_is_held(&local->hw.wiphy->mtx)),
 			local->hw_scan_req);
 
 		if (rc == 0)
@@ -501,7 +490,7 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
 	local->hw_scan_req = NULL;
 
 	scan_req = rcu_dereference_protected(local->scan_req,
-					     lockdep_is_wiphy_held(local->hw.wiphy));
+					     lockdep_is_held(&local->hw.wiphy->mtx));
 
 	RCU_INIT_POINTER(local->scan_req, NULL);
 	RCU_INIT_POINTER(local->scan_sdata, NULL);
@@ -648,7 +637,7 @@ void ieee80211_run_deferred_scan(struct ieee80211_local *local)
 	if (!ieee80211_can_scan(local,
 				rcu_dereference_protected(
 					local->scan_sdata,
-					lockdep_is_wiphy_held(local->hw.wiphy))))
+					lockdep_is_held(&local->hw.wiphy->mtx))))
 		return;
 
 	wiphy_delayed_work_queue(local->hw.wiphy, &local->scan_work,
@@ -694,7 +683,7 @@ static void ieee80211_scan_state_send_probe(struct ieee80211_local *local,
 	u32 flags = 0, tx_flags;
 
 	scan_req = rcu_dereference_protected(local->scan_req,
-					     lockdep_is_wiphy_held(local->hw.wiphy));
+					     lockdep_is_held(&local->hw.wiphy->mtx));
 
 	tx_flags = IEEE80211_TX_INTFL_OFFCHAN_TX_OK;
 	if (scan_req->no_cck)
@@ -705,7 +694,7 @@ static void ieee80211_scan_state_send_probe(struct ieee80211_local *local,
 		flags |= IEEE80211_PROBE_FLAG_RANDOM_SN;
 
 	sdata = rcu_dereference_protected(local->scan_sdata,
-					  lockdep_is_wiphy_held(local->hw.wiphy));
+					  lockdep_is_held(&local->hw.wiphy->mtx));
 
 	for (i = 0; i < scan_req->n_ssids; i++)
 		ieee80211_send_scan_probe_req(
@@ -737,13 +726,6 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 
 	if (local->scan_req)
 		return -EBUSY;
-
-	/* For an MLO connection, if a link ID was specified, validate that it
-	 * is indeed active.
-	 */
-	if (ieee80211_vif_is_mld(&sdata->vif) && cfg80211_scan_request_tsf_report_link_id(req) >= 0 &&
-	    !(cfg80211_scan_request_check_tsf_report_link_id(req, sdata->vif.active_links)))
-		return -EINVAL;
 
 	if (!__ieee80211_can_leave_ch(sdata))
 		return -EBUSY;
@@ -793,20 +775,12 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 		local->hw_scan_req->req.duration = req->duration;
 		local->hw_scan_req->req.duration_mandatory =
 			req->duration_mandatory;
-		cfg80211_scan_request_set_tsf_report_link_id(&local->hw_scan_req->req,
-							     cfg80211_scan_request_tsf_report_link_id(req));
 
 		local->hw_scan_band = 0;
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 		local->hw_scan_req->req.n_6ghz_params = req->n_6ghz_params;
-#endif
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 		local->hw_scan_req->req.scan_6ghz_params =
 			req->scan_6ghz_params;
-#endif
-#if LINUX_VERSION_IS_GEQ(5,10,0)
-		local->hw_scan_req->req.scan_6ghz = cfg80211_scan_req_6ghz(req);
-#endif
+		local->hw_scan_req->req.scan_6ghz = false;
 
 		/*
 		 * After allocating local->hw_scan_req, we must
@@ -952,7 +926,7 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 	}
 
 	scan_req = rcu_dereference_protected(local->scan_req,
-					     lockdep_is_wiphy_held(local->hw.wiphy));
+					     lockdep_is_held(&local->hw.wiphy->mtx));
 
 	next_chan = scan_req->channels[local->scan_channel_idx];
 
@@ -992,15 +966,14 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	struct cfg80211_scan_request *scan_req;
 
 	scan_req = rcu_dereference_protected(local->scan_req,
-					     lockdep_is_wiphy_held(local->hw.wiphy));
+					     lockdep_is_held(&local->hw.wiphy->mtx));
 
 	skip = 0;
 	chan = scan_req->channels[local->scan_channel_idx];
 
 	local->scan_chandef.chan = chan;
 	local->scan_chandef.center_freq1 = chan->center_freq;
-	cfg80211_chandef_freq1_offset_set(&local->scan_chandef,
-					  cfg80211_chan_freq_offset(chan));
+	local->scan_chandef.freq1_offset = chan->freq_offset;
 	local->scan_chandef.center_freq2 = 0;
 
 	/* For scanning on the S1G band, detect the channel width according to
@@ -1109,9 +1082,9 @@ void ieee80211_scan_work(struct wiphy *wiphy, struct wiphy_work *work)
 	}
 
 	sdata = rcu_dereference_protected(local->scan_sdata,
-					  lockdep_is_wiphy_held(local->hw.wiphy));
+					  lockdep_is_held(&local->hw.wiphy->mtx));
 	scan_req = rcu_dereference_protected(local->scan_req,
-					     lockdep_is_wiphy_held(local->hw.wiphy));
+					     lockdep_is_held(&local->hw.wiphy->mtx));
 
 	/* When scanning on-channel, the first-callback means completed. */
 	if (test_bit(SCAN_ONCHANNEL_SCANNING, &local->scanning)) {
@@ -1315,7 +1288,7 @@ void ieee80211_scan_cancel(struct ieee80211_local *local)
 		if (local->ops->cancel_hw_scan)
 			drv_cancel_hw_scan(local,
 				rcu_dereference_protected(local->scan_sdata,
-						lockdep_is_wiphy_held(local->hw.wiphy)));
+						lockdep_is_held(&local->hw.wiphy->mtx)));
 		return;
 	}
 
@@ -1415,7 +1388,7 @@ int ieee80211_request_sched_scan_stop(struct ieee80211_local *local)
 	RCU_INIT_POINTER(local->sched_scan_req, NULL);
 
 	sched_scan_sdata = rcu_dereference_protected(local->sched_scan_sdata,
-						lockdep_is_wiphy_held(local->hw.wiphy));
+						lockdep_is_held(&local->hw.wiphy->mtx));
 	if (sched_scan_sdata) {
 		ret = drv_sched_scan_stop(local, sched_scan_sdata);
 		if (!ret)

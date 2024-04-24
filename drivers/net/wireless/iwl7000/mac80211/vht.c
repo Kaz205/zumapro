@@ -482,7 +482,7 @@ ieee80211_sta_rx_bw_to_chan_width(struct link_sta_info *link_sta)
 enum ieee80211_sta_rx_bandwidth
 ieee80211_chan_width_to_rx_bw(enum nl80211_chan_width width)
 {
-	switch((int)width) {
+	switch (width) {
 	case NL80211_CHAN_WIDTH_20_NOHT:
 	case NL80211_CHAN_WIDTH_20:
 		return IEEE80211_STA_RX_BW_20;
@@ -546,9 +546,9 @@ void ieee80211_sta_init_nss(struct link_sta_info *link_sta)
 	u8 ht_rx_nss = 0, vht_rx_nss = 0, he_rx_nss = 0, eht_rx_nss = 0, rx_nss;
 	bool support_160;
 
-	if (cfg_eht_cap_has_eht(link_sta->pub)) {
+	if (link_sta->pub->eht_cap.has_eht) {
 		int i;
-		const u8 *rx_nss_mcs = (void *)&cfg_eht_cap(link_sta->pub)->eht_mcs_nss_supp;
+		const u8 *rx_nss_mcs = (void *)&link_sta->pub->eht_cap.eht_mcs_nss_supp;
 
 		/* get the max nss for EHT over all possible bandwidths and mcs */
 		for (i = 0; i < sizeof(struct ieee80211_eht_mcs_nss_supp); i++)

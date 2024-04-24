@@ -235,7 +235,7 @@ static int ieee80211_can_powered_addr_change(struct ieee80211_sub_if_data *sdata
 	/* And if this iface is scanning */
 	if (local->scanning) {
 		scan_sdata = rcu_dereference_protected(local->scan_sdata,
-						       lockdep_is_wiphy_held(local->hw.wiphy));
+						       lockdep_is_held(&local->hw.wiphy->mtx));
 		if (sdata == scan_sdata)
 			ret = -EBUSY;
 	}
@@ -309,16 +309,12 @@ static int ieee80211_change_mac(struct net_device *dev, void *addr)
 	 * active (maybe other cases?) and we must get removed from it.
 	 * But we really don't care anymore if it's not registered now.
 	 */
-	if (!wdev_registered(dev->ieee80211_ptr))
+	if (!dev->ieee80211_ptr->registered)
 		return 0;
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 	ret = _ieee80211_change_mac(sdata, addr);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 
 	return ret;
 }
@@ -456,18 +452,14 @@ static int ieee80211_open(struct net_device *dev)
 	if (!is_valid_ether_addr(dev->dev_addr))
 		return -EADDRNOTAVAIL;
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
-#endif
 	err = ieee80211_check_concurrent_iface(sdata, sdata->vif.type);
 	if (err)
 		goto out;
 
 	err = ieee80211_do_open(&sdata->wdev, true);
 out:
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
-#endif
 
 	return err;
 }
@@ -565,10 +557,8 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 	}
 
 	wiphy_work_cancel(local->hw.wiphy, &sdata->deflink.csa.finalize_work);
-#if LINUX_VERSION_IS_GEQ(5,15,0)
 	wiphy_work_cancel(local->hw.wiphy,
 			  &sdata->deflink.color_change_finalize_work);
-#endif
 	wiphy_delayed_work_cancel(local->hw.wiphy,
 				  &sdata->dfs_cac_timer_work);
 
@@ -774,15 +764,11 @@ static int ieee80211_stop(struct net_device *dev)
 		ieee80211_stop_mbssid(sdata);
 	}
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
-#endif
 	wiphy_work_cancel(sdata->local->hw.wiphy, &sdata->activate_links_work);
 
 	ieee80211_do_stop(sdata, true);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
-#endif
 
 	return 0;
 }
@@ -2334,9 +2320,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 	 */
 	cfg80211_shutdown_all_interfaces(local->hw.wiphy);
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 
 	WARN(local->open_count, "%s: open count remains %d\n",
 	     wiphy_name(local->hw.wiphy), local->open_count);
@@ -2366,9 +2350,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 		if (!netdev)
 			kfree(sdata);
 	}
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 }
 
 static int netdev_notify(struct notifier_block *nb,

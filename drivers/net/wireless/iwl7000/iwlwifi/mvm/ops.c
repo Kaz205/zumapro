@@ -947,17 +947,13 @@ static int iwl_mvm_start_get_nvm(struct iwl_mvm *mvm)
 
 get_nvm_from_fw:
 	rtnl_lock();
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(mvm->hw->wiphy);
-#endif
 	mutex_lock(&mvm->mutex);
 
 	ret = iwl_trans_start_hw(mvm->trans);
 	if (ret) {
 		mutex_unlock(&mvm->mutex);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 		wiphy_unlock(mvm->hw->wiphy);
-#endif
 		rtnl_unlock();
 		return ret;
 	}
@@ -974,9 +970,7 @@ get_nvm_from_fw:
 		iwl_mvm_stop_device(mvm);
 
 	mutex_unlock(&mvm->mutex);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(mvm->hw->wiphy);
-#endif
 	rtnl_unlock();
 
 	if (ret)

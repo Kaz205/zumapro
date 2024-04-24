@@ -70,13 +70,11 @@ u8 *ieee80211_get_bssid(struct ieee80211_hdr *hdr, size_t len,
 		return hdr->addr3;
 	}
 
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 	if (ieee80211_is_s1g_beacon(fc)) {
 		struct ieee80211_ext *ext = (void *) hdr;
 
 		return ext->u.s1g_beacon.sa;
 	}
-#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 
 	if (ieee80211_is_mgmt(fc)) {
 		if (len < 24) /* drop incorrect hdr len (mgmt) */
@@ -777,7 +775,7 @@ static void __iterate_interfaces(struct ieee80211_local *local,
 
 	sdata = rcu_dereference_check(local->monitor_sdata,
 				      lockdep_is_held(&local->iflist_mtx) ||
-				      lockdep_is_wiphy_held(local->hw.wiphy));
+				      lockdep_is_held(&local->hw.wiphy->mtx));
 	if (sdata &&
 	    (iter_flags & IEEE80211_IFACE_ITER_RESUME_ALL || !active_only ||
 	     sdata->flags & IEEE80211_SDATA_IN_DRIVER))
@@ -1175,23 +1173,6 @@ void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 	}
 }
 
-#if LINUX_VERSION_IS_GEQ(6,4,0)
-static int ieee80211_put_s1g_cap(struct sk_buff *skb,
-				 struct ieee80211_sta_s1g_cap *s1g_cap)
-{
-	if (skb_tailroom(skb) < 2 + sizeof(struct ieee80211_s1g_cap))
-		return -ENOBUFS;
-
-	skb_put_u8(skb, WLAN_EID_S1G_CAPABILITIES);
-	skb_put_u8(skb, sizeof(struct ieee80211_s1g_cap));
-
-	skb_put_data(skb, &s1g_cap->cap, sizeof(s1g_cap->cap));
-	skb_put_data(skb, &s1g_cap->nss_mcs, sizeof(s1g_cap->nss_mcs));
-
-	return 0;
-}
-#endif
-
 static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 				       struct ieee80211_sub_if_data *sdata,
 				       const u8 *ie, size_t ie_len,
@@ -1215,12 +1196,6 @@ static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 		return 0;
 
 	rate_flags = ieee80211_chandef_rate_flags(chandef);
-
-	/* For direct scan add S1G IE and consider its override bits */
-#if LINUX_VERSION_IS_GEQ(6,4,0)
-	if (band == NL80211_BAND_S1GHZ)
-		return ieee80211_put_s1g_cap(skb, &sband->s1g_cap);
-#endif
 
 	err = ieee80211_put_srates_elem(skb, sband, 0, rate_flags,
 					~rate_mask, WLAN_EID_SUPP_RATES);
@@ -1655,7 +1630,7 @@ static void ieee80211_assign_chanctx(struct ieee80211_local *local,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	conf = rcu_dereference_protected(link->conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 	if (conf) {
 		ctx = container_of(conf, struct ieee80211_chanctx, conf);
 		drv_assign_vif_chanctx(local, sdata, link->conf, ctx);
@@ -2123,9 +2098,9 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 
 	/* Reconfigure sched scan if it was interrupted by FW restart */
 	sched_scan_sdata = rcu_dereference_protected(local->sched_scan_sdata,
-						lockdep_is_wiphy_held(local->hw.wiphy));
+						lockdep_is_held(&local->hw.wiphy->mtx));
 	sched_scan_req = rcu_dereference_protected(local->sched_scan_req,
-						lockdep_is_wiphy_held(local->hw.wiphy));
+						lockdep_is_held(&local->hw.wiphy->mtx));
 	if (sched_scan_sdata && sched_scan_req)
 		/*
 		 * Sched scan stopped, but we don't want to report it. Instead,
@@ -2284,7 +2259,7 @@ void ieee80211_recalc_smps(struct ieee80211_sub_if_data *sdata,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	chanctx_conf = rcu_dereference_protected(link->conf->chanctx_conf,
-						 lockdep_is_wiphy_held(local->hw.wiphy));
+						 lockdep_is_held(&local->hw.wiphy->mtx));
 
 	/*
 	 * This function can be called from a work, thus it may be possible
@@ -2323,7 +2298,7 @@ void ieee80211_recalc_min_chandef(struct ieee80211_sub_if_data *sdata,
 		}
 
 		chanctx_conf = rcu_dereference_protected(bss_conf->chanctx_conf,
-							 lockdep_is_wiphy_held(local->hw.wiphy));
+							 lockdep_is_held(&local->hw.wiphy->mtx));
 		/*
 		 * Since we hold the wiphy mutex (checked above)
 		 * we can take the chanctx_conf pointer out of the
@@ -2557,26 +2532,22 @@ int ieee80211_put_he_6ghz_cap(struct sk_buff *skb,
 	enum nl80211_iftype iftype = ieee80211_vif_type_p2p(&sdata->vif);
 	__le16 cap;
 
-#if LINUX_VERSION_IS_GEQ(5,4,0)
 	if (!cfg80211_any_usable_channels(sdata->local->hw.wiphy,
 					  BIT(NL80211_BAND_6GHZ),
 					  IEEE80211_CHAN_NO_HE))
 		return 0;
 
 	sband = sdata->local->hw.wiphy->bands[NL80211_BAND_6GHZ];
-#else
-	return 0;
-#endif
 
 	iftd = ieee80211_get_sband_iftype_data(sband, iftype);
 	if (!iftd)
 		return 0;
 
 	/* Check for device HE 6 GHz capability before adding element */
-	if (!cfg80211_iftd_he_6ghz_capa(iftd))
+	if (!iftd->he_6ghz_capa.capa)
 		return 0;
 
-	cap = cfg80211_iftd_he_6ghz_capa(iftd);
+	cap = iftd->he_6ghz_capa.capa;
 	cap &= cpu_to_le16(~IEEE80211_HE_6GHZ_CAP_SM_PS);
 
 	switch (smps_mode) {
@@ -2619,7 +2590,7 @@ u8 *ieee80211_ie_build_ht_oper(u8 *pos, struct ieee80211_sta_ht_cap *ht_cap,
 	ht_oper = (struct ieee80211_ht_operation *)pos;
 	ht_oper->primary_chan = ieee80211_frequency_to_channel(
 					chandef->chan->center_freq);
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_160:
 	case NL80211_CHAN_WIDTH_80P80:
 	case NL80211_CHAN_WIDTH_80:
@@ -2662,7 +2633,7 @@ void ieee80211_ie_build_wide_bw_cs(u8 *pos,
 	*pos++ = WLAN_EID_WIDE_BW_CHANNEL_SWITCH;	/* EID */
 	*pos++ = 3;					/* IE length */
 	/* New channel width */
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_80:
 		*pos++ = IEEE80211_VHT_CHANWIDTH_80MHZ;
 		break;
@@ -2705,7 +2676,7 @@ u8 *ieee80211_ie_build_vht_oper(u8 *pos, struct ieee80211_sta_vht_cap *vht_cap,
 	else
 		vht_oper->center_freq_seg1_idx = 0x00;
 
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_160:
 		/*
 		 * Convert 160 MHz channel width to new style as interop
@@ -2791,7 +2762,7 @@ u8 *ieee80211_ie_build_he_oper(u8 *pos, struct cfg80211_chan_def *chandef)
 	else
 		he_6ghz_op->ccfs1 = 0;
 
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_320:
 		/*
 		 * TODO: mesh operation is not defined over 6GHz 320 MHz
@@ -2869,7 +2840,7 @@ u8 *ieee80211_ie_build_eht_oper(u8 *pos, struct cfg80211_chan_def *chandef,
 	else
 		eht_oper_info->ccfs1 = 0;
 
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_320:
 		chan_width = IEEE80211_EHT_OPER_CHAN_WIDTH_320MHZ;
 		eht_oper_info->ccfs1 = eht_oper_info->ccfs0;
@@ -3089,14 +3060,6 @@ void ieee80211_chandef_eht_oper(const struct ieee80211_eht_operation_info *info,
 	}
 }
 
-#if LINUX_VERSION_IS_LESS(5,8,0)
-bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
-				    const struct ieee80211_he_operation *he_oper,
-				    const struct ieee80211_eht_operation *eht_oper,
-				    struct cfg80211_chan_def *chandef){
-	return true;
-}
-#else
 bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 				    const struct ieee80211_he_operation *he_oper,
 				    const struct ieee80211_eht_operation *eht_oper,
@@ -3167,14 +3130,8 @@ bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 	} else {
 		ieee80211_chandef_eht_oper((const void *)eht_oper->optional,
 					   &he_chandef);
-#if LINUX_VERSION_IS_GEQ(6,9,0)
-		he_chandef.punctured =
-			ieee80211_eht_oper_dis_subchan_bitmap(eht_oper);
-#else
-		if (ieee80211_eht_oper_dis_subchan_bitmap(eht_oper)) {
+		if (ieee80211_eht_oper_dis_subchan_bitmap(eht_oper))
 			return false;
-		}
-#endif
 	}
 
 	if (!cfg80211_chandef_valid(&he_chandef))
@@ -3184,9 +3141,7 @@ bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 
 	return true;
 }
-#endif
 
-#if LINUX_VERSION_IS_GEQ(5,8,0)
 bool ieee80211_chandef_s1g_oper(const struct ieee80211_s1g_oper_ie *oper,
 				struct cfg80211_chan_def *chandef)
 {
@@ -3218,16 +3173,10 @@ bool ieee80211_chandef_s1g_oper(const struct ieee80211_s1g_oper_ie *oper,
 	oper_freq = ieee80211_channel_to_freq_khz(oper->oper_ch,
 						  NL80211_BAND_S1GHZ);
 	chandef->center_freq1 = KHZ_TO_MHZ(oper_freq);
-	cfg80211_chandef_freq1_offset_set(chandef, oper_freq % 1000);
+	chandef->freq1_offset = oper_freq % 1000;
 
 	return true;
 }
-#else
-bool ieee80211_chandef_s1g_oper(const struct ieee80211_s1g_oper_ie *oper,
-				struct cfg80211_chan_def *chandef){
-	return false;
-}
-#endif
 
 int ieee80211_put_srates_elem(struct sk_buff *skb,
 			      const struct ieee80211_supported_band *sband,
@@ -3351,7 +3300,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 
 	/* Fill cfg80211 rate info */
 	switch (status->encoding) {
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 	case RX_ENC_EHT:
 		ri.flags |= RATE_INFO_FLAGS_EHT_MCS;
 		ri.mcs = status->rate_idx;
@@ -3365,7 +3313,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 			ts += 36;
 		}
 		break;
-#endif
 	case RX_ENC_HE:
 		ri.flags |= RATE_INFO_FLAGS_HE_MCS;
 		ri.mcs = status->rate_idx;
@@ -3556,7 +3503,7 @@ again:
 	/* no-HT indicates nothing to do */
 	new_primary_width = NL80211_CHAN_WIDTH_20_NOHT;
 
-	switch((int)c->width) {
+	switch (c->width) {
 	default:
 	case NL80211_CHAN_WIDTH_20_NOHT:
 		WARN_ON_ONCE(1);
@@ -3565,7 +3512,6 @@ again:
 		c->width = NL80211_CHAN_WIDTH_20_NOHT;
 		conn->mode = IEEE80211_CONN_MODE_LEGACY;
 		conn->bw_limit = IEEE80211_CONN_BW_LIMIT_20;
-		chandef_clear_punctured(c);
 		break;
 	case NL80211_CHAN_WIDTH_40:
 		c->width = NL80211_CHAN_WIDTH_20;
@@ -3573,7 +3519,6 @@ again:
 		if (conn->mode == IEEE80211_CONN_MODE_VHT)
 			conn->mode = IEEE80211_CONN_MODE_HT;
 		conn->bw_limit = IEEE80211_CONN_BW_LIMIT_20;
-		chandef_clear_punctured(c);
 		break;
 	case NL80211_CHAN_WIDTH_80:
 		new_primary_width = NL80211_CHAN_WIDTH_40;
@@ -3615,7 +3560,7 @@ again:
 
 	if (new_primary_width != NL80211_CHAN_WIDTH_20_NOHT) {
 		c->center_freq1 = cfg80211_chandef_primary(c, new_primary_width,
-							   chandef_punctured_ptr(c));
+							   NULL);
 		c->width = new_primary_width;
 	}
 
@@ -3624,7 +3569,7 @@ again:
 	 * 40 Mhz channel, but that's not valid when downgraded to 40 MHz width.
 	 * In that case, downgrade again.
 	 */
-	if (!cfg80211_chandef_valid(c) && chandef_punctured(c))
+	if (!cfg80211_chandef_valid(c) && 0)
 		goto again;
 
 	WARN_ON_ONCE(!cfg80211_chandef_valid(c));
@@ -4091,7 +4036,6 @@ int ieee80211_max_num_channels(struct ieee80211_local *local)
 	return max_num_different_channels;
 }
 
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 void ieee80211_add_s1g_capab_ie(struct ieee80211_sub_if_data *sdata,
 				struct ieee80211_sta_s1g_cap *caps,
 				struct sk_buff *skb)
@@ -4133,7 +4077,6 @@ void ieee80211_add_s1g_capab_ie(struct ieee80211_sub_if_data *sdata,
 
 	memcpy(pos, &s1g_capab, sizeof(s1g_capab));
 }
-#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 
 void ieee80211_add_aid_request_ie(struct ieee80211_sub_if_data *sdata,
 				  struct sk_buff *skb)
@@ -4352,7 +4295,7 @@ const char *ieee80211_conn_mode_str(enum ieee80211_conn_mode mode)
 enum ieee80211_conn_bw_limit
 ieee80211_min_bw_limit_from_chandef(struct cfg80211_chan_def *chandef)
 {
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_20_NOHT:
 	case NL80211_CHAN_WIDTH_20:
 		return IEEE80211_CONN_BW_LIMIT_20;

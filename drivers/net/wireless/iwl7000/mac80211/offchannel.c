@@ -538,7 +538,7 @@ static int ieee80211_start_roc_work(struct ieee80211_local *local,
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
-	if (cfg80211_chan_freq_offset(channel))
+	if (channel->freq_offset)
 		/* this may work, but is untested */
 		return -EOPNOTSUPP;
 
@@ -836,12 +836,12 @@ int ieee80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
 			rcu_read_unlock();
 			return -ENOLINK;
 		}
-		if (cfg80211_mgmt_tx_params_link_id(params) >= 0 &&
-		    !(sta->sta.valid_links & cfg80211_mgmt_tx_params_link_id_mask(params))) {
+		if (params->link_id >= 0 &&
+		    !(sta->sta.valid_links & BIT(params->link_id))) {
 			rcu_read_unlock();
 			return -ENOLINK;
 		}
-		link_id = cfg80211_mgmt_tx_params_link_id(params);
+		link_id = params->link_id;
 		rcu_read_unlock();
 		break;
 	case NL80211_IFTYPE_STATION:

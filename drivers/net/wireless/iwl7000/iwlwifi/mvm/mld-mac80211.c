@@ -1319,7 +1319,7 @@ bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	ext_capa = cfg80211_get_iftype_ext_capa(mvm->hw->wiphy,
 						ieee80211_vif_type_p2p(vif));
 	return (ext_capa &&
-		(cfg80211_ext_capa_eml_capabilities(ext_capa) & IEEE80211_EML_CAP_EMLSR_SUPP));
+		(ext_capa->eml_capabilities & IEEE80211_EML_CAP_EMLSR_SUPP));
 }
 
 static bool iwl_mvm_mld_can_activate_links(struct ieee80211_hw *hw,

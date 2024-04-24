@@ -39,10 +39,8 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 
 	wiphy_work_init(&link->csa.finalize_work,
 			ieee80211_csa_finalize_work);
-#if LINUX_VERSION_IS_GEQ(5,15,0)
 	wiphy_work_init(&link->color_change_finalize_work,
 			ieee80211_color_change_finalize_work);
-#endif
 	INIT_DELAYED_WORK(&link->color_collision_detect_work,
 			  ieee80211_color_collision_detection_work);
 	INIT_LIST_HEAD(&link->assigned_chanctx_list);
@@ -50,7 +48,6 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 
 	if (!deflink) {
 		switch (sdata->vif.type) {
-#if LINUX_VERSION_IS_GEQ(6,0,0)
 		case NL80211_IFTYPE_AP:
 			ether_addr_copy(link_conf->addr,
 					sdata->wdev.links[link_id].addr);
@@ -60,7 +57,6 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 		case NL80211_IFTYPE_STATION:
 			/* station sets the bssid in ieee80211_mgd_setup_link */
 			break;
-#endif
 		default:
 			WARN_ON(1);
 		}

@@ -125,8 +125,7 @@ static u32 ieee80211_calc_hw_conf_chan(struct ieee80211_local *local,
 		chandef.chan = local->tmp_channel;
 		chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
 		chandef.center_freq1 = chandef.chan->center_freq;
-		cfg80211_chandef_freq1_offset_set(&chandef,
-						  cfg80211_chan_freq_offset(chandef.chan));
+		chandef.freq1_offset = chandef.chan->freq_offset;
 	} else if (oper) {
 		chandef = *oper;
 	} else {
@@ -136,8 +135,8 @@ static u32 ieee80211_calc_hw_conf_chan(struct ieee80211_local *local,
 	if (WARN(!cfg80211_chandef_valid(&chandef),
 		 "control:%d.%03d MHz width:%d center: %d.%03d/%d MHz",
 		 chandef.chan ? chandef.chan->center_freq : -1,
-		 chandef.chan ? cfg80211_chan_freq_offset(chandef.chan) : 0,
-		 chandef.width, chandef.center_freq1, cfg80211_chandef_freq1_offset(&chandef),
+		 chandef.chan ? chandef.chan->freq_offset : 0,
+		 chandef.width, chandef.center_freq1, chandef.freq1_offset,
 		 chandef.center_freq2))
 		return 0;
 
@@ -462,9 +461,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 
 	rtnl_lock();
 	/* we might do interface manipulations, so need both */
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 	wiphy_work_flush(local->hw.wiphy, NULL);
 
 	WARN(test_bit(SCAN_HW_SCANNING, &local->scanning),
@@ -507,9 +504,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 	synchronize_net();
 
 	ret = ieee80211_reconfig(local);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 
 	if (ret)
 		cfg80211_shutdown_all_interfaces(local->hw.wiphy);
@@ -562,7 +557,7 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 	if (!wdev)
 		return NOTIFY_DONE;
 
-	if (wdev->wiphy != local->hw.wiphy || !wdev_registered(wdev))
+	if (wdev->wiphy != local->hw.wiphy || !wdev->registered)
 		return NOTIFY_DONE;
 
 	sdata = IEEE80211_DEV_TO_SUB_IF(ndev);
@@ -578,7 +573,6 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 
 	ifmgd = &sdata->u.mgd;
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	/*
 	 * The nested here is needed to convince lockdep that this is
 	 * all OK. Yes, we lock the wiphy mutex here while we already
@@ -597,7 +591,6 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 	 */
 	mutex_lock_nested(&local->hw.wiphy->mtx, 1);
 	__acquire(&local->hw.wiphy->mtx);
-#endif
 
 	/* Copy the addresses to the vif config list */
 	ifa = rtnl_dereference(idev->ifa_list);
@@ -614,9 +607,7 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 	if (ifmgd->associated)
 		ieee80211_vif_cfg_change_notify(sdata, BSS_CHANGED_ARP_FILTER);
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 
 	return NOTIFY_OK;
 }
@@ -895,9 +886,7 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 
 	local = wiphy_priv(wiphy);
 
-#if LINUX_VERSION_IS_LESS(6,7,0)
 	wiphy_work_setup(local);
-#endif
 
 	if (sta_info_init(local))
 		goto err_free;
@@ -1280,7 +1269,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 			u8 he_40_mhz_cap;
 
 			supp_he = supp_he || iftd->he_cap.has_he;
-			supp_eht = supp_eht || cfg_eht_cap_has_eht(iftd);
+			supp_eht = supp_eht || iftd->eht_cap.has_eht;
 
 			if (band == NL80211_BAND_2GHZ)
 				he_40_mhz_cap =
@@ -1459,7 +1448,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (ieee80211_hw_check(&local->hw, CHANCTX_STA_CSA))
 		local->ext_capa[0] |= WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING;
 
-#if LINUX_VERSION_IS_GEQ(5,1,0)
 	/* mac80211 supports multi BSSID, if the driver supports it */
 	if (ieee80211_hw_check(&local->hw, SUPPORTS_MULTI_BSSID)) {
 		local->hw.wiphy->support_mbssid = true;
@@ -1470,7 +1458,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 			local->ext_capa[2] |=
 				WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT;
 	}
-#endif
 
 	local->hw.wiphy->max_num_csa_counters = IEEE80211_MAX_CNTDWN_COUNTERS_NUM;
 
@@ -1590,9 +1577,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	ieee80211_check_wbrf_support(local);
 
 	rtnl_lock();
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(hw->wiphy);
-#endif
 
 	/* add one default STA interface if supported */
 	if (local->hw.wiphy->interface_modes & BIT(NL80211_IFTYPE_STATION) &&
@@ -1606,9 +1591,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 				   "Failed to add default virtual iface\n");
 	}
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(hw->wiphy);
-#endif
 	rtnl_unlock();
 
 #ifdef CONFIG_INET
@@ -1682,16 +1665,12 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 
 	ieee80211_txq_teardown_flows(local);
 
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 	wiphy_delayed_work_cancel(local->hw.wiphy, &local->roc_work);
 	wiphy_work_cancel(local->hw.wiphy, &local->reconfig_filter);
 	wiphy_work_cancel(local->hw.wiphy, &local->sched_scan_stopped_work);
 	wiphy_work_cancel(local->hw.wiphy, &local->radar_detected_work);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 	rtnl_unlock();
 
 	cancel_work_sync(&local->restart_work);
@@ -1745,9 +1724,7 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 		kfree(local->hw.wiphy->bands[band]);
 	}
 
-#if LINUX_VERSION_IS_LESS(6,7,0)
 	wiphy_work_teardown(local);
-#endif
 
 	wiphy_free(local->hw.wiphy);
 }

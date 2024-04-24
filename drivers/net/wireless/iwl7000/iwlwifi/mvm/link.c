@@ -314,17 +314,13 @@ int iwl_mvm_link_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		    iwl_fw_lookup_cmd_ver(mvm->fw, PHY_CONTEXT_CMD, 1) >= 6)
 			changes &= ~LINK_CONTEXT_MODIFY_EHT_PARAMS;
 		else
-			cmd.puncture_mask = cpu_to_le16(chandef_punctured(def));
+			cmd.puncture_mask = cpu_to_le16(0);
 		rcu_read_unlock();
 	}
 
 	cmd.bss_color = link_conf->he_bss_color.color;
 
-#if LINUX_VERSION_IS_GEQ(5,4,0)
 	if (!link_conf->he_bss_color.enabled) {
-#else
-	if (vif->bss_conf.he_bss_color.disabled) {
-#endif
 		flags |= LINK_FLG_BSS_COLOR_DIS;
 		flags_mask |= LINK_FLG_BSS_COLOR_DIS;
 	}
@@ -487,7 +483,7 @@ iwl_mvm_get_puncturing_factor(const struct ieee80211_bss_conf *link_conf)
 	/* total number of subchannels */
 	n_subchannels = mhz / 20;
 	/* how many of these are punctured */
-	n_punctured = hweight16(chandef_punctured(&link_conf->chanreq.oper));
+	n_punctured = hweight16(0);
 
 	puncturing_penalty = n_punctured * SCALE_FACTOR / n_subchannels;
 	return SCALE_FACTOR - puncturing_penalty;
@@ -512,7 +508,7 @@ iwl_mvm_get_chan_load(struct ieee80211_bss_conf *link_conf)
 	if (!bss_load_elem ||
 	    bss_load_elem->datalen != sizeof(*bss_load)) {
 		rcu_read_unlock();
-		switch((int)band) {
+		switch (band) {
 		case NL80211_BAND_2GHZ:
 			chan_load = DEFAULT_CHAN_LOAD_LB;
 			break;
@@ -868,7 +864,7 @@ u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif)
 
 	/* relevant data is written with both locks held, so read with either */
 	lockdep_assert(lockdep_is_held(&mvmvif->mvm->mutex) ||
-		       lockdep_is_wiphy_held(mvmvif->mvm->hw->wiphy));
+		       lockdep_is_held(&mvmvif->mvm->hw->wiphy->mtx));
 
 	if (!ieee80211_vif_is_mld(vif))
 		return 0;

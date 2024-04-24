@@ -1419,7 +1419,6 @@ static void iwl_mvm_decode_eht_ext_tb(struct iwl_mvm *mvm,
 	}
 }
 
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 static void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
 				  struct ieee80211_rx_status *rx_status,
 				  struct ieee80211_radiotap_eht *eht)
@@ -1488,13 +1487,6 @@ static void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
 	rx_status->bw = RATE_INFO_BW_EHT_RU;
 	rx_status->eht.ru = nl_ru;
 }
-#else
-static inline void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
-					 struct ieee80211_rx_status *rx_status,
-					 struct ieee80211_radiotap_eht *eht){
-	return;
-}
-#endif
 
 static void iwl_mvm_decode_eht_phy_data(struct iwl_mvm *mvm,
 					struct iwl_mvm_rx_phy_data *phy_data,

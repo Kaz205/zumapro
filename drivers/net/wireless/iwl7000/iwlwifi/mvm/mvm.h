@@ -481,13 +481,8 @@ struct iwl_mvm_vif {
 #ifdef CONFIG_PM
 	/* WoWLAN GTK rekey data */
 	struct {
-#if LINUX_VERSION_IS_GEQ(5,8,0)
 		u8 kck[NL80211_KCK_EXT_LEN];
 		u8 kek[NL80211_KEK_EXT_LEN];
-#else
-		u8 kck[NL80211_KCK_LEN];
-		u8 kek[NL80211_KEK_LEN];
-#endif
 		size_t kek_len;
 		size_t kck_len;
 		u32 akm;
@@ -2664,7 +2659,7 @@ static inline bool iwl_mvm_fw_rfi_state_supported(struct iwl_mvm *mvm)
 
 static inline u8 iwl_mvm_phy_band_from_nl80211(enum nl80211_band band)
 {
-	switch((int)band) {
+	switch (band) {
 	case NL80211_BAND_2GHZ:
 		return PHY_BAND_24;
 	case NL80211_BAND_5GHZ:
@@ -2684,10 +2679,8 @@ static inline u8 iwl_mvm_nl80211_band_from_phy(u8 phy_band)
 		return NL80211_BAND_2GHZ;
 	case PHY_BAND_5:
 		return NL80211_BAND_5GHZ;
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 	case PHY_BAND_6:
 		return NL80211_BAND_6GHZ;
-#endif
 	default:
 		WARN_ONCE(1, "Unsupported phy band (%u)\n", phy_band);
 		return NL80211_BAND_5GHZ;

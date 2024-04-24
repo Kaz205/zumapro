@@ -285,12 +285,10 @@ _ieee802_11_parse_elems_full(struct ieee80211_elems_parse_params *params,
 		u8 elen = elem->datalen;
 		const u8 *pos = elem->data;
 
-#if LINUX_VERSION_IS_GEQ(5,2,0)
 		if (check_inherit &&
 		    !cfg80211_is_element_inherited(elem,
 						   check_inherit))
 			continue;
-#endif
 
 		switch (id) {
 		case WLAN_EID_SSID:
@@ -663,7 +661,6 @@ _ieee802_11_parse_elems_full(struct ieee80211_elems_parse_params *params,
 							  elem, elems_parse,
 							  params);
 			break;
-#if LINUX_VERSION_IS_GEQ(5,10,0)
 		case WLAN_EID_S1G_CAPABILITIES:
 			if (params->mode != IEEE80211_CONN_MODE_S1G)
 				break;
@@ -691,7 +688,6 @@ _ieee802_11_parse_elems_full(struct ieee80211_elems_parse_params *params,
 				elem_parse_failed =
 					IEEE80211_PARSE_ERR_BAD_ELEM_SIZE;
 			break;
-#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 		case WLAN_EID_AID_RESPONSE:
 			if (params->mode != IEEE80211_CONN_MODE_S1G)
 				break;
@@ -722,7 +718,6 @@ static size_t ieee802_11_find_bssid_profile(const u8 *start, size_t len,
 					    struct cfg80211_bss *bss,
 					    u8 *nontransmitted_profile)
 {
-#if LINUX_VERSION_IS_GEQ(5,2,0)
 	const struct element *elem, *sub;
 	size_t profile_len = 0;
 	bool found = false;
@@ -785,9 +780,6 @@ static size_t ieee802_11_find_bssid_profile(const u8 *start, size_t len,
 	}
 
 	return found ? profile_len : 0;
-#else
-	return 0;
-#endif
 }
 
 static void

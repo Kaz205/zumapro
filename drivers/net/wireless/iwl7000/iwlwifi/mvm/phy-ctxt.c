@@ -11,7 +11,7 @@
 /* Maps the driver specific channel width definition to the fw values */
 u8 iwl_mvm_get_channel_width(const struct cfg80211_chan_def *chandef)
 {
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_20_NOHT:
 	case NL80211_CHAN_WIDTH_20:
 		return IWL_PHY_CHANNEL_MODE20;
@@ -226,7 +226,7 @@ static int iwl_mvm_phy_ctxt_apply(struct iwl_mvm *mvm,
 		}
 
 		if (ver == 6)
-			cmd.puncture_mask = cpu_to_le16(chandef_punctured(chandef));
+			cmd.puncture_mask = cpu_to_le16(0);
 
 		ret = iwl_mvm_send_cmd_pdu(mvm, PHY_CONTEXT_CMD,
 					   0, sizeof(cmd), &cmd);

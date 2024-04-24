@@ -144,7 +144,7 @@ static __le16 ieee80211_duration(struct ieee80211_tx_data *tx,
 		if (tx->sdata->vif.bss_conf.basic_rates & BIT(i))
 			rate = r->bitrate;
 
-		switch((int)sband->band) {
+		switch (sband->band) {
 		case NL80211_BAND_2GHZ:
 		case NL80211_BAND_LC:
 			if (tx->sdata->deflink.operating_11g_mode)
@@ -5288,7 +5288,6 @@ ieee80211_beacon_get_finish(struct ieee80211_hw *hw,
 		       IEEE80211_TX_CTL_FIRST_FRAGMENT;
 }
 
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 static void
 ieee80211_beacon_add_mbssid(struct sk_buff *skb, struct beacon_data *beacon,
 			    u8 i)
@@ -5301,16 +5300,6 @@ ieee80211_beacon_add_mbssid(struct sk_buff *skb, struct beacon_data *beacon,
 		skb_put_data(skb, beacon->mbssid_ies->elem[i].data,
 			     beacon->mbssid_ies->elem[i].len);
 
-#if LINUX_VERSION_IS_GEQ(6,4,0)
-		if (beacon->rnr_ies && beacon->rnr_ies->cnt) {
-			skb_put_data(skb, beacon->rnr_ies->elem[i].data,
-				     beacon->rnr_ies->elem[i].len);
-
-			for (i = beacon->mbssid_ies->cnt; i < beacon->rnr_ies->cnt; i++)
-				skb_put_data(skb, beacon->rnr_ies->elem[i].data,
-					     beacon->rnr_ies->elem[i].len);
-		}
-#endif
 		return;
 	}
 
@@ -5319,7 +5308,6 @@ ieee80211_beacon_add_mbssid(struct sk_buff *skb, struct beacon_data *beacon,
 		skb_put_data(skb, beacon->mbssid_ies->elem[i].data,
 			     beacon->mbssid_ies->elem[i].len);
 }
-#endif
 
 static struct sk_buff *
 ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
@@ -5348,14 +5336,8 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 	/* headroom, head length,
 	 * tail length, maximum TIM length and multiple BSSID length
 	 */
-#if LINUX_VERSION_IS_GEQ(6,4,0)
-	mbssid_len = ieee80211_get_mbssid_beacon_len(beacon->mbssid_ies,
-						     beacon->rnr_ies,
-						     ema_index);
-#else
 	mbssid_len = ieee80211_get_mbssid_beacon_len(beacon->mbssid_ies,
 						     ema_index);
-#endif
 
 	skb = dev_alloc_skb(local->tx_headroom + beacon->head_len +
 			    beacon->tail_len + 256 +
@@ -5373,12 +5355,10 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 		offs->tim_length = skb->len - beacon->head_len;
 		offs->cntdwn_counter_offs[0] = beacon->cntdwn_counter_offsets[0];
 
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 		if (mbssid_len) {
 			ieee80211_beacon_add_mbssid(skb, beacon, ema_index);
 			offs->mbssid_off = skb->len - mbssid_len;
 		}
-#endif
 
 		/* for AP the csa offsets are from tail */
 		csa_off_base = skb->len;
@@ -5395,7 +5375,6 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 	return skb;
 }
 
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 static struct ieee80211_ema_beacons *
 ieee80211_beacon_get_ap_ema_list(struct ieee80211_hw *hw,
 				 struct ieee80211_vif *vif,
@@ -5430,7 +5409,6 @@ ieee80211_beacon_get_ap_ema_list(struct ieee80211_hw *hw,
 	ieee80211_beacon_free_ema_list(ema);
 	return NULL;
 }
-#endif
 
 #define IEEE80211_INCLUDE_ALL_MBSSID_ELEMS -1
 
@@ -5478,7 +5456,6 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
 								 beacon,
 								 chanctx_conf);
 		} else {
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 			if (beacon->mbssid_ies && beacon->mbssid_ies->cnt) {
 				if (ema_index >= beacon->mbssid_ies->cnt)
 					goto out; /* End of MBSSID elements */
@@ -5486,11 +5463,8 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
 				if (ema_index <= IEEE80211_INCLUDE_ALL_MBSSID_ELEMS)
 					ema_index = beacon->mbssid_ies->cnt;
 			} else {
-#endif
 				ema_index = 0;
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 			}
-#endif
 
 			skb = ieee80211_beacon_get_ap(hw, vif, link, offs,
 						      is_template, beacon,

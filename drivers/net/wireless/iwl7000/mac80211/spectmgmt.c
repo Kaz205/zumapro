@@ -109,7 +109,7 @@ validate_chandef_by_ht_vht_oper(struct ieee80211_sub_if_data *sdata,
 	vht_oper.center_freq_seg1_idx = center_freq2 ?
 		ieee80211_frequency_to_channel(center_freq2) : 0;
 
-	switch((int)chan_width) {
+	switch (chan_width) {
 	case NL80211_CHAN_WIDTH_320:
 		WARN_ON(1);
 		break;
@@ -174,7 +174,7 @@ validate_chandef_by_6ghz_he_eht_oper(struct ieee80211_sub_if_data *sdata,
 	he._6ghz_oper.ccfs1 = center_freq2 ?
 		ieee80211_frequency_to_channel(center_freq2) : 0;
 
-	switch((int)chan_width) {
+	switch (chan_width) {
 	case NL80211_CHAN_WIDTH_320:
 		he._6ghz_oper.ccfs1 = he._6ghz_oper.ccfs0;
 		he._6ghz_oper.ccfs0 += control_freq < center_freq1 ? -16 : 16;
@@ -349,17 +349,10 @@ int ieee80211_parse_ch_switch_ie(struct ieee80211_sub_if_data *sdata,
 		/* and update the width accordingly */
 		ieee80211_chandef_eht_oper(&bwi->info, &new_chandef);
 		/* and new puncturing data if present */
-		if (bwi->params & IEEE80211_BW_IND_DIS_SUBCH_PRESENT) {
-#if LINUX_VERSION_IS_GEQ(6,9,0)
-			new_chandef.punctured =
-				get_unaligned_le16(bwi->info.optional);
-#else
-			if (get_unaligned_le16(bwi->info.optional)) {
-				sdata_info(sdata,
-					   "puncturing not supported, disconnect in CSA\n");
-				return -EINVAL;
-			}
-#endif
+		if (bwi->params & IEEE80211_BW_IND_DIS_SUBCH_PRESENT && get_unaligned_le16(bwi->info.optional)) {
+			sdata_info(sdata,
+				   "puncturing not supported, disconnect in CSA\n");
+			return -EINVAL;
 		}
 	} else if (!wide_bw_chansw_ie || !wbcs_elem_to_chandef(wide_bw_chansw_ie,
 							       &new_chandef)) {

@@ -25,13 +25,11 @@ void iwl_mvm_set_rekey_data(struct ieee80211_hw *hw,
 
 	mutex_lock(&mvm->mutex);
 
-	mvmvif->rekey_data.kek_len = cfg80211_rekey_get_kek_len(data);
-	mvmvif->rekey_data.kck_len = cfg80211_rekey_get_kck_len(data);
-	memcpy(mvmvif->rekey_data.kek, data->kek,
-	       cfg80211_rekey_get_kek_len(data));
-	memcpy(mvmvif->rekey_data.kck, data->kck,
-	       cfg80211_rekey_get_kck_len(data));
-	mvmvif->rekey_data.akm = cfg80211_rekey_akm(data) & 0xFF;
+	mvmvif->rekey_data.kek_len = data->kek_len;
+	mvmvif->rekey_data.kck_len = data->kck_len;
+	memcpy(mvmvif->rekey_data.kek, data->kek, data->kek_len);
+	memcpy(mvmvif->rekey_data.kck, data->kck, data->kck_len);
+	mvmvif->rekey_data.akm = data->akm & 0xFF;
 	mvmvif->rekey_data.replay_ctr =
 		cpu_to_le64(be64_to_cpup((const __be64 *)data->replay_ctr));
 	mvmvif->rekey_data.valid = true;
@@ -1521,11 +1519,6 @@ static void iwl_mvm_report_wakeup_reasons(struct iwl_mvm *mvm,
 
 	if (reasons & IWL_WOWLAN_WAKEUP_BY_REM_WAKE_WAKEUP_PACKET)
 		wakeup.tcp_match = true;
-
-#if LINUX_VERSION_IS_GEQ(6,10,0)
-	if (reasons & IWL_WAKEUP_BY_11W_UNPROTECTED_DEAUTH_OR_DISASSOC)
-		wakeup.unprot_deauth_disassoc = true;
-#endif
 
 	if (status->wake_packet) {
 		int pktsize = status->wake_packet_bufsize;
@@ -3587,13 +3580,9 @@ static int iwl_mvm_d3_test_open(struct inode *inode, struct file *file)
 
 	/* start pseudo D3 */
 	rtnl_lock();
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(mvm->hw->wiphy);
-#endif
 	err = __iwl_mvm_suspend(mvm->hw, mvm->hw->wiphy->wowlan_config, true);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(mvm->hw->wiphy);
-#endif
 	rtnl_unlock();
 	if (err > 0)
 		err = -EINVAL;
@@ -3656,13 +3645,9 @@ static int iwl_mvm_d3_test_release(struct inode *inode, struct file *file)
 	iwl_fw_dbg_read_d3_debug_data(&mvm->fwrt);
 
 	rtnl_lock();
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(mvm->hw->wiphy);
-#endif
 	__iwl_mvm_resume(mvm, true);
-#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(mvm->hw->wiphy);
-#endif
 	rtnl_unlock();
 
 	iwl_mvm_resume_tcm(mvm);

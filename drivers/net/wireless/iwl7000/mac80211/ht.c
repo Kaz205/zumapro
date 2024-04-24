@@ -259,7 +259,7 @@ bool ieee80211_ht_cap_ie_to_sta_ht_cap(struct ieee80211_sub_if_data *sdata,
 	else
 		width = link_conf->chanreq.oper.width;
 
-	switch((int)width) {
+	switch (width) {
 	default:
 		WARN_ON_ONCE(1);
 		fallthrough;

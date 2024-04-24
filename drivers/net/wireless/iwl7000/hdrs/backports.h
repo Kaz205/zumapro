@@ -3,65 +3,6 @@
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  * Copyright (C) 2018-2024 Intel Corporation
  */
-#if LINUX_VERSION_IS_LESS(6,9,0)
-bool
-ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
-			       struct ieee80211_channel *channel);
-
-#define IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT BIT(21)
-#define IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT BIT(22)
-
-#define NL80211_RRF_NO_6GHZ_VLP_CLIENT BIT(22)
-#define NL80211_RRF_NO_6GHZ_AFC_CLIENT BIT(23)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,18,0)
-#define IEEE80211_CHAN_NO_HE 0
-#define IEEE80211_CHAN_NO_EHT 0
-
-#define NL80211_RRF_NO_HE 0
-
-#define NL80211_CHAN_WIDTH_320 13
-
-#define IEEE80211_EHT_PPE_THRES_MAX_LEN	32
-
-struct ieee80211_eht_mcs_nss_supp {
-	union {
-		struct ieee80211_eht_mcs_nss_supp_20mhz_only only_20mhz;
-		struct {
-			struct ieee80211_eht_mcs_nss_supp_bw _80;
-			struct ieee80211_eht_mcs_nss_supp_bw _160;
-			struct ieee80211_eht_mcs_nss_supp_bw _320;
-		} __packed bw;
-	} __packed;
-} __packed;
-
-struct ieee80211_sta_eht_cap {
-	bool has_eht;
-	struct ieee80211_eht_cap_elem_fixed eht_cap_elem;
-	struct ieee80211_eht_mcs_nss_supp eht_mcs_nss_supp;
-	u8 eht_ppe_thres[IEEE80211_EHT_PPE_THRES_MAX_LEN];
-};
-
-static inline const struct ieee80211_sta_eht_cap *
-ieee80211_get_eht_iftype_cap(const struct ieee80211_supported_band *sband,
-			     enum nl80211_iftype iftype)
-{
-	return NULL;
-}
-
-#define cfg_eht_cap_has_eht(obj) (false && (obj))
-#define cfg_eht_cap_set_has_eht(obj, val) do { (void)obj; (void)val; } while (0)
-#define cfg_eht_cap(obj) ((struct ieee80211_sta_eht_cap *)((obj) ? NULL : NULL))
-
-/* mbssid was added in 5.18.0, so it's safe to return 0 prior to that version */
-#define ieee80211_get_mbssid_beacon_len(...) 0
-#define ieee80211_beacon_get_ap_ema_list(...) 0
-#else
-#define cfg_eht_cap_has_eht(obj) (obj)->eht_cap.has_eht
-#define cfg_eht_cap_set_has_eht(obj, val) (obj)->eht_cap.has_eht = val
-#define cfg_eht_cap(obj) (&(obj)->eht_cap)
-#endif
 
 /* backport wiphy_ext_feature_set/_isset
  *
@@ -86,1087 +27,25 @@ static inline bool iwl7000_wiphy_ext_feature_isset(struct wiphy *wiphy,
 #define wiphy_ext_feature_set iwl7000_wiphy_ext_feature_set
 #define wiphy_ext_feature_isset iwl7000_wiphy_ext_feature_isset
 
-#if LINUX_VERSION_IS_LESS(4,20,0)
-#define beacon_ftm_len(beacon, m) 0
-#else
-#define beacon_ftm_len(beacon, m) ((beacon)->m)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-#define ASSOC_REQ_DISABLE_EHT BIT(5)
-#define NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE -1
-#endif /* LINUX_VERSION_IS_LESS(6,1,0) */
-
-#if LINUX_VERSION_IS_LESS(5,8,0)
-/**
- * ieee80211_get_he_6ghz_sta_cap - return HE 6GHZ capabilities for an sband's
- * STA
- * @sband: the sband to search for the STA on
- *
- * Return: the 6GHz capabilities
- */
-static inline __le16
-ieee80211_get_he_6ghz_sta_cap(const struct ieee80211_supported_band *sband)
-{
-	return 0;
-}
-#endif /* < 5.8.0 */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-#define RATE_INFO_FLAGS_DMG	BIT(3)
-#define RATE_INFO_FLAGS_EDMG	BIT(5)
-/* yes, it really has that number upstream */
-#define NL80211_STA_INFO_ASSOC_AT_BOOTTIME 42
-
-struct ieee80211_he_obss_pd {
-	bool enable;
-	u8 min_offset;
-	u8 max_offset;
-};
-
-static inline const struct ieee80211_sta_he_cap *
-ieee80211_get_he_iftype_cap(const struct ieee80211_supported_band *sband,
-			    u8 iftype)
-{
-	const struct ieee80211_sband_iftype_data *data =
-		ieee80211_get_sband_iftype_data(sband, iftype);
-
-	if (data && data->he_cap.has_he)
-		return &data->he_cap;
-
-	return NULL;
-}
-
-static inline bool regulatory_pre_cac_allowed(struct wiphy *wiphy)
-{
-	return false;
-}
-
-static inline void
-cfg80211_tx_mgmt_expired(struct wireless_dev *wdev, u64 cookie,
-			 struct ieee80211_channel *chan, gfp_t gfp)
-{
-}
-
-#define cfg80211_iftype_allowed iwl7000_cfg80211_iftype_allowed
-static inline bool
-cfg80211_iftype_allowed(struct wiphy *wiphy, enum nl80211_iftype iftype,
-			bool is_4addr, u8 check_swif)
-
-{
-	bool is_vlan = iftype == NL80211_IFTYPE_AP_VLAN;
-
-	switch (check_swif) {
-	case 0:
-		if (is_vlan && is_4addr)
-			return wiphy->flags & WIPHY_FLAG_4ADDR_AP;
-		return wiphy->interface_modes & BIT(iftype);
-	case 1:
-		if (!(wiphy->software_iftypes & BIT(iftype)) && is_vlan)
-			return wiphy->flags & WIPHY_FLAG_4ADDR_AP;
-		return wiphy->software_iftypes & BIT(iftype);
-	default:
-		break;
-	}
-
-	return false;
-}
-
-#define cfg80211_tx_mlme_mgmt(netdev, buf, len, reconnect) cfg80211_tx_mlme_mgmt(netdev, buf, len)
-#endif /* < 5.4.0 */
-
-#if LINUX_VERSION_IS_LESS(5,5,0)
-#define kcov_remote_start_common(id) {}
-#define kcov_remote_stop() {}
-#endif /* LINUX_VERSION_IS_LESS(5,5,0) */
-
-#if LINUX_VERSION_IS_LESS(5,5,0)
-#define NL80211_EXT_FEATURE_AQL -1
-
-#define IEEE80211_DEFAULT_AQL_TXQ_LIMIT_L	5000
-#define IEEE80211_DEFAULT_AQL_TXQ_LIMIT_H	12000
-#define IEEE80211_AQL_THRESHOLD			24000
-#endif
-
 #define netdev_set_priv_destructor(_dev, _destructor) \
 	(_dev)->needs_free_netdev = true; \
 	(_dev)->priv_destructor = (_destructor);
 #define netdev_set_def_destructor(_dev) \
 	(_dev)->needs_free_netdev = true;
 
-#if LINUX_VERSION_IS_LESS(6,1,0)
-static inline u16 get_random_u16(void)
-{
-	return get_random_int() & 0xffff;
-}
-#endif
-
 #define rb_root_node(root) (root)->rb_root.rb_node
-
-#if LINUX_VERSION_IS_LESS(4,20,0)
-static inline struct sk_buff *__skb_peek(const struct sk_buff_head *list_)
-{
-	return list_->next;
-}
-#endif
-
-#if LINUX_VERSION_IS_GEQ(5,7,0)
-#define cfg_he_oper(params) params->he_oper
-#else
-#define cfg_he_oper(params) ((struct ieee80211_he_operation *)NULL)
-#endif /* >= 5.7 */
-
-#if LINUX_VERSION_IS_GEQ(4,20,0)
-#define cfg_he_cap(params) params->he_cap
-#else
-#define cfg_he_cap(params) ((struct ieee80211_he_cap_elem *)NULL)
-
-/* Layer 2 Update frame (802.2 Type 1 LLC XID Update response) */
-struct iapp_layer2_update {
-	u8 da[ETH_ALEN];	/* broadcast */
-	u8 sa[ETH_ALEN];	/* STA addr */
-	__be16 len;		/* 6 */
-	u8 dsap;		/* 0 */
-	u8 ssap;		/* 0 */
-	u8 control;
-	u8 xid_info[3];
-} __packed;
-
-static inline
-void cfg80211_send_layer2_update(struct net_device *dev, const u8 *addr)
-{
-	struct iapp_layer2_update *msg;
-	struct sk_buff *skb;
-
-	/* Send Level 2 Update Frame to update forwarding tables in layer 2
-	 * bridge devices */
-
-	skb = dev_alloc_skb(sizeof(*msg));
-	if (!skb)
-		return;
-	msg = skb_put(skb, sizeof(*msg));
-
-	/* 802.2 Type 1 Logical Link Control (LLC) Exchange Identifier (XID)
-	 * Update response frame; IEEE Std 802.2-1998, 5.4.1.2.1 */
-
-	eth_broadcast_addr(msg->da);
-	ether_addr_copy(msg->sa, addr);
-	msg->len = htons(6);
-	msg->dsap = 0;
-	msg->ssap = 0x01;	/* NULL LSAP, CR Bit: Response */
-	msg->control = 0xaf;	/* XID response lsb.1111F101.
-				 * F=0 (no poll command; unsolicited frame) */
-	msg->xid_info[0] = 0x81;	/* XID format identifier */
-	msg->xid_info[1] = 1;	/* LLC types/classes: Type 1 LLC */
-	msg->xid_info[2] = 0;	/* XID sender's receive window size (RW) */
-
-	skb->dev = dev;
-	skb->protocol = eth_type_trans(skb, dev);
-	memset(skb->cb, 0, sizeof(skb->cb));
-	netif_rx_ni(skb);
-}
-
-#define NL80211_EXT_FEATURE_CAN_REPLACE_PTK0 -1
-#endif /* >= 4.20 */
-
-#if LINUX_VERSION_IS_LESS(4,20,0)
-#define NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER	-1
-#endif
-
-#if LINUX_VERSION_IS_LESS(4,20,0)
-enum nl80211_ftm_responder_stats {
-	__NL80211_FTM_STATS_INVALID,
-	NL80211_FTM_STATS_SUCCESS_NUM,
-	NL80211_FTM_STATS_PARTIAL_NUM,
-	NL80211_FTM_STATS_FAILED_NUM,
-	NL80211_FTM_STATS_ASAP_NUM,
-	NL80211_FTM_STATS_NON_ASAP_NUM,
-	NL80211_FTM_STATS_TOTAL_DURATION_MSEC,
-	NL80211_FTM_STATS_UNKNOWN_TRIGGERS_NUM,
-	NL80211_FTM_STATS_RESCHEDULE_REQUESTS_NUM,
-	NL80211_FTM_STATS_OUT_OF_WINDOW_TRIGGERS_NUM,
-	NL80211_FTM_STATS_PAD,
-
-	/* keep last */
-	__NL80211_FTM_STATS_AFTER_LAST,
-	NL80211_FTM_STATS_MAX = __NL80211_FTM_STATS_AFTER_LAST - 1
-};
-
-struct cfg80211_ftm_responder_stats {
-	u32 filled;
-	u32 success_num;
-	u32 partial_num;
-	u32 failed_num;
-	u32 asap_num;
-	u32 non_asap_num;
-	u64 total_duration_ms;
-	u32 unknown_triggers_num;
-	u32 reschedule_requests_num;
-	u32 out_of_window_triggers_num;
-};
-#endif /* LINUX_VERSION_IS_LESS(4,20,0) */
 
 #ifndef ETH_P_PREAUTH
 #define ETH_P_PREAUTH  0x88C7	/* 802.11 Preauthentication */
 #endif
-
-#if LINUX_VERSION_IS_LESS(5,0,0)
-enum nl80211_preamble {
-	NL80211_PREAMBLE_LEGACY,
-	NL80211_PREAMBLE_HT,
-	NL80211_PREAMBLE_VHT,
-	NL80211_PREAMBLE_DMG,
-};
-
-enum nl80211_peer_measurement_status {
-	NL80211_PMSR_STATUS_SUCCESS,
-	NL80211_PMSR_STATUS_REFUSED,
-	NL80211_PMSR_STATUS_TIMEOUT,
-	NL80211_PMSR_STATUS_FAILURE,
-};
-
-enum nl80211_peer_measurement_type {
-	NL80211_PMSR_TYPE_INVALID,
-
-	NL80211_PMSR_TYPE_FTM,
-
-	NUM_NL80211_PMSR_TYPES,
-	NL80211_PMSR_TYPE_MAX = NUM_NL80211_PMSR_TYPES - 1
-};
-
-enum nl80211_peer_measurement_ftm_failure_reasons {
-	NL80211_PMSR_FTM_FAILURE_UNSPECIFIED,
-	NL80211_PMSR_FTM_FAILURE_NO_RESPONSE,
-	NL80211_PMSR_FTM_FAILURE_REJECTED,
-	NL80211_PMSR_FTM_FAILURE_WRONG_CHANNEL,
-	NL80211_PMSR_FTM_FAILURE_PEER_NOT_CAPABLE,
-	NL80211_PMSR_FTM_FAILURE_INVALID_TIMESTAMP,
-	NL80211_PMSR_FTM_FAILURE_PEER_BUSY,
-	NL80211_PMSR_FTM_FAILURE_BAD_CHANGED_PARAMS,
-};
-
-struct cfg80211_pmsr_ftm_result {
-	const u8 *lci;
-	const u8 *civicloc;
-	unsigned int lci_len;
-	unsigned int civicloc_len;
-	enum nl80211_peer_measurement_ftm_failure_reasons failure_reason;
-	u32 num_ftmr_attempts, num_ftmr_successes;
-	s16 burst_index;
-	u8 busy_retry_time;
-	u8 num_bursts_exp;
-	u8 burst_duration;
-	u8 ftms_per_burst;
-	s32 rssi_avg;
-	s32 rssi_spread;
-	struct rate_info tx_rate, rx_rate;
-	s64 rtt_avg;
-	s64 rtt_variance;
-	s64 rtt_spread;
-	s64 dist_avg;
-	s64 dist_variance;
-	s64 dist_spread;
-
-	u16 num_ftmr_attempts_valid:1,
-	    num_ftmr_successes_valid:1,
-	    rssi_avg_valid:1,
-	    rssi_spread_valid:1,
-	    tx_rate_valid:1,
-	    rx_rate_valid:1,
-	    rtt_avg_valid:1,
-	    rtt_variance_valid:1,
-	    rtt_spread_valid:1,
-	    dist_avg_valid:1,
-	    dist_variance_valid:1,
-	    dist_spread_valid:1;
-};
-
-struct cfg80211_pmsr_result {
-	u64 host_time, ap_tsf;
-	enum nl80211_peer_measurement_status status;
-
-	u8 addr[ETH_ALEN];
-
-	u8 final:1,
-	   ap_tsf_valid:1;
-
-	enum nl80211_peer_measurement_type type;
-
-	union {
-		struct cfg80211_pmsr_ftm_result ftm;
-	};
-};
-
-struct cfg80211_pmsr_ftm_request_peer {
-	enum nl80211_preamble preamble;
-	u16 burst_period;
-	u8 requested:1,
-	   asap:1,
-	   request_lci:1,
-	   request_civicloc:1;
-	u8 num_bursts_exp;
-	u8 burst_duration;
-	u8 ftms_per_burst;
-	u8 ftmr_retries;
-};
-
-struct cfg80211_pmsr_request_peer {
-	u8 addr[ETH_ALEN];
-	struct cfg80211_chan_def chandef;
-	u8 report_ap_tsf:1;
-	struct cfg80211_pmsr_ftm_request_peer ftm;
-};
-
-struct cfg80211_pmsr_request {
-	u64 cookie;
-	void *drv_data;
-	u32 n_peers;
-	u32 nl_portid;
-
-	u32 timeout;
-
-	u8 mac_addr[ETH_ALEN] __aligned(2);
-	u8 mac_addr_mask[ETH_ALEN] __aligned(2);
-
-	struct list_head list;
-
-	struct cfg80211_pmsr_request_peer peers[];
-};
-
-static inline void cfg80211_pmsr_report(struct wireless_dev *wdev,
-					struct cfg80211_pmsr_request *req,
-					struct cfg80211_pmsr_result *result,
-					gfp_t gfp)
-{
-	/* nothing */
-}
-
-static inline void cfg80211_pmsr_complete(struct wireless_dev *wdev,
-					  struct cfg80211_pmsr_request *req,
-					  gfp_t gfp)
-{
-	kfree(req);
-}
-
-#endif /* LINUX_VERSION_IS_LESS(5,0,0) */
-
-#if LINUX_VERSION_IS_LESS(5,1,0)
-static inline int cfg80211_vendor_cmd_get_sender(struct wiphy *wiphy)
-{
-	/* cfg80211 doesn't really let us backport this */
-	return 0;
-}
-
-static inline struct sk_buff *
-cfg80211_vendor_event_alloc_ucast(struct wiphy *wiphy,
-				  struct wireless_dev *wdev,
-				  unsigned int portid, int approxlen,
-				  int event_idx, gfp_t gfp)
-{
-	/*
-	 * We might be able to fake backporting this, but not the
-	 * associated changes to __cfg80211_send_event_skb(), at
-	 * least not without duplicating all that code.
-	 * And in any case, we cannot backport the get_sender()
-	 * function above properly, so we might as well ignore
-	 * this all.
-	 */
-	return NULL;
-}
-
-static inline const struct element *
-cfg80211_find_elem(u8 eid, const u8 *ies, int len)
-{
-	return (void *)cfg80211_find_ie(eid, ies, len);
-}
-
-static inline const struct element *
-cfg80211_find_ext_elem(u8 ext_eid, const u8 *ies, int len)
-{
-	return (void *)cfg80211_find_ext_ie(ext_eid, ies, len);
-}
-
-static inline const struct element *
-ieee80211_bss_get_elem(struct cfg80211_bss *bss, u8 id)
-{
-	const struct cfg80211_bss_ies *ies;
-
-	ies = rcu_dereference(bss->ies);
-	if (!ies)
-		return NULL;
-
-	return cfg80211_find_elem(id, ies->data, ies->len);
-}
-
-#define IEEE80211_DEFAULT_AIRTIME_WEIGHT       256
-
-#endif /* LINUX_VERSION_IS_LESS(5,1,0) */
-
-#if LINUX_VERSION_IS_LESS(5,2,0)
-#define NL80211_EXT_FEATURE_EXT_KEY_ID -1
-#define NL80211_EXT_FEATURE_AIRTIME_FAIRNESS -1
-#endif /* LINUX_VERSION_IS_LESS(5,2,0) */
-
-#if LINUX_VERSION_IS_LESS(5,3,0)
-static inline void cfg80211_bss_iter(struct wiphy *wiphy,
-				     struct cfg80211_chan_def *chandef,
-				     void (*iter)(struct wiphy *wiphy,
-						  struct cfg80211_bss *bss,
-						  void *data),
-				     void *iter_data)
-{
-	/*
-	 * It might be possible to backport this function, but that would
-	 * require duplicating large portions of data structure/code, so
-	 * leave it empty for now.
-	 */
-}
-#define NL80211_EXT_FEATURE_SAE_OFFLOAD -1
-#endif /* LINUX_VERSION_IS_LESS(5,3,0) */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-#define NL80211_BAND_6GHZ 3
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,7,0)
-#define ieee80211_preamble_he() 0
-#define ftm_non_trigger_based(peer)	0
-#define ftm_trigger_based(peer)	0
-#else
-#define ftm_non_trigger_based(peer)	((peer)->ftm.non_trigger_based)
-#define ftm_trigger_based(peer)	((peer)->ftm.trigger_based)
-#define ieee80211_preamble_he() BIT(NL80211_PREAMBLE_HE)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,13,0)
-#define NL80211_EXT_FEATURE_SECURE_LTF -1
-#define ftm_lmr_feedback(peer)		0
-#else
-#define ftm_lmr_feedback(peer)		((peer)->ftm.lmr_feedback)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,14,0)
-#define ftm_bss_color(peer)		0
-#else
-#define ftm_bss_color(peer)		((peer)->ftm.bss_color)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,6,0)
-int ieee80211_get_vht_max_nss(struct ieee80211_vht_cap *cap,
-			      enum ieee80211_vht_chanwidth bw,
-			      int mcs, bool ext_nss_bw_capable,
-			      unsigned int max_vht_nss);
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,9,0)
-ssize_t cfg80211_defragment_element(const struct element *elem, const u8 *ies,
-				    size_t ieslen, u8 *data, size_t data_len,
-				    u8 frag_id);
-
-enum cfg80211_rnr_iter_ret {
-	RNR_ITER_CONTINUE,
-	RNR_ITER_BREAK,
-	RNR_ITER_ERROR,
-};
-
-bool cfg80211_iter_rnr(const u8 *elems, size_t elems_len,
-		       enum cfg80211_rnr_iter_ret
-		       (*iter)(void *data, u8 type,
-			       const struct ieee80211_neighbor_ap_info *info,
-			       const u8 *tbtt_info, u8 tbtt_info_len),
-		       void *iter_data);
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,8,0)
-#define NL80211_EXT_FEATURE_BEACON_PROTECTION_CLIENT -1
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,7,0)
-#define NL80211_EXT_FEATURE_BEACON_PROTECTION -1
-#define NL80211_EXT_FEATURE_PROTECTED_TWT -1
-#endif
-
-static inline size_t cfg80211_rekey_get_kek_len(struct cfg80211_gtk_rekey_data *data)
-{
-#if LINUX_VERSION_IS_LESS(5,8,0)
-	return NL80211_KEK_LEN;
-#else
-	return data->kek_len;
-#endif
-}
-
-static inline size_t cfg80211_rekey_get_kck_len(struct cfg80211_gtk_rekey_data *data)
-{
-#if LINUX_VERSION_IS_LESS(5,8,0)
-	return NL80211_KCK_LEN;
-#else
-	return data->kck_len;
-#endif
-}
-
-static inline size_t cfg80211_rekey_akm(struct cfg80211_gtk_rekey_data *data)
-{
-#if LINUX_VERSION_IS_LESS(5,8,0)
-	/* we dont really use this */
-	return 0;
-#else
-	return data->akm;
-#endif
-}
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-/**
- * struct cfg80211_he_bss_color - AP settings for BSS coloring
- *
- * @color: the current color.
- * @disabled: is the feature disabled.
- * @partial: define the AID equation.
- */
-struct cfg80211_he_bss_color {
-	u8 color;
-	bool disabled;
-	bool partial;
-};
-
-/**
- * enum nl80211_tid_config - TID config state
- * @NL80211_TID_CONFIG_ENABLE: Enable config for the TID
- * @NL80211_TID_CONFIG_DISABLE: Disable config for the TID
- */
-enum nl80211_tid_config {
-	NL80211_TID_CONFIG_ENABLE,
-	NL80211_TID_CONFIG_DISABLE,
-};
-/**
- * struct cfg80211_tid_cfg - TID specific configuration
- * @config_override: Flag to notify driver to reset TID configuration
- *	of the peer.
- * @tids: bitmap of TIDs to modify
- * @mask: bitmap of attributes indicating which parameter changed,
- *	similar to &nl80211_tid_config_supp.
- * @noack: noack configuration value for the TID
- * @retry_long: retry count value
- * @retry_short: retry count value
- * @ampdu: Enable/Disable aggregation
- * @rtscts: Enable/Disable RTS/CTS
- */
-struct cfg80211_tid_cfg {
-	bool config_override;
-	u8 tids;
-	u32 mask;
-	enum nl80211_tid_config noack;
-	u8 retry_long, retry_short;
-	enum nl80211_tid_config ampdu;
-	enum nl80211_tid_config rtscts;
-};
-
-/**
- * struct cfg80211_tid_config - TID configuration
- * @peer: Station's MAC address
- * @n_tid_conf: Number of TID specific configurations to be applied
- * @tid_conf: Configuration change info
- */
-struct cfg80211_tid_config {
-	const u8 *peer;
-	u32 n_tid_conf;
-	struct cfg80211_tid_cfg tid_conf[];
-};
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,7,0)
-#define NL80211_EXT_FEATURE_CONTROL_PORT_NO_PREAUTH -1
-#define NL80211_EXT_FEATURE_DEL_IBSS_STA -1
-
-static inline bool
-cfg80211_crypto_control_port_no_preauth(struct cfg80211_crypto_settings *crypto)
-{
-	return false;
-}
-
-static inline unsigned long
-cfg80211_wiphy_tx_queue_len(struct wiphy *wiphy)
-{
-	return 0;
-}
-#else /* < 5.7 */
-static inline bool
-cfg80211_crypto_control_port_no_preauth(struct cfg80211_crypto_settings *crypto)
-{
-	return crypto->control_port_no_preauth;
-}
-
-static inline unsigned long
-cfg80211_wiphy_tx_queue_len(struct wiphy *wiphy)
-{
-	return wiphy->tx_queue_len;
-}
-#endif /* < 5.7 */
 
 int ieee80211_tx_control_port(struct wiphy *wiphy, struct net_device *dev,
 			      const u8 *buf, size_t len,
 			      const u8 *dest, __be16 proto, bool unencrypted,
 			      int link_id, u64 *cookie);
 
-#if LINUX_VERSION_IS_LESS(5,8,0)
-#define NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS -1
-#define NL80211_EXT_FEATURE_SCAN_FREQ_KHZ -1
-
-static inline int
-cfg80211_chan_freq_offset(struct ieee80211_channel *chan)
-{
-	return 0;
-}
-
-static inline void
-cfg80211_chandef_freq1_offset_set(struct cfg80211_chan_def *chandef, u16 e)
-{
-}
-
-static inline u16
-cfg80211_chandef_freq1_offset(struct cfg80211_chan_def *chandef)
-{
-	return 0;
-}
-
-static inline void
-cfg80211_control_port_tx_status(struct wireless_dev *wdev, u64 cookie,
-				const u8 *buf, size_t len, bool ack,
-				gfp_t gfp)
-{
-}
-
-static inline __le16
-ieee80211_get_he_6ghz_capa(const struct ieee80211_supported_band *sband,
-			   enum nl80211_iftype iftype)
-{
-	return 0;
-}
-void ieee80211_mgmt_frame_register(struct wiphy *wiphy,
-				   struct wireless_dev *wdev,
-				   u16 frame_type, bool reg);
-static inline __le16
-cfg80211_iftd_he_6ghz_capa(const struct ieee80211_sband_iftype_data *iftd)
-{
-	return 0;
-}
-
-static inline void
-cfg80211_iftd_set_he_6ghz_capa(struct ieee80211_sband_iftype_data *iftd,
-			       __le16 capa)
-{
-}
-
-static inline int
-bp_ieee80211_tx_control_port(struct wiphy *wiphy, struct net_device *dev,
-			     const u8 *buf, size_t len,
-			     const u8 *dest, __be16 proto, bool unencrypted)
-{
-	return ieee80211_tx_control_port(wiphy, dev, buf, len, dest, proto,
-					 unencrypted, -1, NULL);
-}
-#else /* < 5.8 */
-static inline int
-cfg80211_chan_freq_offset(struct ieee80211_channel *chan)
-{
-	return chan->freq_offset;
-}
-
-static inline void
-cfg80211_chandef_freq1_offset_set(struct cfg80211_chan_def *chandef, u16 e)
-{
-	chandef->freq1_offset = e;
-}
-
-static inline u16
-cfg80211_chandef_freq1_offset(struct cfg80211_chan_def *chandef)
-{
-	return chandef->freq1_offset;
-}
-
-static inline __le16
-cfg80211_iftd_he_6ghz_capa(const struct ieee80211_sband_iftype_data *iftd)
-{
-	return iftd->he_6ghz_capa.capa;
-}
-
-static inline void
-cfg80211_iftd_set_he_6ghz_capa(struct ieee80211_sband_iftype_data *iftd,
-			       __le16 capa)
-{
-	iftd->he_6ghz_capa.capa = capa;
-}
-#endif /* < 5.8 */
-
-#if LINUX_VERSION_IS_GEQ(4,20,0)
-#include <hdrs/linux/compiler_attributes.h>
-#else
-# define __counted_by(member)
-#endif
-
-#ifndef __has_attribute
-# define __has_attribute(x) __GCC4_has_attribute_##x
-#endif
-
-#ifndef __GCC4_has_attribute___fallthrough__
-# define __GCC4_has_attribute___fallthrough__         0
-#endif /* __GCC4_has_attribute___fallthrough__ */
-
-#ifndef fallthrough
-/*
- * Add the pseudo keyword 'fallthrough' so case statement blocks
- * must end with any of these keywords:
- *   break;
- *   fallthrough;
- *   goto <label>;
- *   return [expression];
- *
- *  gcc: https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html#Statement-Attributes
- */
-#if __has_attribute(__fallthrough__)
-# define fallthrough                    __attribute__((__fallthrough__))
-#else
-# define fallthrough                    do {} while (0)  /* fallthrough */
-#endif
-#endif /* fallthrough */
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-#define WIPHY_FLAG_SPLIT_SCAN_6GHZ 0
-#define NL80211_SCAN_FLAG_COLOCATED_6GHZ 0
-#endif /* < 5.10 */
-
-#if LINUX_VERSION_IS_LESS(5,11,0)
-static inline void
-LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
-						  struct cfg80211_chan_def *chandef,
-						  unsigned int link_id, u8 count,
-						  bool quiet)
-{
-	cfg80211_ch_switch_started_notify(dev, chandef, count);
-}
-#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
-
-#elif LINUX_VERSION_IS_LESS(6,1,0)
-static inline void
-LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
-						  struct cfg80211_chan_def *chandef,
-						  unsigned int link_id, u8 count,
-						  bool quiet)
-{
-	cfg80211_ch_switch_started_notify(dev, chandef, count, quiet);
-}
-#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
-#elif LINUX_VERSION_IS_LESS(6,9,0)
-static inline void
-LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
-						  struct cfg80211_chan_def *chandef,
-						  unsigned int link_id, u8 count,
-						  bool quiet)
-{
-	cfg80211_ch_switch_started_notify(dev, chandef, link_id, count, quiet, 0);
-}
-#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
-#endif
-
-#ifndef ETH_TLEN
-#define ETH_TLEN	2		/* Octets in ethernet type field */
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-static inline bool cfg80211_channel_is_psc(struct ieee80211_channel *chan)
-{
-	return false;
-}
-#elif LINUX_VERSION_IS_LESS(5,8,0)
-static inline bool cfg80211_channel_is_psc(struct ieee80211_channel *chan)
-{
-	if (chan->band != NL80211_BAND_6GHZ)
-		return false;
-
-	return ieee80211_frequency_to_channel(chan->center_freq) % 16 == 5;
-}
-#endif /* < 5.8.0 */
-
-#if LINUX_VERSION_IS_LESS(5,9,0)
-
-#define kfree_sensitive(p) kzfree(p)
-
-#include <linux/thermal.h>
-#ifdef CONFIG_THERMAL
-static inline int thermal_zone_device_enable(struct thermal_zone_device *tz)
-{ return 0; }
-#else /* CONFIG_THERMAL */
-static inline int thermal_zone_device_enable(struct thermal_zone_device *tz)
-{ return -ENODEV; }
-#endif /* CONFIG_THERMAL */
-
-#endif /* < 5.9.0 */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-static inline void
-tasklet_setup(struct tasklet_struct *t,
-	      void (*callback)(struct tasklet_struct *))
-{
-	void (*cb)(unsigned long data) = (void *)callback;
-
-	tasklet_init(t, cb, (unsigned long)t);
-}
-
-#define from_tasklet(var, callback_tasklet, tasklet_fieldname) \
-	container_of(callback_tasklet, typeof(*var), tasklet_fieldname)
-#endif /* < 5.4.0 */
-
-#if LINUX_VERSION_IS_LESS(5,9,0)
-#define NL80211_BAND_S1GHZ 4
-#define NL80211_CHAN_WIDTH_1 8
-#define NL80211_CHAN_WIDTH_2 9
-#define NL80211_CHAN_WIDTH_4 10
-#define NL80211_CHAN_WIDTH_8 11
-#define NL80211_CHAN_WIDTH_16 12
-#endif /* < 5.9.0 */
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-static inline enum nl80211_chan_width
-ieee80211_s1g_channel_width(const struct ieee80211_channel *chan)
-{
-	return NL80211_CHAN_WIDTH_20_NOHT;
-}
-
-#define NL80211_BSS_CHAN_WIDTH_1	3
-#define NL80211_BSS_CHAN_WIDTH_2	4
-
-#endif /* LINUX_VERSION_IS_LESS(5,10,0) */
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-/**
- *      dev_fetch_sw_netstats - get per-cpu network device statistics
- *      @s: place to store stats
- *      @netstats: per-cpu network stats to read from
- *
- *      Read per-cpu network statistics and populate the related fields in @s.
- */
-static inline
-void dev_fetch_sw_netstats(struct rtnl_link_stats64 *s,
-                           const struct pcpu_sw_netstats __percpu *netstats)
-{
-        int cpu;
-
-        for_each_possible_cpu(cpu) {
-                const struct pcpu_sw_netstats *stats;
-                struct pcpu_sw_netstats tmp;
-                unsigned int start;
-
-                stats = per_cpu_ptr(netstats, cpu);
-                do {
-                        start = u64_stats_fetch_begin_irq(&stats->syncp);
-                        tmp.rx_packets = stats->rx_packets;
-                        tmp.rx_bytes   = stats->rx_bytes;
-                        tmp.tx_packets = stats->tx_packets;
-                        tmp.tx_bytes   = stats->tx_bytes;
-                } while (u64_stats_fetch_retry_irq(&stats->syncp, start));
-
-                s->rx_packets += tmp.rx_packets;
-                s->rx_bytes   += tmp.rx_bytes;
-                s->tx_packets += tmp.tx_packets;
-                s->tx_bytes   += tmp.tx_bytes;
-        }
-}
-
-static inline void dev_sw_netstats_rx_add(struct net_device *dev, unsigned int len)
-{
-	struct pcpu_sw_netstats *tstats = this_cpu_ptr(dev->tstats);
-
-	u64_stats_update_begin(&tstats->syncp);
-	tstats->rx_bytes += len;
-	tstats->rx_packets++;
-	u64_stats_update_end(&tstats->syncp);
-}
-
-#define bp_ieee80211_set_unsol_bcast_probe_resp(sdata, params, link, link_conf) 0
-#define bp_unsol_bcast_probe_resp_interval(params) 0
-
-#else /* < 5.10 */
-
-#define bp_ieee80211_set_unsol_bcast_probe_resp(sdata, params, link, link_conf) \
-	ieee80211_set_unsol_bcast_probe_resp(sdata, params, link, link_conf)
-#define bp_unsol_bcast_probe_resp_interval(params) \
-	(params->unsol_bcast_probe_resp.interval)
-
-#endif /* < 5.10 */
-
-#if LINUX_VERSION_IS_LESS(5,10,0) &&     \
-	(LINUX_VERSION_IS_LESS(5,4,0) || \
-	 LINUX_VERSION_IS_GEQ(5,5,0))
-enum nl80211_sar_type {
-	NL80211_SAR_TYPE_NONE,
-};
-
-struct cfg80211_sar_sub_specs {
-	s32 power;
-	u32 freq_range_index;
-};
-
-/**
- * struct cfg80211_sar_specs - sar limit specs
- * @type: it's set with power in 0.25dbm or other types
- * @num_sub_specs: number of sar sub specs
- * @sub_specs: memory to hold the sar sub specs
- */
-struct cfg80211_sar_specs {
-	enum nl80211_sar_type type;
-	u32 num_sub_specs;
-	struct cfg80211_sar_sub_specs sub_specs[];
-};
-#endif /* < 5.4.0 */
-
-#if LINUX_VERSION_IS_LESS(5,14,0)
-#define NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE -1
-
-static inline bool cfg80211_any_usable_channels(struct wiphy *wiphy,
-						unsigned long sband_mask,
-						u32 prohibited_flags)
-{
-	int idx;
-
-	prohibited_flags |= IEEE80211_CHAN_DISABLED;
-
-	for_each_set_bit(idx, &sband_mask, NUM_NL80211_BANDS) {
-		struct ieee80211_supported_band *sband = wiphy->bands[idx];
-		int chanidx;
-
-		if (!sband)
-			continue;
-
-		for (chanidx = 0; chanidx < sband->n_channels; chanidx++) {
-			struct ieee80211_channel *chan;
-
-			chan = &sband->channels[chanidx];
-
-			if (chan->flags & prohibited_flags)
-				continue;
-
-			return true;
-		}
-	}
-
-	return false;
-}
-#endif /* < 5.13.0 */
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-static inline u64 skb_get_kcov_handle(struct sk_buff *skb)
-{
-	return 0;
-}
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,11,00)
-#ifndef CONFIG_LOCKDEP
-/* upstream since 5.11 in this exact same way - calls compile away */
-int lockdep_is_held(const void *);
-
-#define HZ_PER_KHZ		1000UL
-#define KHZ_PER_MHZ		1000UL
-#endif
-
-static inline void dev_sw_netstats_tx_add(struct net_device *dev,
-					  unsigned int packets,
-					  unsigned int len)
-{
-	struct pcpu_sw_netstats *tstats = this_cpu_ptr(dev->tstats);
-
-	u64_stats_update_begin(&tstats->syncp);
-	tstats->tx_bytes += len;
-	tstats->tx_packets += packets;
-	u64_stats_update_end(&tstats->syncp);
-}
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,12,0)
-#define wiphy_dereference(w, r) rtnl_dereference(r)
-#define regulatory_set_wiphy_regd_sync(w, r) regulatory_set_wiphy_regd_sync_rtnl(w, r)
-#define lockdep_assert_wiphy(w) ASSERT_RTNL()
-#define cfg80211_register_netdevice(n) register_netdevice(n)
-#define cfg80211_unregister_netdevice(n) unregister_netdevice(n)
-#define cfg80211_sched_scan_stopped_locked(w, r) cfg80211_sched_scan_stopped_rtnl(w, r)
-#define ASSOC_REQ_DISABLE_HE BIT(4)
-static inline void __iwl7000_cfg80211_unregister_wdev(struct wireless_dev *wdev)
-{
-	if (wdev->netdev)
-		unregister_netdevice(wdev->netdev);
-	else
-		cfg80211_unregister_wdev(wdev);
-}
-#define cfg80211_unregister_wdev __iwl7000_cfg80211_unregister_wdev
-#define lockdep_is_wiphy_held(wiphy) lockdep_rtnl_is_held()
-static inline bool wdev_registered(struct wireless_dev *wdev)
-{
-	return true;
-}
-#else
-#define lockdep_is_wiphy_held(wiphy) lockdep_is_held(&(wiphy)->mtx)
-static inline bool wdev_registered(struct wireless_dev *wdev)
-{
-	return wdev->registered;
-}
-#endif /* < 5.12 */
-
-#if LINUX_VERSION_IS_LESS(5,17,0)
-static inline void
-cfg80211_assoc_comeback(struct net_device *netdev,
-			struct cfg80211_bss *bss, u32 timeout)
-{
-}
-#endif /* LINUX_VERSION_IS_LESS(5,17,0) */
-
-#if LINUX_VERSION_IS_LESS(5,18,0)
-#define ieee80211_data_to_8023_exthdr iwl7000_ieee80211_data_to_8023_exthdr
-int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
-				  const u8 *addr, enum nl80211_iftype iftype,
-				  u8 data_offset, bool is_amsdu);
-
-#define ieee80211_data_to_8023 iwl7000_ieee80211_data_to_8023
-static inline int ieee80211_data_to_8023(struct sk_buff *skb, const u8 *addr,
-					 enum nl80211_iftype iftype)
-{
-	return ieee80211_data_to_8023_exthdr(skb, NULL, addr, iftype, 0, false);
-}
-
-enum nl80211_eht_gi {
-	NL80211_RATE_INFO_EHT_GI_0_8,
-	NL80211_RATE_INFO_EHT_GI_1_6,
-	NL80211_RATE_INFO_EHT_GI_3_2,
-};
-
-#define RATE_INFO_BW_320 (RATE_INFO_BW_HE_RU + 1)
-#define NL80211_RRF_NO_320MHZ 0
-#endif /* LINUX_VERSION_IS_LESS(5,18,0) */
-
 #ifndef lockdep_assert
 #define lockdep_assert(x) do {} while (0)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,16,0)
-#define NL80211_BAND_LC	5
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,16,0)
-#define skb_ext_reset LINUX_BACKPORT(skb_get_dsfield)
-static inline int skb_get_dsfield(struct sk_buff *skb)
-{
-	switch (skb_protocol(skb, true)) {
-	case cpu_to_be16(ETH_P_IP):
-		if (!pskb_network_may_pull(skb, sizeof(struct iphdr)))
-			break;
-		return ipv4_get_dsfield(ip_hdr(skb));
-
-	case cpu_to_be16(ETH_P_IPV6):
-		if (!pskb_network_may_pull(skb, sizeof(struct ipv6hdr)))
-			break;
-		return ipv6_get_dsfield(ipv6_hdr(skb));
-	}
-
-	return -1;
-}
 #endif
 
 #ifndef NET_DEVICE_PATH_STACK_MAX
@@ -1244,72 +123,17 @@ struct net_device_path_ctx {
 })
 #endif
 
-#if LINUX_VERSION_IS_LESS(5,19,0)
-struct cfg80211_rx_info {
-	int freq;
-	int sig_dbm;
-	bool have_link_id;
-	u8 link_id;
-	const u8 *buf;
-	size_t len;
-	u32 flags;
-	u64 rx_tstamp;
-	u64 ack_tstamp;
-};
-
-static inline bool cfg80211_rx_mgmt_ext(struct wireless_dev *wdev,
-					struct cfg80211_rx_info *info)
-{
-	return cfg80211_rx_mgmt(wdev, KHZ_TO_MHZ(info->freq), info->sig_dbm,
-				info->buf, info->len, info->flags);
-}
-
-/**
- * struct cfg80211_tx_status - TX status for management frame information
- *
- * @cookie: Cookie returned by cfg80211_ops::mgmt_tx()
- * @tx_tstamp: hardware TX timestamp in nanoseconds
- * @ack_tstamp: hardware ack RX timestamp in nanoseconds
- * @buf: Management frame (header + body)
- * @len: length of the frame data
- * @ack: Whether frame was acknowledged
- */
-struct cfg80211_tx_status {
-	u64 cookie;
-	u64 tx_tstamp;
-	u64 ack_tstamp;
-	const u8 *buf;
-	size_t len;
-	bool ack;
-};
-
-static inline
-void cfg80211_mgmt_tx_status_ext(struct wireless_dev *wdev,
-				 struct cfg80211_tx_status *status, gfp_t gfp)
-{
-	cfg80211_mgmt_tx_status(wdev, status->cookie, status->buf, status->len,
-				status->ack, gfp);
-}
-#endif /* LINUX_VERSION_IS_LESS(5,19,0) */
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-struct cfg80211_set_hw_timestamp {
-	const u8 *macaddr;
-	bool enable;
-};
-#define set_hw_timestamp_max_peers(hw, val)	do { } while (0)
-#else
-#define set_hw_timestamp_max_peers(hw, val)	(hw)->wiphy->hw_timestamp_max_peers = val
+#ifndef __BUILD_BUG_ON_NOT_POWER_OF_2
+#define __BUILD_BUG_ON_NOT_POWER_OF_2(...)
 #endif
 
-#if LINUX_VERSION_IS_LESS(6,0,0)
-#define cfg80211_ch_switch_notify(dev, chandef, link_id) cfg80211_ch_switch_notify(dev, chandef)
-#elif LINUX_VERSION_IS_LESS(6,9,0)
-#define cfg80211_ch_switch_notify(dev, chandef, link_id) cfg80211_ch_switch_notify(dev, chandef, link_id, 0)
+#ifndef skb_list_walk_safe
+#define skb_list_walk_safe(first, skb, next_skb)				\
+	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb);	\
+	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
 #endif
 
 #ifdef CONFIG_THERMAL
-#if LINUX_VERSION_IS_LESS(6,9,0)
 #include <linux/thermal.h>
 struct backport_thermal_trip {
 	int temperature;
@@ -1321,206 +145,28 @@ struct backport_thermal_trip {
 };
 #define thermal_trip backport_thermal_trip
 #endif
-#endif
 
-#if LINUX_VERSION_IS_LESS(6,0,0)
-static inline enum ieee80211_rate_flags
-ieee80211_chanwidth_rate_flags(enum nl80211_chan_width width)
+#define kvmemdup LINUX_BACKPORT(kvmemdup)
+static inline void *kvmemdup(const void *src, size_t len, gfp_t gfp)
 {
-	switch (width) {
-	case NL80211_CHAN_WIDTH_5:
-		return IEEE80211_RATE_SUPPORTS_5MHZ;
-	case NL80211_CHAN_WIDTH_10:
-		return IEEE80211_RATE_SUPPORTS_10MHZ;
-	default:
-		break;
-	}
-	return 0;
+	void *p;
+
+	p = kvmalloc(len, gfp);
+	if (p)
+		memcpy(p, src, len);
+	return p;
 }
 
-#define link_sta_params_link_id(params)	-1
-#define link_sta_params_link_mac(params)	NULL
-#define WIPHY_FLAG_SUPPORTS_MLO 0
-#define cfg80211_disassoc_ap_addr(req)	((req)->bss->bssid)
-
-struct iwl7000_cfg80211_rx_assoc_resp {
-	struct cfg80211_bss *bss;
-	const u8 *buf;
-	size_t len;
-	const u8 *req_ies;
-	size_t req_ies_len;
-	int uapsd_queues;
-	const u8 *ap_mld_addr;
-	struct {
-		u8 addr[ETH_ALEN];
-		struct cfg80211_bss *bss;
-		u16 status;
-	} links[IEEE80211_MLD_MAX_NUM_LINKS];
-};
-
-static inline void
-iwl7000_cfg80211_rx_assoc_resp(struct net_device *dev,
-			       struct iwl7000_cfg80211_rx_assoc_resp *data)
-{
-	WARN_ON(data->ap_mld_addr);
-	if (WARN_ON(!data->links[0].bss))
-		return;
-
-	cfg80211_rx_assoc_resp(dev, data->links[0].bss, data->buf, data->len,
-			       data->uapsd_queues
-#if LINUX_VERSION_IS_GEQ(5,1,0)
-			       , data->req_ies, data->req_ies_len
-#endif
-			      );
-}
-
-#define cfg80211_rx_assoc_resp iwl7000_cfg80211_rx_assoc_resp
-
-struct cfg80211_assoc_failure {
-	const u8 *ap_mld_addr;
-	struct cfg80211_bss *bss[IEEE80211_MLD_MAX_NUM_LINKS];
-	bool timeout;
-};
-
-static inline void cfg80211_assoc_failure(struct net_device *dev,
-					  struct cfg80211_assoc_failure *data)
-{
-	int i;
-
-	WARN_ON(!data->bss[0]);
-	WARN_ON(data->ap_mld_addr);
-
-	for (i = 1; i < ARRAY_SIZE(data->bss); i++)
-		WARN_ON(data->bss[i]);
-
-	if (data->timeout)
-		cfg80211_assoc_timeout(dev, data->bss[0]);
-	else
-		cfg80211_abandon_assoc(dev, data->bss[0]);
-}
-
-#if LINUX_VERSION_IS_GEQ(5,8,0)
-static inline int
-bp_ieee80211_tx_control_port(struct wiphy *wiphy, struct net_device *dev,
-			     const u8 *buf, size_t len,
-			     const u8 *dest, __be16 proto, bool unencrypted,
-			     u64 *cookie)
-{
-	return ieee80211_tx_control_port(wiphy, dev, buf, len, dest, proto,
-					 unencrypted, -1, cookie);
-}
-#endif /* >= 5.8 */
-
-#define cfg80211_req_ap_mld_addr(req)		NULL
-
-static inline const struct wiphy_iftype_ext_capab *
-cfg80211_get_iftype_ext_capa(struct wiphy *wiphy, enum nl80211_iftype type)
-{
-	int i;
-
-	for (i = 0; i < wiphy->num_iftype_ext_capab; i++) {
-		if (wiphy->iftype_ext_capab[i].iftype == type)
-			return &wiphy->iftype_ext_capab[i];
-	}
-
-	return NULL;
-}
-#define cfg80211_ext_capa_eml_capabilities(ift_ext_capa)	0
-#define cfg80211_ext_capa_set_eml_capabilities(ift_ext_capa, v)	do {} while (0)
-#define cfg80211_ext_capa_mld_capa_and_ops(ift_ext_capa)	0
-#define cfg80211_mgmt_tx_params_link_id(params)			-1
-#define cfg80211_mgmt_tx_params_link_id_mask(params)		0
-#define link_sta_params_mld_mac(params)		NULL
-#define cfg80211_beacon_data_link_id(params)	0
-#define cfg80211_req_link_bss(req, link)	NULL
-#define cfg80211_req_link_id(req)		-1
-#define cfg80211_req_link_elems_len(req, link)	0
-
-#else /* CFG80211 < 6.0 */
-#define link_sta_params_link_id(params) ((params)->link_sta_params.link_id)
-#define link_sta_params_link_mac(params) ((params)->link_sta_params.link_mac)
-#define cfg80211_disassoc_ap_addr(req)	((req)->ap_addr)
-#define cfg80211_req_ap_mld_addr(req)		((req)->ap_mld_addr)
-#define cfg80211_ext_capa_eml_capabilities(ift_ext_capa)	(ift_ext_capa)->eml_capabilities
-#define cfg80211_ext_capa_set_eml_capabilities(ift_ext_capa, v)	(ift_ext_capa)->eml_capabilities = (v)
-#define cfg80211_ext_capa_mld_capa_and_ops(ift_ext_capa)	(ift_ext_capa)->mld_capa_and_ops
-#define cfg80211_mgmt_tx_params_link_id(params)	((params)->link_id)
-#define cfg80211_mgmt_tx_params_link_id_mask(params) BIT((params)->link_id)
-#define link_sta_params_mld_mac(params)		(params->link_sta_params.mld_mac)
-#define cfg80211_beacon_data_link_id(params)	(params->link_id)
-#define cfg80211_req_link_bss(req, link)	((req)->links[link].bss)
-#define cfg80211_req_link_id(req)		((req)->link_id)
-#define cfg80211_req_link_elems_len(req, link)	((req)->links[link].elems_len)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,4,0) && \
-    !defined(cfg80211_rx_control_port)
-static inline bool
-iwl7000_cfg80211_rx_control_port(struct net_device *dev, struct sk_buff *skb,
-				 bool unencrypted, int link_id)
-{
-	return cfg80211_rx_control_port(dev, skb, unencrypted);
-}
-
-#define cfg80211_rx_control_port iwl7000_cfg80211_rx_control_port
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-#define cfg80211_txq_params_link_id(params)			0
-#define cfg80211_bss_params_link_id(params)			-1
-#else
-#define cfg80211_txq_params_link_id(params)			(params)->link_id
-#define cfg80211_bss_params_link_id(params)			((params)->link_id)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-static inline void backport_netif_napi_add(struct net_device *dev,
-					   struct napi_struct *napi,
-					   int (*poll)(struct napi_struct *, int))
-{
-	netif_napi_add(dev, napi, poll, NAPI_POLL_WEIGHT);
-}
-#define netif_napi_add LINUX_BACKPORT(netif_napi_add)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,8,0)
-#define cfg80211_scan_request_tsf_report_link_id(req)             -1
-#define cfg80211_scan_request_set_tsf_report_link_id(req, ink_id) do {} while (0)
-#define cfg80211_scan_request_check_tsf_report_link_id(req, mask) false
-#else
-#define cfg80211_scan_request_tsf_report_link_id(req)	  (req)->tsf_report_link_id
-#define cfg80211_scan_request_set_tsf_report_link_id(req, v) (req)->tsf_report_link_id = (v)
-#define cfg80211_scan_request_check_tsf_report_link_id(req, mask) ((mask) & BIT((req)->tsf_report_link_id))
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,5,0)
-#define cfg80211_req_link_disabled(req, link)	0
-#define cfg80211_scan_req_6ghz(req) false
-#define NL80211_RRF_NO_EHT 0
-static inline void
-cfg80211_links_removed(struct net_device *dev, u16 removed_links)
-{
-}
-#else
-#define cfg80211_req_link_disabled(req, link)	((req)->links[link].disabled)
-#define cfg80211_scan_req_6ghz(req) (req)->scan_6ghz
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,4,0)
 #ifdef CONFIG_THERMAL
 #include <linux/thermal.h>
-void *thermal_zone_device_priv(struct thermal_zone_device *tzd);
-#endif
+
+#define thermal_zone_device_priv LINUX_BACKPORT(thermal_zone_device_priv)
+static inline void *thermal_zone_device_priv(struct thermal_zone_device *tzd)
+{
+	return tzd->devdata;
+}
 #endif
 
-#if LINUX_VERSION_IS_LESS(6,1,0)
-bool cfg80211_valid_disable_subchannel_bitmap(u16 *bitmap,
-					      struct cfg80211_chan_def *chandef);
-#define ieee80211_amsdu_to_8023s(skb, list, addr, type, headroom, check_sa, check_da, mesh) \
-	ieee80211_amsdu_to_8023s(skb, list, addr, type, headroom, check_sa, check_da)
-#endif /* < 6.1  */
-
-#if LINUX_VERSION_IS_LESS(6,4,0)
 #define ieee80211_is_valid_amsdu LINUX_BACKPORT(ieee80211_is_valid_amsdu)
 static inline bool ieee80211_is_valid_amsdu(struct sk_buff *skb, u8 mesh_hdr)
 {
@@ -1537,9 +183,40 @@ LINUX_BACKPORT(kfree_skb_reason)(struct sk_buff *skb, u32 reason)
 #endif
 }
 #define kfree_skb_reason LINUX_BACKPORT(kfree_skb_reason)
-#endif
 
-#if LINUX_VERSION_IS_LESS(6,7,0)
+static inline bool
+iwl7000_cfg80211_rx_control_port(struct net_device *dev, struct sk_buff *skb,
+				 bool unencrypted, int link_id)
+{
+	return cfg80211_rx_control_port(dev, skb, unencrypted);
+}
+#define cfg80211_rx_control_port iwl7000_cfg80211_rx_control_port
+
+#include <linux/leds.h>
+
+#define NL80211_RRF_NO_EHT 0
+static inline void
+cfg80211_links_removed(struct net_device *dev, u16 removed_links)
+{
+}
+
+static inline void backport_led_trigger_blink_oneshot(struct led_trigger *trigger,
+						      unsigned long delay_on,
+						      unsigned long delay_off,
+						      int invert)
+{
+	led_trigger_blink_oneshot(trigger, &delay_on, &delay_off, invert);
+}
+#define led_trigger_blink_oneshot LINUX_BACKPORT(led_trigger_blink_oneshot)
+
+static inline void backport_led_trigger_blink(struct led_trigger *trigger,
+					      unsigned long delay_on,
+					      unsigned long delay_off)
+{
+	led_trigger_blink(trigger, &delay_on, &delay_off);
+}
+#define led_trigger_blink LINUX_BACKPORT(led_trigger_blink)
+
 void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id);
 
 static inline void
@@ -1550,29 +227,6 @@ _ieee80211_set_sband_iftype_data(struct ieee80211_supported_band *sband,
 	sband->iftype_data = iftd;
 	sband->n_iftype_data = n_iftd;
 }
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-struct wiphy_work;
-typedef void (*wiphy_work_func_t)(struct wiphy *, struct wiphy_work *);
-
-struct wiphy_work {
-	struct list_head entry;
-	wiphy_work_func_t func;
-};
-
-static inline void wiphy_work_init(struct wiphy_work *work,
-				   wiphy_work_func_t func)
-{
-	INIT_LIST_HEAD(&work->entry);
-	work->func = func;
-}
-
-struct wiphy_delayed_work {
-	struct wiphy_work work;
-	struct wiphy *wiphy;
-	struct timer_list timer;
-};
-#endif
 
 void wiphy_delayed_work_timer(struct timer_list *t);
 
@@ -1605,8 +259,6 @@ void wiphy_delayed_work_flush(struct wiphy *wiphy,
 #endif
 
 /* older cfg80211 requires wdev to be locked */
-#define sdata_lock_old_cfg80211(sdata) mutex_lock(&(sdata)->wdev.mtx)
-#define sdata_unlock_old_cfg80211(sdata) mutex_unlock(&(sdata)->wdev.mtx)
 #define WRAP_LOCKED(sym) wdev_locked_ ## sym
 
 static inline void
@@ -1617,78 +269,13 @@ WRAP_LOCKED(cfg80211_links_removed)(struct net_device *dev, u16 removed_links)
 	mutex_unlock(&dev->ieee80211_ptr->mtx);
 }
 #define cfg80211_links_removed WRAP_LOCKED(cfg80211_links_removed)
-#else
-#define sdata_lock_old_cfg80211(sdata) do {} while (0)
-#define sdata_unlock_old_cfg80211(sdata) do {} while (0)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,5,0)
-
-#include <linux/leds.h>
-
-static inline void backport_led_trigger_blink_oneshot(struct led_trigger *trigger,
-						      unsigned long delay_on,
-						      unsigned long delay_off,
-						      int invert)
-{
-	led_trigger_blink_oneshot(trigger, &delay_on, &delay_off, invert);
-}
-#define led_trigger_blink_oneshot LINUX_BACKPORT(led_trigger_blink_oneshot)
-
-static inline void backport_led_trigger_blink(struct led_trigger *trigger,
-					      unsigned long delay_on,
-					      unsigned long delay_off)
-{
-	led_trigger_blink(trigger, &delay_on, &delay_off);
-}
-#define led_trigger_blink LINUX_BACKPORT(led_trigger_blink)
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,8,0)
-static inline void cfg80211_schedule_channels_check(struct wireless_dev *wdev)
-{
-}
-#define NL80211_EXT_FEATURE_DFS_CONCURRENT -1
-#define NL80211_RRF_DFS_CONCURRENT 0
-
-struct cfg80211_ttlm_params {
-	u16 dlink[8];
-	u16 ulink[8];
-};
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,9,0)
-#define NL80211_EXT_FEATURE_SPP_AMSDU_SUPPORT -1
-#define ASSOC_REQ_SPP_AMSDU BIT(7)
-#define NL80211_STA_FLAG_SPP_AMSDU 8
-bool ieee80211_operating_class_to_chandef(u8 operating_class,
-					  struct ieee80211_channel *chan,
-					  struct cfg80211_chan_def *chandef);
-#define cfg80211_csa_settings_link_id(csa)	0
-#else
-#define cfg80211_csa_settings_link_id(csa)	(csa)->link_id
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,7,0)
 static inline u32
 iwl7000_ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 {
 	return ieee80211_mandatory_rates(sband, NL80211_BSS_CHAN_WIDTH_20);
 }
 #define ieee80211_mandatory_rates iwl7000_ieee80211_mandatory_rates
-#endif
 
-#if LINUX_VERSION_IS_LESS(6,7,0)
-/**
- *	napi_schedule - schedule NAPI poll
- *	@n: NAPI context
- *
- * Schedule NAPI poll routine to be called if it is not already
- * running.
- * Return true if we schedule a NAPI or false if not.
- * Refer to napi_schedule_prep() for additional reason on why
- * a NAPI might not be scheduled.
- */
 static inline bool LINUX_BACKPORT(napi_schedule)(struct napi_struct *n)
 {
 	if (napi_schedule_prep(n)) {
@@ -1701,18 +288,6 @@ static inline bool LINUX_BACKPORT(napi_schedule)(struct napi_struct *n)
 #define napi_schedule LINUX_BACKPORT(napi_schedule)
 
 #ifdef CONFIG_CFG80211_DEBUGFS
-/**
- * wiphy_locked_debugfs_read - do a locked read in debugfs
- * @wiphy: the wiphy to use
- * @file: the file being read
- * @buf: the buffer to fill and then read from
- * @bufsize: size of the buffer
- * @userbuf: the user buffer to copy to
- * @count: read count
- * @ppos: read position
- * @handler: the read handler to call (under wiphy lock)
- * @data: additional data to pass to the read handler
- */
 static inline
 ssize_t wiphy_locked_debugfs_read(struct wiphy *wiphy, struct file *file,
 				  char *buf, size_t bufsize,
@@ -1745,17 +320,6 @@ ssize_t wiphy_locked_debugfs_read(struct wiphy *wiphy, struct file *file,
 	return ret;
 }
 
-/**
- * wiphy_locked_debugfs_write - do a locked write in debugfs
- * @wiphy: the wiphy to use
- * @file: the file being written to
- * @buf: the buffer to copy the user data to
- * @bufsize: size of the buffer
- * @userbuf: the user buffer to copy from
- * @count: read count
- * @handler: the write handler to call (under wiphy lock)
- * @data: additional data to pass to the write handler
- */
 static inline
 ssize_t wiphy_locked_debugfs_write(struct wiphy *wiphy, struct file *file,
 				   char *buf, size_t bufsize,
@@ -1791,53 +355,99 @@ ssize_t wiphy_locked_debugfs_write(struct wiphy *wiphy, struct file *file,
 	return ret;
 }
 #endif
-#endif /* < 6.7.0 */
 
-#if LINUX_VERSION_IS_LESS(6,7,5)
-#define cfg80211_bss_proberesp_ecsa_stuck(bss) false
+static inline void cfg80211_schedule_channels_check(struct wireless_dev *wdev)
+{
+}
+#define NL80211_EXT_FEATURE_DFS_CONCURRENT -1
+#define NL80211_RRF_DFS_CONCURRENT 0
+
+struct cfg80211_ttlm_params {
+	u16 dlink[8];
+	u16 ulink[8];
+};
+
+bool
+ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
+			       struct ieee80211_channel *channel);
+
+#define IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT BIT(21)
+#define IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT BIT(22)
+
+#define NL80211_RRF_NO_6GHZ_VLP_CLIENT BIT(22)
+#define NL80211_RRF_NO_6GHZ_AFC_CLIENT BIT(23)
+
+ssize_t cfg80211_defragment_element(const struct element *elem, const u8 *ies,
+				    size_t ieslen, u8 *data, size_t data_len,
+				    u8 frag_id);
+
+enum cfg80211_rnr_iter_ret {
+	RNR_ITER_CONTINUE,
+	RNR_ITER_BREAK,
+	RNR_ITER_ERROR,
+};
+
+bool cfg80211_iter_rnr(const u8 *elems, size_t elems_len,
+		       enum cfg80211_rnr_iter_ret
+		       (*iter)(void *data, u8 type,
+			       const struct ieee80211_neighbor_ap_info *info,
+			       const u8 *tbtt_info, u8 tbtt_info_len),
+		       void *iter_data);
+
+#if LINUX_VERSION_IS_LESS(6,0,0)
+#define cfg80211_ch_switch_notify(dev, chandef, link_id) cfg80211_ch_switch_notify(dev, chandef)
 #else
-#define cfg80211_bss_proberesp_ecsa_stuck(bss) (bss->proberesp_ecsa_stuck)
+#define cfg80211_ch_switch_notify(dev, chandef, link_id) cfg80211_ch_switch_notify(dev, chandef, link_id, 0)
 #endif
 
-#if LINUX_VERSION_IS_LESS(6,9,0)
+#define NL80211_EXT_FEATURE_SPP_AMSDU_SUPPORT -1
+#define ASSOC_REQ_SPP_AMSDU BIT(7)
+#define NL80211_STA_FLAG_SPP_AMSDU 8
+bool ieee80211_operating_class_to_chandef(u8 operating_class,
+					  struct ieee80211_channel *chan,
+					  struct cfg80211_chan_def *chandef);
+
 #define IEEE80211_CHAN_CAN_MONITOR 0
 
 int nl80211_chan_width_to_mhz(enum nl80211_chan_width chan_width);
 int cfg80211_chandef_primary(const struct cfg80211_chan_def *chandef,
 			     enum nl80211_chan_width primary_width,
 			     u16 *punctured);
-static inline void chandef_clear_punctured(struct cfg80211_chan_def *chandef)
-{
-}
 
-static inline u16 chandef_punctured(const struct cfg80211_chan_def *chandef)
+#if LINUX_VERSION_IS_LESS(5,11,0)
+static inline void
+LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
+						  struct cfg80211_chan_def *chandef,
+						  unsigned int link_id, u8 count,
+						  bool quiet)
 {
-	return 0;
+	cfg80211_ch_switch_started_notify(dev, chandef, count);
 }
+#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
 
-static inline u16 *chandef_punctured_ptr(struct cfg80211_chan_def *chandef)
+#elif LINUX_VERSION_IS_LESS(6,1,0)
+static inline void
+LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
+						  struct cfg80211_chan_def *chandef,
+						  unsigned int link_id, u8 count,
+						  bool quiet)
 {
-	return NULL;
+	cfg80211_ch_switch_started_notify(dev, chandef, count, quiet);
 }
+#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
 #else
-static inline void chandef_clear_punctured(struct cfg80211_chan_def *chandef)
+static inline void
+LINUX_BACKPORT(cfg80211_ch_switch_started_notify)(struct net_device *dev,
+						  struct cfg80211_chan_def *chandef,
+						  unsigned int link_id, u8 count,
+						  bool quiet)
 {
-	chandef->punctured = 0;
+	cfg80211_ch_switch_started_notify(dev, chandef, link_id, count, quiet, 0);
 }
-
-static inline u16 chandef_punctured(const struct cfg80211_chan_def *chandef)
-{
-	return chandef->punctured;
-}
-
-static inline u16 *chandef_punctured_ptr(struct cfg80211_chan_def *chandef)
-{
-	return &chandef->punctured;
-}
-#endif /* cfg < 6.8 */
+#define cfg80211_ch_switch_started_notify LINUX_BACKPORT(cfg80211_ch_switch_started_notify)
+#endif
 
 #ifdef CONFIG_THERMAL
-#if LINUX_VERSION_IS_LESS(6,9,0)
 #define THERMAL_TRIP_FLAG_RW_TEMP       BIT(0)
 static inline struct thermal_zone_device *
 backport_thermal_zone_device_register_with_trips(const char *type,
@@ -1863,10 +473,9 @@ backport_thermal_zone_device_register_with_trips(const char *type,
 #endif /* < 6,6,0 */
 #define thermal_zone_device_register_with_trips LINUX_BACKPORT(thermal_zone_device_register_with_trips)
 }
-#endif /* <6,9,0 */
 
 /* This function was added in 6,6,0 already, but struct thermal_trip isn't */
-#if LINUX_VERSION_IS_LESS(6,9,0) && LINUX_VERSION_IS_GEQ(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 #define for_each_thermal_trip LINUX_BACKPORT(for_each_thermal_trip)
 static inline
 int for_each_thermal_trip(struct thermal_zone_device *tz,
@@ -1885,170 +494,5 @@ int for_each_thermal_trip(struct thermal_zone_device *tz,
 
 	return 0;
 }
-#endif /* < 6,9,0 && >= 6,0,0 */
-
-/* for < 6,0,0 the trips are invalid anyway*/
-#if LINUX_VERSION_IS_LESS(6,0,0)
-static inline
-int for_each_thermal_trip(struct thermal_zone_device *tz,
-			  int (*cb)(struct thermal_trip *, void *),
-			  void *data)
-{
-	return 0;
-}
-#endif
-#endif /* CONFIG_THERMAL*/
-
-#if LINUX_VERSION_IS_LESS(5,3,0)
-#define ktime_get_boottime_ns ktime_get_boot_ns
-#define ktime_get_coarse_boottime_ns ktime_get_boot_ns
-#endif
-
-#ifndef __BUILD_BUG_ON_NOT_POWER_OF_2
-#define __BUILD_BUG_ON_NOT_POWER_OF_2(...)
-#endif
-
-#if LINUX_VERSION_IS_LESS(4,20,0)
-static inline void rcu_head_init(struct rcu_head *rhp)
-{
-	rhp->func = (void *)~0L;
-}
-
-static inline bool
-rcu_head_after_call_rcu(struct rcu_head *rhp, void *f)
-{
-	if (READ_ONCE(rhp->func) == f)
-		return true;
-	WARN_ON_ONCE(READ_ONCE(rhp->func) != (void *)~0L);
-	return false;
-}
-#endif /* LINUX_VERSION_IS_LESS(4,20,0) */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-#include <linux/pci-aspm.h>
-#define EXPORT_SYMBOL_NS_GPL(sym, ns) EXPORT_SYMBOL_GPL(sym)
-#define MODULE_IMPORT_NS(ns)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,5,0)
-#include <linux/debugfs.h>
-
-#define debugfs_create_xul iwl7000_debugfs_create_xul
-static inline void debugfs_create_xul(const char *name, umode_t mode,
-				      struct dentry *parent,
-				      unsigned long *value)
-{
-	if (sizeof(*value) == sizeof(u32))
-		debugfs_create_x32(name, mode, parent, (u32 *)value);
-	else
-		debugfs_create_x64(name, mode, parent, (u64 *)value);
-}
-#endif
-
-#ifndef skb_list_walk_safe
-#define skb_list_walk_safe(first, skb, next_skb)				\
-	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb);	\
-	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-
-/**
- * list_for_each_entry_rcu	-	iterate over rcu list of given type
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_head within the struct.
- * @cond...:	optional lockdep expression if called from non-RCU protection.
- *
- * This list-traversal primitive may safely run concurrently with
- * the _rcu list-mutation primitives such as list_add_rcu()
- * as long as the traversal is guarded by rcu_read_lock().
- */
-#undef list_for_each_entry_rcu
-#define list_for_each_entry_rcu(pos, head, member, cond...)		\
-	for (pos = list_entry_rcu((head)->next, typeof(*pos), member); \
-		&pos->member != (head); \
-		pos = list_entry_rcu(pos->member.next, typeof(*pos), member))
-#endif /* < 5.4 */
-
-#if LINUX_VERSION_IS_LESS(5,7,0)
-#define efi_rt_services_supported(...) efi_enabled(EFI_RUNTIME_SERVICES)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-#define DECLARE_TRACEPOINT(tp) \
-	extern struct tracepoint __tracepoint_##tp
-#ifdef CONFIG_TRACEPOINTS
-# define tracepoint_enabled(tp) \
-	static_key_false(&(__tracepoint_##tp).key)
-#else
-# define tracepoint_enabled(tracepoint) false
-#endif
-#endif /* < 5.10 */
-
-#if LINUX_VERSION_IS_LESS(5,11,0)
-
-#define KHZ_PER_MHZ		1000UL
-#define HZ_PER_MHZ		1000000UL
-
-enum rfkill_hard_block_reasons {
-	RFKILL_HARD_BLOCK_SIGNAL        = 1 << 0,
-	RFKILL_HARD_BLOCK_NOT_OWNER     = 1 << 1,
-};
-#endif /* < v5.11 */
-
-#if LINUX_VERSION_IS_LESS(5,13,0)
-/* This will get enum rfkill_hard_block_reasons used below */
-#include <uapi/linux/rfkill.h>
-
-static inline void
-wiphy_rfkill_set_hw_state_reason(struct wiphy *wiphy, bool blocked,
-				 enum rfkill_hard_block_reasons reason)
-{
-	wiphy_rfkill_set_hw_state(wiphy, blocked);
-}
-
-#endif /* < v5.13 */
-
-#if LINUX_VERSION_IS_LESS(5,14,0)
-/* make this code disappear, rfkill moved from rdev to wiphy */
-#define rfkill_blocked(__rkfill) false
-#endif /* < v5.14 */
-
-#if LINUX_VERSION_IS_LESS(5,17,0)
-#define rfkill_soft_blocked(__rfkill) rfkill_blocked(__rfkill)
-
-static inline void __noreturn
-kthread_complete_and_exit(struct completion *c, long ret)
-{
-	complete_and_exit(c, ret);
-}
-#endif /* <v5.17 */
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-static inline u32 get_random_u32_below(u32 ceil)
-{
-	return prandom_u32_max(ceil);
-}
-
-static inline u32 get_random_u32_inclusive(u32 floor, u32 ceil)
-{
-	BUILD_BUG_ON_MSG(__builtin_constant_p(floor) && __builtin_constant_p(ceil) &&
-			 (floor > ceil || ceil - floor == U32_MAX),
-			 "get_random_u32_inclusive() must take floor <= ceil");
-	return floor + get_random_u32_below(ceil - floor + 1);
-}
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,3,0)
-#define kvmemdup LINUX_BACKPORT(kvmemdup)
-static inline void *kvmemdup(const void *src, size_t len, gfp_t gfp)
-{
-	void *p;
-
-	p = kvmalloc(len, gfp);
-	if (p)
-		memcpy(p, src, len);
-	return p;
-}
-#endif
+#endif /* >= 6,0,0 */
+#endif /* CONFIG_THERMAL */

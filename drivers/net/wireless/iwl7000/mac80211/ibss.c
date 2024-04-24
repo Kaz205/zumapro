@@ -1640,9 +1640,9 @@ static void _ieee80211_ibss_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 void ieee80211_ibss_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 				   struct sk_buff *skb)
 {
-	sdata_lock_old_cfg80211(sdata);
+	mutex_lock(&(sdata)->wdev.mtx);
 	_ieee80211_ibss_rx_queued_mgmt(sdata, skb);
-	sdata_unlock_old_cfg80211(sdata);
+	mutex_unlock(&(sdata)->wdev.mtx);
 }
 
 void ieee80211_ibss_work(struct ieee80211_sub_if_data *sdata)
@@ -1733,7 +1733,7 @@ int ieee80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
-	if (cfg80211_chan_freq_offset(params->chandef.chan)) {
+	if (params->chandef.chan->freq_offset) {
 		/* this may work, but is untested */
 		return -EOPNOTSUPP;
 	}

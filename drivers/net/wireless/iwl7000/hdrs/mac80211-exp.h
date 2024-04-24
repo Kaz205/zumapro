@@ -13,12 +13,6 @@
 #define ieee80211_calc_tx_airtime __iwl7000_ieee80211_calc_tx_airtime
 #define arc4_setkey __iwl7000_arc4_setkey
 #define arc4_crypt __iwl7000_arc4_crypt
-#ifdef CONFIG_THERMAL
-#if LINUX_VERSION_IS_LESS(6,4,0)
-#define thermal_zone_device_priv __iwl7000_thermal_zone_device_priv
-#endif /* < 6.4 */
-#endif
-#if LINUX_VERSION_IS_LESS(6,7,0)
 #define wiphy_work_flush __iwl7000_wiphy_work_flush
 #define wiphy_delayed_work_flush __iwl7000_wiphy_delayed_work_flush
 #define wiphy_work_queue __iwl7000_wiphy_work_queue
@@ -26,19 +20,9 @@
 #define wiphy_delayed_work_timer __iwl7000_wiphy_delayed_work_timer
 #define wiphy_delayed_work_queue __iwl7000_wiphy_delayed_work_queue
 #define wiphy_delayed_work_cancel __iwl7000_wiphy_delayed_work_cancel
-#endif /* LINUX_VERSION_IS_LESS(6,5,0) */
-#if LINUX_VERSION_IS_LESS(6,8,0)
-#define nl80211_chan_width_to_mhz __iwl7000_nl80211_chan_width_to_mhz
-#endif /* cfg < 6.8 */
-#if LINUX_VERSION_IS_LESS(5,6,0)
-#define ieee80211_get_vht_max_nss __iwl7000_ieee80211_get_vht_max_nss
-#endif
-#if LINUX_VERSION_IS_LESS(6,9,0)
-#define cfg80211_defragment_element __iwl7000_cfg80211_defragment_element
-#endif
-#if LINUX_VERSION_IS_LESS(6,7,0)
 #define ieee80211_fragment_element __iwl7000_ieee80211_fragment_element
-#endif
+#define nl80211_chan_width_to_mhz __iwl7000_nl80211_chan_width_to_mhz
+#define cfg80211_defragment_element __iwl7000_cfg80211_defragment_element
 #define ieee80211_csa_finish __iwl7000_ieee80211_csa_finish
 #define ieee80211_channel_switch_disconnect __iwl7000_ieee80211_channel_switch_disconnect
 #define ieee80211_nan_func_terminated __iwl7000_ieee80211_nan_func_terminated

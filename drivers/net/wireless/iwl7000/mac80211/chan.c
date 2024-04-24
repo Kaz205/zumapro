@@ -74,7 +74,7 @@ ieee80211_link_get_chanctx(struct ieee80211_link_data *link)
 	struct ieee80211_chanctx_conf *conf;
 
 	conf = rcu_dereference_protected(link->conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 	if (!conf)
 		return NULL;
 
@@ -488,7 +488,7 @@ static void _ieee80211_change_chanctx(struct ieee80211_local *local,
 	u32 changed = 0;
 
 	/* expected to handle only 20/40/80/160/320 channel widths */
-	switch((int)chandef->width) {
+	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_20_NOHT:
 	case NL80211_CHAN_WIDTH_20:
 	case NL80211_CHAN_WIDTH_40:
@@ -520,7 +520,7 @@ static void _ieee80211_change_chanctx(struct ieee80211_local *local,
 	if (!cfg80211_chandef_identical(&ctx->conf.def, &chanreq->oper)) {
 		if (ctx->conf.def.width != chanreq->oper.width)
 			changed |= IEEE80211_CHANCTX_CHANGE_WIDTH;
-		if (chandef_punctured(&ctx->conf.def) != chandef_punctured(&chanreq->oper))
+		if (0 != 0)
 			changed |= IEEE80211_CHANCTX_CHANGE_PUNCTURING;
 	}
 	if (!cfg80211_chandef_identical(&ctx->conf.ap, &chanreq->ap))
@@ -826,7 +826,7 @@ static int ieee80211_assign_link_chanctx(struct ieee80211_link_data *link,
 		return -EOPNOTSUPP;
 
 	conf = rcu_dereference_protected(link->conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 
 	if (conf) {
 		curr_ctx = container_of(conf, struct ieee80211_chanctx, conf);
@@ -989,7 +989,7 @@ __ieee80211_link_copy_chanctx_to_vlans(struct ieee80211_link_data *link,
 	 * to a channel context that has already been freed.
 	 */
 	conf = rcu_dereference_protected(link_conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 	WARN_ON(!conf);
 
 	if (clear)
@@ -1710,7 +1710,7 @@ void __ieee80211_link_release_channel(struct ieee80211_link_data *link,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	conf = rcu_dereference_protected(link_conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 	if (!conf)
 		return;
 
@@ -1947,7 +1947,7 @@ int ieee80211_link_change_chanreq(struct ieee80211_link_data *link,
 		return -EINVAL;
 
 	conf = rcu_dereference_protected(link_conf->chanctx_conf,
-					 lockdep_is_wiphy_held(local->hw.wiphy));
+					 lockdep_is_held(&local->hw.wiphy->mtx));
 	if (!conf)
 		return -EINVAL;
 

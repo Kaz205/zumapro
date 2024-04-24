@@ -338,7 +338,7 @@ struct sta_info *sta_info_get_by_idx(struct ieee80211_sub_if_data *sdata,
 	int i = 0;
 
 	list_for_each_entry_rcu(sta, &local->sta_list, list,
-				lockdep_is_wiphy_held(local->hw.wiphy)) {
+				lockdep_is_held(&local->hw.wiphy->mtx)) {
 		if (sdata != sta->sdata)
 			continue;
 		if (i < idx) {
@@ -648,7 +648,7 @@ __sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 		if (!hw->wiphy->bands[i])
 			continue;
 
-		switch((int)i) {
+		switch (i) {
 		case NL80211_BAND_2GHZ:
 		case NL80211_BAND_LC:
 			/*
@@ -887,7 +887,7 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
 			struct link_sta_info *link_sta;
 
 			link_sta = rcu_dereference_protected(sta->link[i],
-							     lockdep_is_wiphy_held(local->hw.wiphy));
+							     lockdep_is_held(&local->hw.wiphy->mtx));
 
 			if (!link_sta)
 				continue;
@@ -1245,7 +1245,7 @@ static int __must_check __sta_info_destroy_part1(struct sta_info *sta)
 			continue;
 
 		link_sta = rcu_dereference_protected(sta->link[i],
-						     lockdep_is_wiphy_held(local->hw.wiphy));
+						     lockdep_is_held(&local->hw.wiphy->mtx));
 
 		link_sta_info_hash_del(local, link_sta);
 	}
@@ -2460,16 +2460,12 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u32 rate,
 		rinfo->he_ru_alloc = STA_STATS_GET(HE_RU, rate);
 		rinfo->he_dcm = STA_STATS_GET(HE_DCM, rate);
 		break;
-#if LINUX_VERSION_IS_GEQ(5,18,0)
 	case STA_STATS_RATE_TYPE_EHT:
 		rinfo->flags = RATE_INFO_FLAGS_EHT_MCS;
 		rinfo->mcs = STA_STATS_GET(EHT_MCS, rate);
 		rinfo->nss = STA_STATS_GET(EHT_NSS, rate);
 		rinfo->eht_gi = STA_STATS_GET(EHT_GI, rate);
 		rinfo->eht_ru_alloc = STA_STATS_GET(EHT_RU, rate);
-#else
-		WARN_ONCE(1, "EHT not supported on this cfg80211 version\n");
-#endif
 		break;
 	}
 }
@@ -2602,9 +2598,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 	}
 
 	sinfo->connected_time = ktime_get_seconds() - sta->last_connected;
-#if LINUX_VERSION_IS_GEQ(5,4,0)
 	sinfo->assoc_at = sta->assoc_at;
-#endif
 	sinfo->inactive_time =
 		jiffies_to_msecs(jiffies - ieee80211_sta_last_active(sta));
 
@@ -2664,7 +2658,6 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
 	}
 
-#if LINUX_VERSION_IS_GEQ(5,1,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_RX_DURATION))) {
 		for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
 			sinfo->rx_duration += sta->airtime[ac].rx_airtime;
@@ -2681,7 +2674,6 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->airtime_weight = sta->airtime_weight;
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_AIRTIME_WEIGHT);
 	}
-#endif
 
 	sinfo->rx_dropped_misc = sta->deflink.rx_stats.dropped;
 	if (sta->deflink.pcpu_rx_stats) {
@@ -2827,7 +2819,6 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
 	}
 
-#if LINUX_VERSION_IS_GEQ(4,20,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG)) &&
 	    sta->deflink.status_stats.ack_signal_filled) {
 		sinfo->avg_ack_signal =
@@ -2836,15 +2827,12 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->filled |=
 			BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG);
 	}
-#endif
 
-#if LINUX_VERSION_IS_GEQ(5,2,0)
 	if (ieee80211_vif_is_mesh(&sdata->vif)) {
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_AIRTIME_LINK_METRIC);
 		sinfo->airtime_link_metric =
 			airtime_link_metric_get(local, sta);
 	}
-#endif
 }
 
 u32 sta_get_expected_throughput(struct sta_info *sta)
@@ -2950,7 +2938,7 @@ int ieee80211_sta_activate_link(struct sta_info *sta, unsigned int link_id)
 	int ret;
 
 	link_sta = rcu_dereference_protected(sta->link[link_id],
-					     lockdep_is_wiphy_held(sdata->local->hw.wiphy));
+					     lockdep_is_held(&sdata->local->hw.wiphy->mtx));
 
 	if (WARN_ON(old_links == new_links || !link_sta))
 		return -EINVAL;
@@ -3033,7 +3021,7 @@ bool lockdep_sta_mutex_held(struct ieee80211_sta *pubsta)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
 
-	return lockdep_is_wiphy_held(sta->local->hw.wiphy);
+	return lockdep_is_held(&sta->local->hw.wiphy->mtx);
 }
 EXPORT_SYMBOL(lockdep_sta_mutex_held);
 #endif

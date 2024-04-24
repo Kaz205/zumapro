@@ -45,10 +45,10 @@
 			__field(u32, center_freq2)
 #define CHANDEF_ASSIGN(c)							\
 			__entry->control_freq = (c) ? ((c)->chan ? (c)->chan->center_freq : 0) : 0;	\
-			__entry->freq_offset = (c) ? ((c)->chan ? cfg80211_chan_freq_offset((c)->chan) : 0) : 0;	\
+			__entry->freq_offset = (c) ? ((c)->chan ? (c)->chan->freq_offset : 0) : 0;	\
 			__entry->chan_width = (c) ? (c)->width : 0;			\
 			__entry->center_freq1 = (c) ? (c)->center_freq1 : 0;		\
-			__entry->freq1_offset = (c) ? cfg80211_chandef_freq1_offset((c)) : 0;		\
+			__entry->freq1_offset = (c) ? (c)->freq1_offset : 0;		\
 			__entry->center_freq2 = (c) ? (c)->center_freq2 : 0;
 #define CHANDEF_PR_FMT	" chandef(%d.%03d MHz,width:%d,center: %d.%03d/%d MHz)"
 #define CHANDEF_PR_ARG	__entry->control_freq, __entry->freq_offset, __entry->chan_width, \
@@ -64,10 +64,10 @@
 
 #define MIN_CHANDEF_ASSIGN(c)								\
 			__entry->min_control_freq = (c)->chan ? (c)->chan->center_freq : 0;	\
-			__entry->min_freq_offset = (c)->chan ? cfg80211_chan_freq_offset((c)->chan) : 0;	\
+			__entry->min_freq_offset = (c)->chan ? (c)->chan->freq_offset : 0;	\
 			__entry->min_chan_width = (c)->width;				\
 			__entry->min_center_freq1 = (c)->center_freq1;			\
-			__entry->min_freq1_offset = cfg80211_chandef_freq1_offset((c));			\
+			__entry->min_freq1_offset = (c)->freq1_offset;			\
 			__entry->min_center_freq2 = (c)->center_freq2;
 #define MIN_CHANDEF_PR_FMT	" mindef(%d.%03d MHz,width:%d,center: %d.%03d/%d MHz)"
 #define MIN_CHANDEF_PR_ARG	__entry->min_control_freq, __entry->min_freq_offset,	\
@@ -85,10 +85,10 @@
 
 #define AP_CHANDEF_ASSIGN(c)								\
 			__entry->ap_control_freq = (c)->chan ? (c)->chan->center_freq : 0;\
-			__entry->ap_freq_offset = (c)->chan ? cfg80211_chan_freq_offset((c)->chan) : 0;\
+			__entry->ap_freq_offset = (c)->chan ? (c)->chan->freq_offset : 0;\
 			__entry->ap_chan_width = (c)->chan ? (c)->width : 0;		\
 			__entry->ap_center_freq1 = (c)->chan ? (c)->center_freq1 : 0;	\
-			__entry->ap_freq1_offset = (c)->chan ? cfg80211_chandef_freq1_offset((c)) : 0;	\
+			__entry->ap_freq1_offset = (c)->chan ? (c)->freq1_offset : 0;	\
 			__entry->ap_center_freq2 = (c)->chan ? (c)->center_freq2 : 0;
 #define AP_CHANDEF_PR_FMT	" ap(%d.%03d MHz,width:%d,center: %d.%03d/%d MHz)"
 #define AP_CHANDEF_PR_ARG	__entry->ap_control_freq, __entry->ap_freq_offset,	\
@@ -554,7 +554,7 @@ TRACE_EVENT(drv_link_info_changed,
 		__entry->cqm_rssi_hyst = link_conf->cqm_rssi_hyst;
 		__entry->channel_width = link_conf->chanreq.oper.width;
 		__entry->channel_cfreq1 = link_conf->chanreq.oper.center_freq1;
-		__entry->channel_cfreq1_offset = cfg80211_chandef_freq1_offset(&link_conf->chanreq.oper);
+		__entry->channel_cfreq1_offset = link_conf->chanreq.oper.freq1_offset;
 		__entry->qos = link_conf->qos;
 		__entry->hidden_ssid = link_conf->hidden_ssid;
 		__entry->txpower = link_conf->txpower;
@@ -1351,7 +1351,7 @@ TRACE_EVENT(drv_remain_on_channel,
 		LOCAL_ASSIGN;
 		VIF_ASSIGN;
 		__entry->center_freq = chan->center_freq;
-		__entry->freq_offset = cfg80211_chan_freq_offset(chan);
+		__entry->freq_offset = chan->freq_offset;
 		__entry->duration = duration;
 		__entry->type = type;
 	),
@@ -1744,26 +1744,26 @@ TRACE_EVENT(drv_switch_vif_chanctx,
 					sizeof(local_vifs[i].vif.vif_name));
 				SWITCH_ENTRY_ASSIGN(old_chandef.control_freq,
 						old_ctx->def.chan->center_freq);
-				local_vifs[i].old_chandef.freq_offset =
-					cfg80211_chan_freq_offset(vifs[i].old_ctx->def.chan);
+				SWITCH_ENTRY_ASSIGN(old_chandef.freq_offset,
+						old_ctx->def.chan->freq_offset);
 				SWITCH_ENTRY_ASSIGN(old_chandef.chan_width,
 						    old_ctx->def.width);
 				SWITCH_ENTRY_ASSIGN(old_chandef.center_freq1,
 						    old_ctx->def.center_freq1);
-				local_vifs[i].old_chandef.freq1_offset =
-					cfg80211_chandef_freq1_offset(&vifs[i].old_ctx->def);
+				SWITCH_ENTRY_ASSIGN(old_chandef.freq1_offset,
+						    old_ctx->def.freq1_offset);
 				SWITCH_ENTRY_ASSIGN(old_chandef.center_freq2,
 						    old_ctx->def.center_freq2);
 				SWITCH_ENTRY_ASSIGN(new_chandef.control_freq,
 						new_ctx->def.chan->center_freq);
-				local_vifs[i].new_chandef.freq_offset =
-					cfg80211_chan_freq_offset(vifs[i].new_ctx->def.chan);
+				SWITCH_ENTRY_ASSIGN(new_chandef.freq_offset,
+						new_ctx->def.chan->freq_offset);
 				SWITCH_ENTRY_ASSIGN(new_chandef.chan_width,
 						    new_ctx->def.width);
 				SWITCH_ENTRY_ASSIGN(new_chandef.center_freq1,
 						    new_ctx->def.center_freq1);
-				local_vifs[i].new_chandef.freq1_offset =
-					cfg80211_chandef_freq1_offset(&vifs[i].new_ctx->def);
+				SWITCH_ENTRY_ASSIGN(new_chandef.freq1_offset,
+						    new_ctx->def.freq1_offset);
 				SWITCH_ENTRY_ASSIGN(new_chandef.center_freq2,
 						    new_ctx->def.center_freq2);
 			}

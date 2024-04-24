@@ -413,7 +413,7 @@ iwl_mvm_ftm_target_chandef_v2(struct iwl_mvm *mvm,
 	}
 
 	/* non EDCA based measurement must use HE preamble */
-	if (ftm_trigger_based(peer) || ftm_non_trigger_based(peer))
+	if (peer->ftm.trigger_based || peer->ftm.non_trigger_based)
 		*format_bw |= IWL_LOCATION_FRAME_FORMAT_HE;
 
 	*ctrl_ch_position = (peer->chandef.width > NL80211_CHAN_WIDTH_20) ?
@@ -491,13 +491,13 @@ iwl_mvm_ftm_put_target_common(struct iwl_mvm *mvm,
 	else if (IWL_MVM_FTM_INITIATOR_ALGO == IWL_TOF_ALGO_TYPE_FFT)
 		FTM_PUT_FLAG(ALGO_FFT);
 
-	if (ftm_trigger_based(peer))
+	if (peer->ftm.trigger_based)
 		FTM_PUT_FLAG(TB);
-	else if (ftm_non_trigger_based(peer))
+	else if (peer->ftm.non_trigger_based)
 		FTM_PUT_FLAG(NON_TB);
 
-	if ((ftm_trigger_based(peer) || ftm_non_trigger_based(peer)) &&
-	    ftm_lmr_feedback(peer))
+	if ((peer->ftm.trigger_based || peer->ftm.non_trigger_based) &&
+	    peer->ftm.lmr_feedback)
 		FTM_PUT_FLAG(LMR_FEEDBACK);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
@@ -579,8 +579,8 @@ iwl_mvm_ftm_put_target(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 				return PTR_ERR_OR_ZERO(sta);
 			}
 
-			if (sta->mfp && (ftm_trigger_based(peer) ||
-					 ftm_non_trigger_based(peer)))
+			if (sta->mfp && (peer->ftm.trigger_based ||
+					 peer->ftm.non_trigger_based))
 				FTM_PUT_FLAG(PMF);
 			break;
 		}
@@ -963,10 +963,10 @@ static int iwl_mvm_ftm_start_v13(struct iwl_mvm *mvm,
 		if (err)
 			return err;
 
-		if (ftm_trigger_based(peer) || ftm_non_trigger_based(peer))
-			target->bss_color = ftm_bss_color(peer);
+		if (peer->ftm.trigger_based || peer->ftm.non_trigger_based)
+			target->bss_color = peer->ftm.bss_color;
 
-		if (ftm_non_trigger_based(peer)) {
+		if (peer->ftm.non_trigger_based) {
 			target->min_time_between_msr =
 				cpu_to_le16(IWL_MVM_FTM_NON_TB_MIN_TIME_BETWEEN_MSR);
 			target->burst_period =

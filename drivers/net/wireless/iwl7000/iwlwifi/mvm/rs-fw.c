@@ -290,7 +290,7 @@ rs_fw_eht_set_enabled_rates(struct ieee80211_vif *vif,
 {
 	/* peer RX mcs capa */
 	const struct ieee80211_eht_mcs_nss_supp *eht_rx_mcs =
-		&cfg_eht_cap(link_sta)->eht_mcs_nss_supp;
+		&link_sta->eht_cap.eht_mcs_nss_supp;
 	/* our TX mcs capa */
 	const struct ieee80211_eht_mcs_nss_supp *eht_tx_mcs =
 		&sband_eht_cap->eht_mcs_nss_supp;
@@ -386,7 +386,7 @@ static void rs_fw_set_supp_rates(struct ieee80211_vif *vif,
 	cmd->mode = IWL_TLC_MNG_MODE_NON_HT;
 
 	/* HT/VHT rates */
-	if (cfg_eht_cap_has_eht(link_sta) && sband_he_cap && sband_eht_cap) {
+	if (link_sta->eht_cap.has_eht && sband_he_cap && sband_eht_cap) {
 		cmd->mode = IWL_TLC_MNG_MODE_EHT;
 		rs_fw_eht_set_enabled_rates(vif, link_sta, sband_he_cap,
 					    sband_eht_cap, cmd);
@@ -661,8 +661,8 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 	    sband_eht_cap &&
 	    sband_eht_cap->eht_cap_elem.phy_cap_info[5] &
 		IEEE80211_EHT_PHY_CAP5_SUPP_EXTRA_EHT_LTF &&
-	    cfg_eht_cap_has_eht(link_sta) &&
-	    cfg_eht_cap(link_sta)->eht_cap_elem.phy_cap_info[5] &
+	    link_sta->eht_cap.has_eht &&
+	    link_sta->eht_cap.eht_cap_elem.phy_cap_info[5] &
 	    IEEE80211_EHT_PHY_CAP5_SUPP_EXTRA_EHT_LTF) {
 		IWL_DEBUG_RATE(mvm, "Set support for Extra EHT LTF\n");
 		cfg_cmd.flags |=
