@@ -38,37 +38,6 @@
 #include "fw/api/nan.h"
 #include "time-sync.h"
 
-/* The ETSI patches were introduced in 4.17 and backported to
- * chromeos-4.4, but we use our version in 4.4 anyway.  Also, due to
- * backporting issues (some wmm rules code was moved to cfg80211), we
- * only use the outer kernel version starting from 4.19.
- */
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-const static struct ieee80211_wmm_rule wmm_rules = {
-	.client = {
-		{.cw_min = 3, .cw_max = 7, .aifsn = 2, .cot = 2000},
-		{.cw_min = 7, .cw_max = 15, .aifsn = 2, .cot = 4000},
-		{.cw_min = 15, .cw_max = 1023, .aifsn = 3, .cot = 6000},
-		{.cw_min = 15, .cw_max = 1023, .aifsn = 7, .cot = 6000},
-		},
-	.ap = {
-		{.cw_min = 3, .cw_max = 7, .aifsn = 1, .cot = 2000},
-		{.cw_min = 7, .cw_max = 15, .aifsn = 1, .cot = 4000},
-		{.cw_min = 15, .cw_max = 63, .aifsn = 3, .cot = 6000},
-		{.cw_min = 15, .cw_max = 1023, .aifsn = 7, .cot = 6000},
-	}
-};
-
-const static char *wmm_cc_list[] = {
-	"AT", "BE", "BA", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE",
-	"GR", "HU", "IS", "IE", "IT", "LV", "LI", "LT", "LU", "MK", "MT", "ME",
-	"NL", "NO", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "CH", "GB", "GF",
-	"PF", "GP", "MQ", "YT", "MC", "NC", "RE", "MF", "PM", "WF", "SM", "VA",
-	"CW", "BQ", "SX", "GL", "AD", "AI", "FK", "JE", "GI", "GG", "MS", "SH",
-	"TC", "VG",
-};
-#endif
-
 static const struct ieee80211_iface_limit iwl_mvm_limits[] = {
 	{
 		.max = CPTCFG_IWLWIFI_NUM_STA_INTERFACES,
@@ -4438,66 +4407,6 @@ void iwl_mvm_sta_rc_update(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		iwl_mvm_sf_update(mvm, vif, false);
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-static void iwl_mvm_limit_wmm_ac(struct iwl_mvm *mvm,
-				 struct ieee80211_vif *vif,
-				 struct ieee80211_tx_queue_params *params,
-				 u16 ac)
-{
-	struct ieee80211_regdomain *rd;
-	struct ieee80211_chanctx_conf *chanctx_conf;
-	const struct ieee80211_wmm_ac *wmm_ac;
-	u16 center_freq = 0;
-	int i;
-
-	rcu_read_lock();
-	chanctx_conf = rcu_dereference(vif->bss_conf.chanctx_conf);
-	if (chanctx_conf)
-		center_freq = chanctx_conf->def.chan->center_freq;
-
-	rcu_read_unlock();
-
-	if (!center_freq || center_freq < 5180 || center_freq > 5720)
-		return;
-
-	if (vif->type != NL80211_IFTYPE_STATION &&
-	    vif->type != NL80211_IFTYPE_AP &&
-	    vif->type != NL80211_IFTYPE_P2P_CLIENT &&
-	    vif->type != NL80211_IFTYPE_P2P_GO)
-		return;
-
-	mutex_lock(&mvm->mutex);
-	if (iwl_mvm_is_lar_supported(mvm))
-		rd = iwl_mvm_get_current_regdomain(mvm, NULL);
-	else
-		rd = NULL;
-	mutex_unlock(&mvm->mutex);
-
-	if (IS_ERR_OR_NULL(rd))
-		return;
-
-	for  (i = 0; i < ARRAY_SIZE(wmm_cc_list); i++) {
-		if (!strncmp(wmm_cc_list[i], rd->alpha2, 2)) {
-			if (vif->type == NL80211_IFTYPE_STATION ||
-			    vif->type == NL80211_IFTYPE_P2P_CLIENT)
-				wmm_ac = &wmm_rules.client[ac];
-			else
-				wmm_ac = &wmm_rules.ap[ac];
-
-			params->txop =
-				min_t(u16, params->txop, wmm_ac->cot / 32);
-			params->cw_min =
-				max_t(u16, params->cw_min, wmm_ac->cw_min);
-			params->cw_max =
-				max_t(u16, params->cw_max, wmm_ac->cw_max);
-			params->aifs =
-				max_t(u8, params->aifs, wmm_ac->aifsn);
-			return;
-		}
-	}
-}
-#endif
-
 static int iwl_mvm_mac_conf_tx(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
 			       unsigned int link_id, u16 ac,
@@ -4507,10 +4416,6 @@ static int iwl_mvm_mac_conf_tx(struct ieee80211_hw *hw,
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 
 	mvmvif->deflink.queue_params[ac] = *params;
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-	iwl_mvm_limit_wmm_ac(mvm, vif, &mvmvif->deflink.queue_params[ac], ac);
-#endif
 
 	/*
 	 * No need to update right away, we'll get BSS_CHANGED_QOS
@@ -6426,7 +6331,6 @@ static void iwl_mvm_set_sta_rate(u32 rate_n_flags, struct rate_info *rinfo)
 #endif
 		break;
 	case RATE_MCS_HE_MSK:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,19,0)
 		gi_ltf = u32_get_bits(rate_n_flags, RATE_MCS_HE_GI_LTF_MSK);
 
 		rinfo->flags |= RATE_INFO_FLAGS_HE_MCS;
@@ -6466,7 +6370,6 @@ static void iwl_mvm_set_sta_rate(u32 rate_n_flags, struct rate_info *rinfo)
 
 		if (rate_n_flags & RATE_HE_DUAL_CARRIER_MODE_MSK)
 			rinfo->he_dcm = 1;
-#endif
 		break;
 	case RATE_MCS_HT_MSK:
 		rinfo->flags |= RATE_INFO_FLAGS_MCS;

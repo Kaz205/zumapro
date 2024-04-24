@@ -932,7 +932,6 @@ void ieee80211_regulatory_limit_wmm_params(struct ieee80211_sub_if_data *sdata,
 	    sdata->vif.type != NL80211_IFTYPE_STATION)
 		return;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,17,0)
 	rcu_read_lock();
 	chanctx_conf = rcu_dereference(sdata->vif.bss_conf.chanctx_conf);
 	if (chanctx_conf)
@@ -945,33 +944,20 @@ void ieee80211_regulatory_limit_wmm_params(struct ieee80211_sub_if_data *sdata,
 
 	rrule = freq_reg_info(sdata->wdev.wiphy, MHZ_TO_KHZ(center_freq));
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,13)
 	if (IS_ERR_OR_NULL(rrule) || !rrule->has_wmm) {
-#else
-	if (IS_ERR_OR_NULL(rrule) || !rrule->wmm_rule) {
-#endif
 		rcu_read_unlock();
 		return;
 	}
 
 	if (sdata->vif.type == NL80211_IFTYPE_AP)
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,13)
 		wmm_ac = &rrule->wmm_rule.ap[ac];
-#else
-		wmm_ac = &rrule->wmm_rule->ap[ac];
-#endif
 	else
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,13)
 		wmm_ac = &rrule->wmm_rule.client[ac];
-#else
-		wmm_ac = &rrule->wmm_rule->client[ac];
-#endif
 	qparam->cw_min = max_t(u16, qparam->cw_min, wmm_ac->cw_min);
 	qparam->cw_max = max_t(u16, qparam->cw_max, wmm_ac->cw_max);
 	qparam->aifs = max_t(u8, qparam->aifs, wmm_ac->aifsn);
 	qparam->txop = min_t(u16, qparam->txop, wmm_ac->cot / 32);
 	rcu_read_unlock();
-#endif
 }
 
 void ieee80211_set_wmm_default(struct ieee80211_link_data *link,
@@ -3380,7 +3366,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 		}
 		break;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,19,0)
 	case RX_ENC_HE:
 		ri.flags |= RATE_INFO_FLAGS_HE_MCS;
 		ri.mcs = status->rate_idx;
@@ -3407,7 +3392,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 		}
 
 		break;
-#endif
 	case RX_ENC_HT:
 		ri.mcs = status->rate_idx;
 		ri.flags |= RATE_INFO_FLAGS_MCS;

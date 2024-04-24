@@ -1519,7 +1519,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 	sdata->control_port_protocol = params->crypto.control_port_ethertype;
 	sdata->control_port_no_encrypt = params->crypto.control_port_no_encrypt;
 	sdata->control_port_over_nl80211 =
-				cfg_control_port_over_nl80211(&params->crypto);
+				params->crypto.control_port_over_nl80211;
 	sdata->control_port_no_preauth =
 				cfg80211_crypto_control_port_no_preauth(&params->crypto);
 
@@ -1529,7 +1529,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 		vlan->control_port_no_encrypt =
 			params->crypto.control_port_no_encrypt;
 		vlan->control_port_over_nl80211 =
-			cfg_control_port_over_nl80211(&params->crypto);
+			params->crypto.control_port_over_nl80211;
 		vlan->control_port_no_preauth =
 			cfg80211_crypto_control_port_no_preauth(&params->crypto);
 	}
@@ -2040,7 +2040,6 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 						    params->vht_capa, NULL,
 						    link_sta);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,19,0)
 	if (params->he_capa)
 		ieee80211_he_cap_ie_to_sta_he_cap(sdata, sband,
 						  (void *)params->he_capa,
@@ -2051,7 +2050,6 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 						  NULL,
 #endif
 						  link_sta);
-#endif
 
 #if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
 	if (params->he_capa && params->eht_capa)
@@ -2829,7 +2827,7 @@ static int ieee80211_join_mesh(struct wiphy *wiphy, struct net_device *dev,
 	if (err)
 		return err;
 
-	sdata->control_port_over_nl80211 = cfg_control_port_over_nl80211(setup);
+	sdata->control_port_over_nl80211 = setup->control_port_over_nl80211;
 
 	/* can mesh use other SMPS modes? */
 	sdata->deflink.smps_mode = IEEE80211_SMPS_OFF;
@@ -4735,7 +4733,6 @@ static int ieee80211_set_multicast_to_unicast(struct wiphy *wiphy,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,0)
 void ieee80211_fill_txq_stats(struct cfg80211_txq_stats *txqstats,
 			      struct txq_info *txqi)
 {
@@ -4825,7 +4822,6 @@ out:
 
 	return ret;
 }
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(4,18,0) */
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
 static int
@@ -5434,17 +5430,13 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.add_nan_func = ieee80211_add_nan_func,
 	.del_nan_func = ieee80211_del_nan_func,
 	.set_multicast_to_unicast = ieee80211_set_multicast_to_unicast,
-#if CFG80211_VERSION >= KERNEL_VERSION(4,17,0)
 #if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
 	.tx_control_port = ieee80211_tx_control_port,
 #else
 	.tx_control_port = bp_ieee80211_tx_control_port,
 #endif
-#endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,0)
 	.get_txq_stats = ieee80211_get_txq_stats,
-#endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
 	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif

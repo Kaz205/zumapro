@@ -178,15 +178,7 @@ struct backport_sinfo {
 	u64 rx_duration;
 	u64 rx_beacon;
 	u8 rx_beacon_signal_avg;
-#if CFG80211_VERSION < KERNEL_VERSION(4,18,0)
-	/*
-	 * With < 4.18 we use an array here, like before, so we don't
-	 * need to alloc/free it
-	 */
-	struct cfg80211_tid_stats pertid[IEEE80211_NUM_TIDS + 1];
-#else
 	struct cfg80211_tid_stats *pertid;
-#endif
 	s8 ack_signal;
 	s8 avg_ack_signal;
 
@@ -199,18 +191,6 @@ struct backport_sinfo {
 
 	u64 assoc_at;
 };
-
-/* these are constants in nl80211.h, so it's
- * harmless to define them unconditionally
- */
-#define NL80211_STA_INFO_RX_DROP_MISC		28
-#define NL80211_STA_INFO_BEACON_RX		29
-#define NL80211_STA_INFO_BEACON_SIGNAL_AVG	30
-#define NL80211_STA_INFO_TID_STATS		31
-#define NL80211_TID_STATS_RX_MSDU		1
-#define NL80211_TID_STATS_TX_MSDU		2
-#define NL80211_TID_STATS_TX_MSDU_RETRIES	3
-#define NL80211_TID_STATS_TX_MSDU_FAILED	4
 
 static inline void iwl7000_convert_sinfo(struct backport_sinfo *bpsinfo,
 					 struct station_info *sinfo)
@@ -248,14 +228,12 @@ static inline void iwl7000_convert_sinfo(struct backport_sinfo *bpsinfo,
 	COPY(peer_pm);
 	COPY(nonpeer_pm);
 	COPY(expected_throughput);
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,0)
 	COPY(ack_signal);
 	COPY(avg_ack_signal);
 	COPY(rx_duration);
 #if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
 	COPY(rx_mpdu_count);
 	COPY(fcs_err_count);
-#endif
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
 	COPY(tx_duration);
@@ -314,124 +292,6 @@ static inline void iwl7000_convert_survey_info(struct survey_info *survey,
 #define ASSOC_REQ_DISABLE_EHT BIT(5)
 #define NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE -1
 #endif /* CFG80211_VERSION < KERNEL_VERSION(6,1,0) */
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-#define IEEE80211_HE_PPE_THRES_MAX_LEN		25
-#define RATE_INFO_FLAGS_HE_MCS BIT(4)
-
-/**
- * enum nl80211_he_gi - HE guard interval
- * @NL80211_RATE_INFO_HE_GI_0_8: 0.8 usec
- * @NL80211_RATE_INFO_HE_GI_1_6: 1.6 usec
- * @NL80211_RATE_INFO_HE_GI_3_2: 3.2 usec
- */
-enum nl80211_he_gi {
-	NL80211_RATE_INFO_HE_GI_0_8,
-	NL80211_RATE_INFO_HE_GI_1_6,
-	NL80211_RATE_INFO_HE_GI_3_2,
-};
-
-/**
- * @enum nl80211_he_ru_alloc - HE RU allocation values
- * @NL80211_RATE_INFO_HE_RU_ALLOC_26: 26-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_52: 52-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_106: 106-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_242: 242-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_484: 484-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_996: 996-tone RU allocation
- * @NL80211_RATE_INFO_HE_RU_ALLOC_2x996: 2x996-tone RU allocation
- */
-enum nl80211_he_ru_alloc {
-	NL80211_RATE_INFO_HE_RU_ALLOC_26,
-	NL80211_RATE_INFO_HE_RU_ALLOC_52,
-	NL80211_RATE_INFO_HE_RU_ALLOC_106,
-	NL80211_RATE_INFO_HE_RU_ALLOC_242,
-	NL80211_RATE_INFO_HE_RU_ALLOC_484,
-	NL80211_RATE_INFO_HE_RU_ALLOC_996,
-	NL80211_RATE_INFO_HE_RU_ALLOC_2x996,
-};
-
-#define RATE_INFO_BW_HE_RU	(RATE_INFO_BW_160 + 1)
-
-/**
- * struct ieee80211_sta_he_cap - STA's HE capabilities
- *
- * This structure describes most essential parameters needed
- * to describe 802.11ax HE capabilities for a STA.
- *
- * @has_he: true iff HE data is valid.
- * @he_cap_elem: Fixed portion of the HE capabilities element.
- * @he_mcs_nss_supp: The supported NSS/MCS combinations.
- * @ppe_thres: Holds the PPE Thresholds data.
- */
-struct ieee80211_sta_he_cap {
-	bool has_he;
-	struct ieee80211_he_cap_elem he_cap_elem;
-	struct ieee80211_he_mcs_nss_supp he_mcs_nss_supp;
-	u8 ppe_thres[IEEE80211_HE_PPE_THRES_MAX_LEN];
-};
-
-/**
- * struct ieee80211_sband_iftype_data
- *
- * This structure encapsulates sband data that is relevant for the interface
- * types defined in %types
- *
- * @types_mask: interface types (bits)
- * @he_cap: holds the HE capabilities
- */
-struct ieee80211_sband_iftype_data {
-	u16 types_mask;
-	struct ieee80211_sta_he_cap he_cap;
-};
-
-static inline u16
-ieee80211_sband_get_num_iftypes_data(struct ieee80211_supported_band *sband)
-{
-	return 0;
-}
-
-static inline struct ieee80211_sband_iftype_data *
-ieee80211_sband_get_iftypes_data(struct ieee80211_supported_band *sband)
-{
-	return NULL;
-}
-
-static inline struct ieee80211_sband_iftype_data *
-ieee80211_sband_get_iftypes_data_entry(struct ieee80211_supported_band *sband,
-				       u16 i)
-{
-	WARN_ONCE(1,
-		  "Tried to use unsupported sband iftype data\n");
-	return NULL;
-}
-
-static inline const struct ieee80211_sband_iftype_data *
-ieee80211_get_sband_iftype_data(const struct ieee80211_supported_band *sband,
-				u8 iftype)
-{
-	return NULL;
-}
-#else  /* CFG80211_VERSION < KERNEL_VERSION(4,19,0) */
-static inline u16
-ieee80211_sband_get_num_iftypes_data(struct ieee80211_supported_band *sband)
-{
-	return sband->n_iftype_data;
-}
-
-static inline const struct ieee80211_sband_iftype_data *
-ieee80211_sband_get_iftypes_data(struct ieee80211_supported_band *sband)
-{
-	return sband->iftype_data;
-}
-
-static inline const struct ieee80211_sband_iftype_data *
-ieee80211_sband_get_iftypes_data_entry(struct ieee80211_supported_band *sband,
-				       u16 i)
-{
-	return &sband->iftype_data[i];
-}
-#endif /* CFG80211_VERSION < KERNEL_VERSION(4,19,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(5,8,0)
 /**
@@ -546,40 +406,6 @@ static inline struct sk_buff *__skb_peek(const struct sk_buff_head *list_)
 }
 #endif
 
-#if LINUX_VERSION_IS_LESS(4,15,0)
-#define NL80211_EXT_FEATURE_FILS_MAX_CHANNEL_TIME -1
-#define NL80211_EXT_FEATURE_ACCEPT_BCAST_PROBE_RESP -1
-#define NL80211_EXT_FEATURE_OCE_PROBE_REQ_HIGH_TX_RATE -1
-#define NL80211_EXT_FEATURE_OCE_PROBE_REQ_DEFERRAL_SUPPRESSION -1
-#define NL80211_SCAN_FLAG_FILS_MAX_CHANNEL_TIME BIT(4)
-#define NL80211_SCAN_FLAG_ACCEPT_BCAST_PROBE_RESP BIT(5)
-#define NL80211_SCAN_FLAG_OCE_PROBE_REQ_HIGH_TX_RATE BIT(6)
-#define NL80211_SCAN_FLAG_OCE_PROBE_REQ_DEFERRAL_SUPPRESSION BIT(7)
-#endif
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,17,0)
-struct ieee80211_wmm_ac {
-	u16 cw_min;
-	u16 cw_max;
-	u16 cot;
-	u8 aifsn;
-};
-
-struct ieee80211_wmm_rule {
-	struct ieee80211_wmm_ac client[IEEE80211_NUM_ACS];
-	struct ieee80211_wmm_ac ap[IEEE80211_NUM_ACS];
-};
-
-static inline int
-reg_query_regdb_wmm(char *alpha2, int freq, u32 *ptr,
-		    struct ieee80211_wmm_rule *rule)
-{
-	pr_debug_once(KERN_DEBUG
-		      "iwl7000: ETSI WMM data not implemented yet!\n");
-	return -ENODATA;
-}
-#endif /* < 4.17.0 */
-
 #if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
 #define cfg_he_oper(params) params->he_oper
 #else
@@ -639,83 +465,10 @@ void cfg80211_send_layer2_update(struct net_device *dev, const u8 *addr)
 #define NL80211_EXT_FEATURE_CAN_REPLACE_PTK0 -1
 #endif /* >= 4.20 */
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-#define NL80211_EXT_FEATURE_SCAN_RANDOM_SN		-1
-#define NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT	-1
-#endif
-
 #if CFG80211_VERSION < KERNEL_VERSION(4,20,0)
 #define NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER	-1
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,17,0)
-#define NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211	-1
-
-/* define it here so we can set the values in mac80211... */
-struct sta_opmode_info {
-	u32 changed;
-	enum nl80211_smps_mode smps_mode;
-	enum nl80211_chan_width bw;
-	u8 rx_nss;
-};
-
-#define STA_OPMODE_MAX_BW_CHANGED	0
-#define STA_OPMODE_SMPS_MODE_CHANGED	0
-#define STA_OPMODE_N_SS_CHANGED		0
-
-/* ...but make the user an empty function, since we don't have it in cfg80211 */
-#define cfg80211_sta_opmode_change_notify(...)  do { } while (0)
-
-/*
- * we should never call this function since we force
- * cfg_control_port_over_nl80211 to be 0.
- */
-#define cfg80211_rx_control_port(...) do { } while (0)
-
-#define cfg_control_port_over_nl80211(params) 0
-#else
-#if CFG80211_VERSION >= KERNEL_VERSION(4,17,0) && \
-	CFG80211_VERSION < KERNEL_VERSION(4,18,0)
-static inline bool
-iwl7000_cfg80211_rx_control_port(struct net_device *dev, struct sk_buff *skb,
-				 bool unencrypted, int link_id)
-{
-	struct ethhdr *ehdr;
-
-	/*
-	 * Try to linearize the skb, because in 4.17
-	 * cfg80211_rx_control_port() is broken and needs it to be
-	 * linear.  If it fails, too bad, we fail too.
-	 */
-	if (skb_linearize(skb))
-		return false;
-
-	ehdr = eth_hdr(skb);
-
-	return cfg80211_rx_control_port(dev, skb->data, skb->len,
-				ehdr->h_source,
-				be16_to_cpu(skb->protocol), unencrypted);
-}
-#define cfg80211_rx_control_port iwl7000_cfg80211_rx_control_port
-#endif
-#define cfg_control_port_over_nl80211(params) (params)->control_port_over_nl80211
-#endif
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,18,0)
-#define NL80211_EXT_FEATURE_TXQS -1
-
-/*
- * This function just allocates tidstats and returns 0 if it
- * succeeded.  Since pre-4.18 tidstats is pre-allocated as part of
- * sinfo, we can simply return 0 because it's already allocated.
- */
-#define cfg80211_sinfo_alloc_tid_stats(...) 0
-
-#define WIPHY_PARAM_TXQ_LIMIT		0
-#define WIPHY_PARAM_TXQ_MEMORY_LIMIT	0
-#define WIPHY_PARAM_TXQ_QUANTUM		0
-
-#else
 static inline int
 backport_cfg80211_sinfo_alloc_tid_stats(struct station_info *sinfo, gfp_t gfp)
 {
@@ -731,12 +484,6 @@ backport_cfg80211_sinfo_alloc_tid_stats(struct station_info *sinfo, gfp_t gfp)
 	return 0;
 }
 #define cfg80211_sinfo_alloc_tid_stats backport_cfg80211_sinfo_alloc_tid_stats
-#endif
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-#define NL80211_SCAN_FLAG_RANDOM_SN		0
-#define NL80211_SCAN_FLAG_MIN_PREQ_CONTENT	0
-#endif /* CFG80211_VERSION < KERNEL_VERSION(4,19,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,20,0)
 enum nl80211_ftm_responder_stats {
@@ -1389,31 +1136,6 @@ tasklet_setup(struct tasklet_struct *t,
 #define NL80211_CHAN_WIDTH_16 12
 #endif /* CFG80211_VERSION < 5.9.0 */
 
-#if LINUX_VERSION_IS_LESS(4,19,0)
-static inline void netif_receive_skb_list(struct sk_buff_head *head)
-{
-	struct sk_buff *skb, *next;
-
-	skb_queue_walk_safe(head, skb, next) {
-		__skb_unlink(skb, head);
-		netif_receive_skb(skb);
-	}
-}
-
-static inline u8 cfg80211_he_gi(struct rate_info *ri)
-{
-	return 0;
-}
-
-#else /* < 4.19.0 */
-
-static inline u8 cfg80211_he_gi(struct rate_info *ri)
-{
-	return ri->he_gi;
-}
-
-#endif /* < 4.19.0 */
-
 #if CFG80211_VERSION < KERNEL_VERSION(5,10,0)
 static inline enum nl80211_chan_width
 ieee80211_s1g_channel_width(const struct ieee80211_channel *chan)
@@ -1630,20 +1352,6 @@ enum nl80211_eht_gi {
 #define RATE_INFO_BW_320 (RATE_INFO_BW_HE_RU + 1)
 #define NL80211_RRF_NO_320MHZ 0
 #endif /* CFG80211_VERSION < KERNEL_VERSION(5,18,0) */
-
-#if LINUX_VERSION_IS_LESS(4,19,0)
-/**
- * eth_hw_addr_set - Assign Ethernet address to a net_device
- * @dev: pointer to net_device structure
- * @addr: address to assign
- *
- * Assign given address to the net_device, addr_assign_type is not changed.
- */
-static inline void eth_hw_addr_set(struct net_device *dev, const u8 *addr)
-{
-	ether_addr_copy(dev->dev_addr, addr);
-}
-#endif
 
 #ifndef lockdep_assert
 #define lockdep_assert(x) do {} while (0)
@@ -2051,10 +1759,8 @@ _ieee80211_set_sband_iftype_data(struct ieee80211_supported_band *sband,
 				 const struct ieee80211_sband_iftype_data *iftd,
 				 u16 n_iftd)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(4,19,0)
 	sband->iftype_data = iftd;
 	sband->n_iftype_data = n_iftd;
-#endif
 }
 
 #if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
@@ -2103,15 +1809,12 @@ void wiphy_work_flush(struct wiphy *wiphy, struct wiphy_work *work);
 void wiphy_delayed_work_flush(struct wiphy *wiphy,
 			      struct wiphy_delayed_work *work);
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-#define for_each_sband_iftype_data(sband, i, iftd)	\
-	for (; 0 ;)
-#else
+#ifndef for_each_sband_iftype_data
 #define for_each_sband_iftype_data(sband, i, iftd)	\
 	for (i = 0, iftd = &(sband)->iftype_data[i];	\
 	     i < (sband)->n_iftype_data;		\
 	     i++, iftd = &(sband)->iftype_data[i])
-#endif /* CFG80211_VERSION < KERNEL_VERSION(4,19,0) */
+#endif
 
 /* older cfg80211 requires wdev to be locked */
 #define sdata_lock_old_cfg80211(sdata) mutex_lock(&(sdata)->wdev.mtx)

@@ -24,17 +24,6 @@
         (LINUX_VERSION_IS_GEQ(x1,x2,x3) && LINUX_VERSION_IS_LESS(y1,y2,y3))
 #define LINUX_BACKPORT(sym) backport_ ## sym
 
-/* this must be before including rhashtable.h */
-#if LINUX_VERSION_IS_LESS(4,15,0)
-#ifndef CONFIG_LOCKDEP
-struct lockdep_map { };
-#endif /* CONFIG_LOCKDEP */
-#endif /* LINUX_VERSION_IS_LESS(4,15,0) */
-
-/* include rhashtable this way to get our copy if another exists */
-#include <linux/list_nulls.h>
-#include "linux/rhashtable.h"
-
 #include <net/genetlink.h>
 #include <linux/crypto.h>
 #include <linux/moduleparam.h>
@@ -156,6 +145,7 @@ static inline struct net *get_net_ns_by_fd(int fd)
 #define NETLINK_CB_PORTID(__skb) NETLINK_CB(cb->skb).portid
 #define netlink_notify_portid(__notify) __notify->portid
 #define __genl_const const
+#define __genl_ro_after_init __ro_after_init
 
 static inline struct netlink_ext_ack *genl_info_extack(struct genl_info *info)
 {
@@ -167,68 +157,9 @@ static inline struct netlink_ext_ack *genl_info_extack(struct genl_info *info)
 #define ktime_get_coarse_boottime_ns ktime_get_boot_ns
 #endif
 
-#ifndef NETIF_F_CSUM_MASK
-#define NETIF_F_CSUM_MASK (NETIF_F_V4_CSUM | NETIF_F_V6_CSUM)
-#endif
-
-#define __genl_ro_after_init __ro_after_init
-
 #ifndef __BUILD_BUG_ON_NOT_POWER_OF_2
 #define __BUILD_BUG_ON_NOT_POWER_OF_2(...)
 #endif
-
-#define ATTRIBUTE_GROUPS_BACKPORT(_name) \
-static struct BP_ATTR_GRP_STRUCT _name##_dev_attrs[ARRAY_SIZE(_name##_attrs)];\
-static void init_##_name##_attrs(void)				\
-{									\
-	int i;								\
-	for (i = 0; _name##_attrs[i]; i++)				\
-		_name##_dev_attrs[i] =				\
-			*container_of(_name##_attrs[i],		\
-				      struct BP_ATTR_GRP_STRUCT,	\
-				      attr);				\
-}
-
-#ifndef __ATTRIBUTE_GROUPS
-#define __ATTRIBUTE_GROUPS(_name)				\
-static const struct attribute_group *_name##_groups[] = {	\
-	&_name##_group,						\
-	NULL,							\
-}
-#endif /* __ATTRIBUTE_GROUPS */
-
-#undef ATTRIBUTE_GROUPS
-#define ATTRIBUTE_GROUPS(_name)					\
-static const struct attribute_group _name##_group = {		\
-	.attrs = _name##_attrs,					\
-};								\
-static inline void init_##_name##_attrs(void) {}		\
-__ATTRIBUTE_GROUPS(_name)
-
-int __alloc_bucket_spinlocks(spinlock_t **locks, unsigned int *lock_mask,
-			     size_t max_size, unsigned int cpu_mult,
-			     gfp_t gfp, const char *name,
-			     struct lock_class_key *key);
-
-#define alloc_bucket_spinlocks(locks, lock_mask, max_size, cpu_mult, gfp)    \
-	({								     \
-		static struct lock_class_key key;			     \
-		int ret;						     \
-									     \
-		ret = __alloc_bucket_spinlocks(locks, lock_mask, max_size,   \
-					       cpu_mult, gfp, #locks, &key); \
-		ret;							\
-	})
-void free_bucket_spinlocks(spinlock_t *locks);
-
-#if LINUX_VERSION_IS_LESS(4,19,0)
-#ifndef atomic_fetch_add_unless
-static inline int atomic_fetch_add_unless(atomic_t *v, int a, int u)
-{
-		return __atomic_add_unless(v, a, u);
-}
-#endif
-#endif /* LINUX_VERSION_IS_LESS(4,19,0) */
 
 #if LINUX_VERSION_IS_LESS(4,20,0)
 static inline void rcu_head_init(struct rcu_head *rhp)
@@ -271,10 +202,6 @@ static inline void debugfs_create_xul(const char *name, umode_t mode,
 #define skb_list_walk_safe(first, skb, next_skb)				\
 	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb);	\
 	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
-#endif
-
-#if LINUX_VERSION_IS_LESS(4,18,0)
-#define firmware_request_nowarn(fw, name, device) request_firmware(fw, name, device)
 #endif
 
 #endif /* __IWL_CHROME */

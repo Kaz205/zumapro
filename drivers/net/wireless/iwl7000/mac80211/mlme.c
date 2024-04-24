@@ -9167,7 +9167,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	sdata->control_port_protocol = req->crypto.control_port_ethertype;
 	sdata->control_port_no_encrypt = req->crypto.control_port_no_encrypt;
 	sdata->control_port_over_nl80211 =
-					cfg_control_port_over_nl80211(&req->crypto);
+					req->crypto.control_port_over_nl80211;
 	sdata->control_port_no_preauth = cfg80211_crypto_control_port_no_preauth(&req->crypto);
 
 	/* kick off associate process */

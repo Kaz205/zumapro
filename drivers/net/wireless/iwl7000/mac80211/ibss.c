@@ -1822,7 +1822,7 @@ int ieee80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 
 	sdata->deflink.smps_mode = IEEE80211_SMPS_OFF;
 	sdata->deflink.needed_rx_chains = local->rx_chains;
-	sdata->control_port_over_nl80211 = cfg_control_port_over_nl80211(params);
+	sdata->control_port_over_nl80211 = params->control_port_over_nl80211;
 
 	wiphy_work_queue(local->hw.wiphy, &sdata->work);
 

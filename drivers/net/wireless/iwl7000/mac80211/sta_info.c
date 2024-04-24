@@ -2453,16 +2453,12 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u32 rate,
 		break;
 		}
 	case STA_STATS_RATE_TYPE_HE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,19,0)
 		rinfo->flags = RATE_INFO_FLAGS_HE_MCS;
 		rinfo->mcs = STA_STATS_GET(HE_MCS, rate);
 		rinfo->nss = STA_STATS_GET(HE_NSS, rate);
 		rinfo->he_gi = STA_STATS_GET(HE_GI, rate);
 		rinfo->he_ru_alloc = STA_STATS_GET(HE_RU, rate);
 		rinfo->he_dcm = STA_STATS_GET(HE_DCM, rate);
-#else
-		WARN_ONCE(1, "HE not supported on this cfg80211 version\n");
-#endif
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
 	case STA_STATS_RATE_TYPE_EHT:
@@ -2545,7 +2541,6 @@ static void sta_set_tidstats(struct sta_info *sta,
 		tidstats->tx_msdu_failed = sta->deflink.status_stats.msdu_failed[tid];
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,18,0)
 	if (tid < IEEE80211_NUM_TIDS) {
 		spin_lock_bh(&local->fq.lock);
 		rcu_read_lock();
@@ -2557,7 +2552,6 @@ static void sta_set_tidstats(struct sta_info *sta,
 		rcu_read_unlock();
 		spin_unlock_bh(&local->fq.lock);
 	}
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(4,18,0) */
 }
 
 static inline u64 sta_get_stats_bytes(struct ieee80211_sta_rx_stats *rxstats)
@@ -2825,13 +2819,11 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->expected_throughput = thr;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,17,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL)) &&
 	    sta->deflink.status_stats.ack_signal_filled) {
 		sinfo->ack_signal = sta->deflink.status_stats.last_ack_signal;
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
 	}
-#endif
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG)) &&

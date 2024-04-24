@@ -916,8 +916,8 @@ static void iwl_init_he_6ghz_capa(struct iwl_trans *trans,
 	IWL_DEBUG_EEPROM(trans->dev, "he_6ghz_capa=0x%x\n", he_6ghz_capa);
 
 	/* we know it's writable - we set it before ourselves */
-	iftype_data = (void *)(uintptr_t) ieee80211_sband_get_iftypes_data(sband);
-	for (i = 0; i < ieee80211_sband_get_num_iftypes_data(sband); i++)
+	iftype_data = (void *)(uintptr_t)sband->iftype_data;
+	for (i = 0; i < sband->n_iftype_data; i++)
 		cfg80211_iftd_set_he_6ghz_capa(iftype_data,
 				               cpu_to_le16(he_6ghz_capa));
 }
@@ -1164,7 +1164,7 @@ static void iwl_init_he_hw_capab(struct iwl_trans *trans,
 	_ieee80211_set_sband_iftype_data(sband, iftype_data,
 					 ARRAY_SIZE(iwl_he_eht_capa));
 
-	for (i = 0; i < ieee80211_sband_get_num_iftypes_data(sband); i++)
+	for (i = 0; i < sband->n_iftype_data; i++)
 		iwl_nvm_fixup_sband_iftd(trans, data, sband, &iftype_data[i],
 					 tx_chains, rx_chains, fw);
 
@@ -1223,10 +1223,9 @@ static void iwl_init_he_override(struct iwl_trans *trans,
 	struct ieee80211_sband_iftype_data *iftype_data;
 	int i;
 
-	for (i = 0; i < ieee80211_sband_get_num_iftypes_data(sband); i++) {
+	for (i = 0; i < sband->n_iftype_data; i++) {
 		/* we know it's writable - we set it before ourselves */
-		iftype_data = (void *)(uintptr_t) ieee80211_sband_get_iftypes_data_entry(sband,
-											 i);
+		iftype_data = (void *)(uintptr_t)&sband->iftype_data[i];
 
 		if (trans->dbg_cfg.rx_mcs_80) {
 			if (iwl_he_mcs_greater(trans->dbg_cfg.rx_mcs_80,
@@ -1337,10 +1336,9 @@ static void iwl_init_eht_band_override(struct iwl_trans *trans,
 	struct ieee80211_sband_iftype_data *iftype_data;
 	int i;
 
-	for (i = 0; i < ieee80211_sband_get_num_iftypes_data(sband); i++) {
+	for (i = 0; i < sband->n_iftype_data; i++) {
 		/* we know it's writable - we set it before ourselves */
-		iftype_data = (void *)(uintptr_t) ieee80211_sband_get_iftypes_data_entry(sband,
-											 i);
+		iftype_data = (void *)(uintptr_t)&sband->iftype_data[i];
 
 		/* Skip setting eht on not supported iftype */
 		if (!cfg_eht_cap_has_eht(iftype_data))
@@ -2151,9 +2149,7 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 		    band == NL80211_BAND_2GHZ)
 			continue;
 
-#if LINUX_VERSION_IS_GEQ(4,19,0)
 		reg_query_regdb_wmm(regd->alpha2, center_freq, rule);
-#endif
 	}
 
 	/*
