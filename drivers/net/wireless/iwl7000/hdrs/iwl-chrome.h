@@ -124,10 +124,17 @@
 #include <hdrs/linux/ieee80211.h>
 #include <hdrs/linux/average.h>
 #include <hdrs/net/ieee80211_radiotap.h>
-#define IEEE80211RADIOTAP_H 1 /* older kernels used this include protection */
+#include <linux/if_ether.h>
+#include <net/cfg80211.h>
+#include <linux/errqueue.h>
+#include <generated/utsrelease.h>
+#include <net/ieee80211_radiotap.h>
+#include <crypto/hash.h>
+#include <net/dsfield.h>
+#include "version.h"
 
 /* mac80211 & backport - order matters, need this inbetween */
-#include <hdrs/mac80211-bp.h>
+#include <hdrs/backports.h>
 
 #include <hdrs/net/codel.h>
 #include <hdrs/net/mac80211.h>
@@ -138,164 +145,12 @@
 #define netlink_notify_portid(__notify) __notify->portid
 #define __genl_const const
 #define __genl_ro_after_init __ro_after_init
+#define netdev_tstats(dev)	dev->tstats
+#define netdev_assign_tstats(dev, e)	dev->tstats = (e);
 
 static inline struct netlink_ext_ack *genl_info_extack(struct genl_info *info)
 {
 	return info->extack;
 }
 
-#if LINUX_VERSION_IS_LESS(5,3,0)
-#define ktime_get_boottime_ns ktime_get_boot_ns
-#define ktime_get_coarse_boottime_ns ktime_get_boot_ns
-#endif
-
-#ifndef __BUILD_BUG_ON_NOT_POWER_OF_2
-#define __BUILD_BUG_ON_NOT_POWER_OF_2(...)
-#endif
-
-#if LINUX_VERSION_IS_LESS(4,20,0)
-static inline void rcu_head_init(struct rcu_head *rhp)
-{
-	rhp->func = (void *)~0L;
-}
-
-static inline bool
-rcu_head_after_call_rcu(struct rcu_head *rhp, void *f)
-{
-	if (READ_ONCE(rhp->func) == f)
-		return true;
-	WARN_ON_ONCE(READ_ONCE(rhp->func) != (void *)~0L);
-	return false;
-}
-#endif /* LINUX_VERSION_IS_LESS(4,20,0) */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-#include <linux/pci-aspm.h>
-#define EXPORT_SYMBOL_NS_GPL(sym, ns) EXPORT_SYMBOL_GPL(sym)
-#define MODULE_IMPORT_NS(ns)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,5,0)
-#include <linux/debugfs.h>
-
-#define debugfs_create_xul iwl7000_debugfs_create_xul
-static inline void debugfs_create_xul(const char *name, umode_t mode,
-				      struct dentry *parent,
-				      unsigned long *value)
-{
-	if (sizeof(*value) == sizeof(u32))
-		debugfs_create_x32(name, mode, parent, (u32 *)value);
-	else
-		debugfs_create_x64(name, mode, parent, (u64 *)value);
-}
-#endif
-
-#ifndef skb_list_walk_safe
-#define skb_list_walk_safe(first, skb, next_skb)				\
-	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb);	\
-	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
-#endif
-
 #endif /* __IWL_CHROME */
-
-#if LINUX_VERSION_IS_LESS(5,4,0)
-
-/**
- * list_for_each_entry_rcu	-	iterate over rcu list of given type
- * @pos:	the type * to use as a loop cursor.
- * @head:	the head for your list.
- * @member:	the name of the list_head within the struct.
- * @cond...:	optional lockdep expression if called from non-RCU protection.
- *
- * This list-traversal primitive may safely run concurrently with
- * the _rcu list-mutation primitives such as list_add_rcu()
- * as long as the traversal is guarded by rcu_read_lock().
- */
-#undef list_for_each_entry_rcu
-#define list_for_each_entry_rcu(pos, head, member, cond...)		\
-	for (pos = list_entry_rcu((head)->next, typeof(*pos), member); \
-		&pos->member != (head); \
-		pos = list_entry_rcu(pos->member.next, typeof(*pos), member))
-#endif /* < 5.4 */
-
-#if LINUX_VERSION_IS_LESS(5,7,0)
-#define efi_rt_services_supported(...) efi_enabled(EFI_RUNTIME_SERVICES)
-#endif
-
-#if LINUX_VERSION_IS_LESS(5,10,0)
-#define DECLARE_TRACEPOINT(tp) \
-	extern struct tracepoint __tracepoint_##tp
-#ifdef CONFIG_TRACEPOINTS
-# define tracepoint_enabled(tp) \
-	static_key_false(&(__tracepoint_##tp).key)
-#else
-# define tracepoint_enabled(tracepoint) false
-#endif
-#endif /* < 5.10 */
-
-#if LINUX_VERSION_IS_LESS(5,11,0)
-
-#define KHZ_PER_MHZ		1000UL
-#define HZ_PER_MHZ		1000000UL
-
-enum rfkill_hard_block_reasons {
-	RFKILL_HARD_BLOCK_SIGNAL        = 1 << 0,
-	RFKILL_HARD_BLOCK_NOT_OWNER     = 1 << 1,
-};
-#endif /* < v5.11 */
-
-#if LINUX_VERSION_IS_LESS(5,13,0)
-/* This will get enum rfkill_hard_block_reasons used below */
-#include <uapi/linux/rfkill.h>
-
-static inline void
-wiphy_rfkill_set_hw_state_reason(struct wiphy *wiphy, bool blocked,
-				 enum rfkill_hard_block_reasons reason)
-{
-	wiphy_rfkill_set_hw_state(wiphy, blocked);
-}
-
-#endif /* < v5.13 */
-
-#if LINUX_VERSION_IS_LESS(5,14,0)
-/* make this code disappear, rfkill moved from rdev to wiphy */
-#define rfkill_blocked(__rkfill) false
-#endif /* < v5.14 */
-
-#if LINUX_VERSION_IS_LESS(5,17,0)
-#define rfkill_soft_blocked(__rfkill) rfkill_blocked(__rfkill)
-
-static inline void __noreturn
-kthread_complete_and_exit(struct completion *c, long ret)
-{
-	complete_and_exit(c, ret);
-}
-#endif /* <v5.17 */
-
-#if LINUX_VERSION_IS_LESS(6,1,0)
-static inline u32 get_random_u32_below(u32 ceil)
-{
-	return prandom_u32_max(ceil);
-}
-
-static inline u32 get_random_u32_inclusive(u32 floor, u32 ceil)
-{
-	BUILD_BUG_ON_MSG(__builtin_constant_p(floor) && __builtin_constant_p(ceil) &&
-			 (floor > ceil || ceil - floor == U32_MAX),
-			 "get_random_u32_inclusive() must take floor <= ceil");
-	return floor + get_random_u32_below(ceil - floor + 1);
-}
-#endif
-
-#if LINUX_VERSION_IS_LESS(6,3,0)
-#define kvmemdup LINUX_BACKPORT(kvmemdup)
-static inline void *kvmemdup(const void *src, size_t len, gfp_t gfp)
-{
-	void *p;
-
-	p = kvmalloc(len, gfp);
-	if (p)
-		memcpy(p, src, len);
-	return p;
-}
-#endif
