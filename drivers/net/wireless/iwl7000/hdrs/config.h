@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2018-2023 Intel Corporation
+ * Copyright(c) 2018-2024 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -57,8 +57,6 @@
 #ifdef CONFIG_IWL7000_XVT_MODULE
 #define CPTCFG_IWLXVT_MODULE 1
 #endif
-
-#define CFG80211_VERSION LINUX_VERSION_CODE
 
 #if defined(CONFIG_IWL7000_VENDOR_CMDS)
 #define CPTCFG_IWLMVM_VENDOR_CMDS 1

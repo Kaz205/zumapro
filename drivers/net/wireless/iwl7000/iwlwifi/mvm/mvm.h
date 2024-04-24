@@ -481,7 +481,7 @@ struct iwl_mvm_vif {
 #ifdef CONFIG_PM
 	/* WoWLAN GTK rekey data */
 	struct {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 		u8 kck[NL80211_KCK_EXT_LEN];
 		u8 kek[NL80211_KEK_EXT_LEN];
 #else
@@ -2684,7 +2684,7 @@ static inline u8 iwl_mvm_nl80211_band_from_phy(u8 phy_band)
 		return NL80211_BAND_2GHZ;
 	case PHY_BAND_5:
 		return NL80211_BAND_5GHZ;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	case PHY_BAND_6:
 		return NL80211_BAND_6GHZ;
 #endif

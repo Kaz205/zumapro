@@ -320,7 +320,7 @@ int iwl_mvm_link_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	cmd.bss_color = link_conf->he_bss_color.color;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#if LINUX_VERSION_IS_GEQ(5,4,0)
 	if (!link_conf->he_bss_color.enabled) {
 #else
 	if (vif->bss_conf.he_bss_color.disabled) {

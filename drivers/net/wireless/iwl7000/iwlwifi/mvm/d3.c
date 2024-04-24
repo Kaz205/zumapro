@@ -1522,7 +1522,7 @@ static void iwl_mvm_report_wakeup_reasons(struct iwl_mvm *mvm,
 	if (reasons & IWL_WOWLAN_WAKEUP_BY_REM_WAKE_WAKEUP_PACKET)
 		wakeup.tcp_match = true;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,10,0)
+#if LINUX_VERSION_IS_GEQ(6,10,0)
 	if (reasons & IWL_WAKEUP_BY_11W_UNPROTECTED_DEAUTH_OR_DISASSOC)
 		wakeup.unprot_deauth_disassoc = true;
 #endif
@@ -3587,11 +3587,11 @@ static int iwl_mvm_d3_test_open(struct inode *inode, struct file *file)
 
 	/* start pseudo D3 */
 	rtnl_lock();
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(mvm->hw->wiphy);
 #endif
 	err = __iwl_mvm_suspend(mvm->hw, mvm->hw->wiphy->wowlan_config, true);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(mvm->hw->wiphy);
 #endif
 	rtnl_unlock();
@@ -3656,11 +3656,11 @@ static int iwl_mvm_d3_test_release(struct inode *inode, struct file *file)
 	iwl_fw_dbg_read_d3_debug_data(&mvm->fwrt);
 
 	rtnl_lock();
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(mvm->hw->wiphy);
 #endif
 	__iwl_mvm_resume(mvm, true);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(mvm->hw->wiphy);
 #endif
 	rtnl_unlock();

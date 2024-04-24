@@ -96,7 +96,7 @@ iwl_mvm_iface_combinations_nan[] = {
 };
 
 /* not used with older HW and needs a locking patch in cfg80211 */
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 static const struct cfg80211_pmsr_capabilities iwl_mvm_pmsr_capa = {
 	.max_peers = IWL_MVM_TOF_MAX_APS,
 	.report_ap_tsf = 1,
@@ -108,10 +108,10 @@ static const struct cfg80211_pmsr_capabilities iwl_mvm_pmsr_capa = {
 		.non_asap = 1,
 		.request_lci = 1,
 		.request_civicloc = 1,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 		.trigger_based = 1,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,13,0)
+#if LINUX_VERSION_IS_GEQ(5,13,0)
 		.non_trigger_based = 1,
 #endif
 		.max_bursts_exponent = -1, /* all supported */
@@ -180,7 +180,7 @@ struct ieee80211_regdomain *iwl_mvm_get_regdomain(struct wiphy *wiphy,
 	IWL_DEBUG_LAR(mvm, "MCC update response version: %d\n", resp_ver);
 
 	regd = iwl_parse_nvm_mcc_info(mvm->trans->dev, mvm->cfg,
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 				      mvm->nvm_data,
 #endif
 				      __le32_to_cpu(resp->n_channels),
@@ -325,7 +325,7 @@ static const struct wiphy_iftype_ext_capab add_iftypes_ext_capa[] = {
 		.extended_capabilities_mask = he_if_types_ext_capa_sta,
 		.extended_capabilities_len = sizeof(he_if_types_ext_capa_sta),
 		/* relevant only if EHT is supported */
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 		.eml_capabilities = IWL_MVM_EMLSR_CAPA,
 		.mld_capa_and_ops = IWL_MVM_MLD_CAPA_OPS,
 #endif
@@ -336,7 +336,7 @@ static const struct wiphy_iftype_ext_capab add_iftypes_ext_capa[] = {
 		.extended_capabilities_mask = tm_if_types_ext_capa_sta,
 		.extended_capabilities_len = sizeof(tm_if_types_ext_capa_sta),
 		/* relevant only if EHT is supported */
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 		.eml_capabilities = IWL_MVM_EMLSR_CAPA,
 		.mld_capa_and_ops = IWL_MVM_MLD_CAPA_OPS,
 #endif
@@ -541,7 +541,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	wiphy_ext_feature_set(hw->wiphy,
 			      NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 	if (fw_has_capa(&mvm->fw->ucode_capa,
 			IWL_UCODE_TLV_CAPA_FTM_CALIBRATED)) {
 		wiphy_ext_feature_set(hw->wiphy,
@@ -687,7 +687,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 			hw->wiphy->bands[NL80211_BAND_5GHZ]->vht_cap.cap |=
 				IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	if (fw_has_capa(&mvm->fw->ucode_capa,
 			IWL_UCODE_TLV_CAPA_PSC_CHAN_SUPPORT) &&
 	    mvm->nvm_data->bands[NL80211_BAND_6GHZ].n_channels)
@@ -741,7 +741,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 			IWL_UCODE_TLV_CAPA_WFA_TPC_REP_IE_SUPPORT))
 		hw->wiphy->features |= NL80211_FEATURE_WFA_TPC_IE_IN_PROBES;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	if (iwl_fw_lookup_cmd_ver(mvm->fw, WOWLAN_KEK_KCK_MATERIAL,
 				  IWL_FW_CMD_VER_UNKNOWN) == 3)
 		hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_EXT_KEK_KCK;
@@ -1744,7 +1744,7 @@ void iwl_mvm_channel_switch_disconnect_wk(struct work_struct *wk)
 static u8
 iwl_mvm_chandef_get_primary_80(struct cfg80211_chan_def *chandef)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	int data_start;
 	int control_start;
 	int bw;
@@ -6325,7 +6325,7 @@ static void iwl_mvm_set_sta_rate(u32 rate_n_flags, struct rate_info *rinfo)
 
 	switch (format) {
 	case RATE_MCS_EHT_MSK:
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		/* TODO: GI/LTF/RU. How does the firmware encode them? */
 		rinfo->flags |= RATE_INFO_FLAGS_EHT_MCS;
 #endif

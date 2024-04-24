@@ -1054,7 +1054,7 @@ struct ieee80211_link_data {
 		struct ieee80211_chan_req chanreq;
 	} csa;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	struct wiphy_work color_change_finalize_work;
 #endif
 	struct delayed_work color_collision_detect_work;
@@ -1215,10 +1215,10 @@ struct ieee80211_sub_if_data *vif_to_sdata(struct ieee80211_vif *p)
 	if ((_link = wiphy_dereference((local)->hw.wiphy,		\
 				       ___sdata->link[___link_id])))
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 static inline int
 ieee80211_get_mbssid_beacon_len(struct cfg80211_mbssid_elems *elems,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 				struct cfg80211_rnr_elems *rnr_elems,
 #endif
 				u8 i)
@@ -1230,7 +1230,7 @@ ieee80211_get_mbssid_beacon_len(struct cfg80211_mbssid_elems *elems,
 
 	if (i < elems->cnt) {
 		len = elems->elem[i].len;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (rnr_elems) {
 			len += rnr_elems->elem[i].len;
 			for (i = elems->cnt; i < rnr_elems->cnt; i++)
@@ -1244,7 +1244,7 @@ ieee80211_get_mbssid_beacon_len(struct cfg80211_mbssid_elems *elems,
 	for (i = 0; i < elems->cnt; i++)
 		len += elems->elem[i].len;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 	if (rnr_elems) {
 		for (i = 0; i < rnr_elems->cnt; i++)
 			len += rnr_elems->elem[i].len;
@@ -1389,12 +1389,12 @@ struct ieee80211_local {
 	/* number of interfaces with corresponding FIF_ flags */
 	int fif_fcsfail, fif_plcpfail, fif_control, fif_other_bss, fif_pspoll,
 	    fif_probe_req;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	bool probe_req_reg;
 #else
 	unsigned int probe_req_reg;
 #endif
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	struct work_struct wiphy_work;
 	struct list_head wiphy_work_list;
 	spinlock_t wiphy_work_lock;
@@ -2535,13 +2535,13 @@ int ieee80211_parse_bitrates(enum nl80211_chan_width width,
 			     const struct ieee80211_supported_band *sband,
 			     const u8 *srates, int srates_len, u32 *rates);
 u8 *ieee80211_add_wmm_info_ie(u8 *buf, u8 qosinfo);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 void ieee80211_add_s1g_capab_ie(struct ieee80211_sub_if_data *sdata,
 				struct ieee80211_sta_s1g_cap *caps,
 				struct sk_buff *skb);
 #else
 #define ieee80211_add_s1g_capab_ie(sdata, caps, skb) do { } while (0)
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(5,10,0) */
+#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 void ieee80211_add_aid_request_ie(struct ieee80211_sub_if_data *sdata,
 				  struct sk_buff *skb);
 
@@ -2656,7 +2656,7 @@ void ieee80211_recalc_chanctx_chantype(struct ieee80211_local *local,
 /* TDLS */
 int ieee80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *dev,
 			const u8 *peer,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,5,0)
+#if LINUX_VERSION_IS_GEQ(6,5,0)
 			 int link_id,
 #endif
 			u8 action_code, u8 dialog_token, u16 status_code,
@@ -2696,7 +2696,7 @@ u32 ieee80211_calc_expected_tx_airtime(struct ieee80211_hw *hw,
 #define debug_noinline
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 void wiphy_work_setup(struct ieee80211_local *local);
 void wiphy_work_teardown(struct ieee80211_local *local);
 #endif

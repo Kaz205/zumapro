@@ -62,7 +62,7 @@ static const struct iwl_base_params iwl_22000_base_params = {
 const struct iwl_ht_params iwl_22000_ht_params = {
 	.stbc = true,
 	.ldpc = true,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	.ht40_bands = BIT(NL80211_BAND_2GHZ) | BIT(NL80211_BAND_5GHZ) |
 		      BIT(NL80211_BAND_6GHZ),
 #else

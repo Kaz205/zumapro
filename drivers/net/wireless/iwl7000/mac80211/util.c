@@ -70,13 +70,13 @@ u8 *ieee80211_get_bssid(struct ieee80211_hdr *hdr, size_t len,
 		return hdr->addr3;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	if (ieee80211_is_s1g_beacon(fc)) {
 		struct ieee80211_ext *ext = (void *) hdr;
 
 		return ext->u.s1g_beacon.sa;
 	}
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(5,10,0) */
+#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 
 	if (ieee80211_is_mgmt(fc)) {
 		if (len < 24) /* drop incorrect hdr len (mgmt) */
@@ -1175,7 +1175,7 @@ void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 	}
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 static int ieee80211_put_s1g_cap(struct sk_buff *skb,
 				 struct ieee80211_sta_s1g_cap *s1g_cap)
 {
@@ -1217,7 +1217,7 @@ static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 	rate_flags = ieee80211_chandef_rate_flags(chandef);
 
 	/* For direct scan add S1G IE and consider its override bits */
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 	if (band == NL80211_BAND_S1GHZ)
 		return ieee80211_put_s1g_cap(skb, &sband->s1g_cap);
 #endif
@@ -2557,7 +2557,7 @@ int ieee80211_put_he_6ghz_cap(struct sk_buff *skb,
 	enum nl80211_iftype iftype = ieee80211_vif_type_p2p(&sdata->vif);
 	__le16 cap;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#if LINUX_VERSION_IS_GEQ(5,4,0)
 	if (!cfg80211_any_usable_channels(sdata->local->hw.wiphy,
 					  BIT(NL80211_BAND_6GHZ),
 					  IEEE80211_CHAN_NO_HE))
@@ -3089,7 +3089,7 @@ void ieee80211_chandef_eht_oper(const struct ieee80211_eht_operation_info *info,
 	}
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_LESS(5,8,0)
 bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 				    const struct ieee80211_he_operation *he_oper,
 				    const struct ieee80211_eht_operation *eht_oper,
@@ -3167,7 +3167,7 @@ bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 	} else {
 		ieee80211_chandef_eht_oper((const void *)eht_oper->optional,
 					   &he_chandef);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_GEQ(6,9,0)
 		he_chandef.punctured =
 			ieee80211_eht_oper_dis_subchan_bitmap(eht_oper);
 #else
@@ -3186,7 +3186,7 @@ bool ieee80211_chandef_he_6ghz_oper(struct ieee80211_local *local,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 bool ieee80211_chandef_s1g_oper(const struct ieee80211_s1g_oper_ie *oper,
 				struct cfg80211_chan_def *chandef)
 {
@@ -3351,7 +3351,7 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 
 	/* Fill cfg80211 rate info */
 	switch (status->encoding) {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	case RX_ENC_EHT:
 		ri.flags |= RATE_INFO_FLAGS_EHT_MCS;
 		ri.mcs = status->rate_idx;
@@ -4091,7 +4091,7 @@ int ieee80211_max_num_channels(struct ieee80211_local *local)
 	return max_num_different_channels;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 void ieee80211_add_s1g_capab_ie(struct ieee80211_sub_if_data *sdata,
 				struct ieee80211_sta_s1g_cap *caps,
 				struct sk_buff *skb)
@@ -4133,7 +4133,7 @@ void ieee80211_add_s1g_capab_ie(struct ieee80211_sub_if_data *sdata,
 
 	memcpy(pos, &s1g_capab, sizeof(s1g_capab));
 }
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(5,10,0) */
+#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 
 void ieee80211_add_aid_request_ie(struct ieee80211_sub_if_data *sdata,
 				  struct sk_buff *skb)

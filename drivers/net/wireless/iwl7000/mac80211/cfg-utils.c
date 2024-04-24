@@ -8,7 +8,7 @@
 #include <linux/export.h>
 #include <net/cfg80211.h>
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,6,0)
+#if LINUX_VERSION_IS_LESS(5,6,0)
 int ieee80211_get_vht_max_nss(struct ieee80211_vht_cap *cap,
 			      enum ieee80211_vht_chanwidth bw,
 			      int mcs, bool ext_nss_bw_capable,
@@ -117,7 +117,7 @@ int ieee80211_get_vht_max_nss(struct ieee80211_vht_cap *cap,
 EXPORT_SYMBOL(ieee80211_get_vht_max_nss);
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_LESS(6,9,0)
 bool cfg80211_iter_rnr(const u8 *elems, size_t elems_len,
 		       enum cfg80211_rnr_iter_ret
 		       (*iter)(void *data, u8 type,
@@ -246,7 +246,7 @@ ssize_t cfg80211_defragment_element(const struct element *elem, const u8 *ies,
 EXPORT_SYMBOL(cfg80211_defragment_element);
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id)
 {
 	unsigned int elem_len;
@@ -277,7 +277,7 @@ void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id)
 EXPORT_SYMBOL(ieee80211_fragment_element);
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 bool
 ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
 			       struct ieee80211_channel *channel)
@@ -325,7 +325,7 @@ ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
 }
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_LESS(6,9,0)
 bool ieee80211_operating_class_to_chandef(u8 operating_class,
 					  struct ieee80211_channel *chan,
 					  struct cfg80211_chan_def *chandef)

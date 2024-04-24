@@ -350,7 +350,7 @@ int ieee80211_parse_ch_switch_ie(struct ieee80211_sub_if_data *sdata,
 		ieee80211_chandef_eht_oper(&bwi->info, &new_chandef);
 		/* and new puncturing data if present */
 		if (bwi->params & IEEE80211_BW_IND_DIS_SUBCH_PRESENT) {
-#if CFG80211_VERSION >= KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_GEQ(6,9,0)
 			new_chandef.punctured =
 				get_unaligned_le16(bwi->info.optional);
 #else

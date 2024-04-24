@@ -462,7 +462,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 
 	rtnl_lock();
 	/* we might do interface manipulations, so need both */
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #endif
 	wiphy_work_flush(local->hw.wiphy, NULL);
@@ -507,7 +507,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 	synchronize_net();
 
 	ret = ieee80211_reconfig(local);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 
@@ -578,7 +578,7 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 
 	ifmgd = &sdata->u.mgd;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	/*
 	 * The nested here is needed to convince lockdep that this is
 	 * all OK. Yes, we lock the wiphy mutex here while we already
@@ -614,7 +614,7 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 	if (ifmgd->associated)
 		ieee80211_vif_cfg_change_notify(sdata, BSS_CHANGED_ARP_FILTER);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 
@@ -895,7 +895,7 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 
 	local = wiphy_priv(wiphy);
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	wiphy_work_setup(local);
 #endif
 
@@ -1459,7 +1459,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (ieee80211_hw_check(&local->hw, CHANCTX_STA_CSA))
 		local->ext_capa[0] |= WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 	/* mac80211 supports multi BSSID, if the driver supports it */
 	if (ieee80211_hw_check(&local->hw, SUPPORTS_MULTI_BSSID)) {
 		local->hw.wiphy->support_mbssid = true;
@@ -1590,7 +1590,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	ieee80211_check_wbrf_support(local);
 
 	rtnl_lock();
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(hw->wiphy);
 #endif
 
@@ -1606,7 +1606,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 				   "Failed to add default virtual iface\n");
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(hw->wiphy);
 #endif
 	rtnl_unlock();
@@ -1682,14 +1682,14 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 
 	ieee80211_txq_teardown_flows(local);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #endif
 	wiphy_delayed_work_cancel(local->hw.wiphy, &local->roc_work);
 	wiphy_work_cancel(local->hw.wiphy, &local->reconfig_filter);
 	wiphy_work_cancel(local->hw.wiphy, &local->sched_scan_stopped_work);
 	wiphy_work_cancel(local->hw.wiphy, &local->radar_detected_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 	rtnl_unlock();
@@ -1745,7 +1745,7 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 		kfree(local->hw.wiphy->bands[band]);
 	}
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	wiphy_work_teardown(local);
 #endif
 

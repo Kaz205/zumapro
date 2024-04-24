@@ -3365,7 +3365,7 @@ ieee80211_rx_check_bss_color_collision(struct ieee80211_rx_data *rx)
 	const struct element *ie;
 	size_t baselen;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0)
+#if LINUX_VERSION_IS_GEQ(5,19,0)
 	if (!wiphy_ext_feature_isset(rx->local->hw.wiphy,
 				     NL80211_EXT_FEATURE_BSS_COLOR))
 #endif
@@ -3440,7 +3440,7 @@ ieee80211_rx_h_mgmt_check(struct ieee80211_rx_data *rx)
 		    !(status->flag & RX_FLAG_NO_SIGNAL_VAL))
 			sig = status->signal;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 		cfg80211_report_obss_beacon_khz(rx->local->hw.wiphy,
 						rx->skb->data, rx->skb->len,
 						ieee80211_rx_status_to_khz(status),

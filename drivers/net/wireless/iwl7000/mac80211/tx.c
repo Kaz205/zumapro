@@ -5288,7 +5288,7 @@ ieee80211_beacon_get_finish(struct ieee80211_hw *hw,
 		       IEEE80211_TX_CTL_FIRST_FRAGMENT;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 static void
 ieee80211_beacon_add_mbssid(struct sk_buff *skb, struct beacon_data *beacon,
 			    u8 i)
@@ -5301,7 +5301,7 @@ ieee80211_beacon_add_mbssid(struct sk_buff *skb, struct beacon_data *beacon,
 		skb_put_data(skb, beacon->mbssid_ies->elem[i].data,
 			     beacon->mbssid_ies->elem[i].len);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (beacon->rnr_ies && beacon->rnr_ies->cnt) {
 			skb_put_data(skb, beacon->rnr_ies->elem[i].data,
 				     beacon->rnr_ies->elem[i].len);
@@ -5348,7 +5348,7 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 	/* headroom, head length,
 	 * tail length, maximum TIM length and multiple BSSID length
 	 */
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 	mbssid_len = ieee80211_get_mbssid_beacon_len(beacon->mbssid_ies,
 						     beacon->rnr_ies,
 						     ema_index);
@@ -5373,7 +5373,7 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 		offs->tim_length = skb->len - beacon->head_len;
 		offs->cntdwn_counter_offs[0] = beacon->cntdwn_counter_offsets[0];
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		if (mbssid_len) {
 			ieee80211_beacon_add_mbssid(skb, beacon, ema_index);
 			offs->mbssid_off = skb->len - mbssid_len;
@@ -5395,7 +5395,7 @@ ieee80211_beacon_get_ap(struct ieee80211_hw *hw,
 	return skb;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 static struct ieee80211_ema_beacons *
 ieee80211_beacon_get_ap_ema_list(struct ieee80211_hw *hw,
 				 struct ieee80211_vif *vif,
@@ -5478,7 +5478,7 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
 								 beacon,
 								 chanctx_conf);
 		} else {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			if (beacon->mbssid_ies && beacon->mbssid_ies->cnt) {
 				if (ema_index >= beacon->mbssid_ies->cnt)
 					goto out; /* End of MBSSID elements */
@@ -5488,7 +5488,7 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
 			} else {
 #endif
 				ema_index = 0;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			}
 #endif
 

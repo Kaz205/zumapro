@@ -19,7 +19,7 @@
 #include <asm/unaligned.h>
 #include <linux/device.h>
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_LESS(5,18,0)
 static unsigned int __ieee80211_get_mesh_hdrlen(u8 flags)
 {
 	int ae = flags & MESH_FLAGS_AE;
@@ -148,7 +148,7 @@ EXPORT_SYMBOL(/* don't auto-generate a rename */
 	ieee80211_data_to_8023_exthdr);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0) */
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_LESS(5,8,0)
 #include "mac80211/ieee80211_i.h"
 #include "mac80211/driver-ops.h"
 
@@ -195,7 +195,7 @@ void ieee80211_mgmt_frame_register(struct wiphy *wiphy,
 
 #ifdef CONFIG_THERMAL
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_LESS(6,4,0)
 void *thermal_zone_device_priv(struct thermal_zone_device *tzd)
 {
 	return tzd->devdata;
@@ -204,7 +204,7 @@ EXPORT_SYMBOL_GPL(thermal_zone_device_priv);
 #endif /* < 6.4 */
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 struct ieee80211_per_bw_puncturing_values {
 	u8 len;
 	const u16 *valid_values;
@@ -274,7 +274,7 @@ bool cfg80211_valid_disable_subchannel_bitmap(u16 *bitmap,
 
 #endif /* < 6.3  */
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 #include "mac80211/ieee80211_i.h"
 
 static void cfg80211_wiphy_work(struct work_struct *work)
@@ -284,7 +284,7 @@ static void cfg80211_wiphy_work(struct work_struct *work)
 
 	local = container_of(work, struct ieee80211_local, wiphy_work);
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	rtnl_lock();
 #else
 	wiphy_lock(local->hw.wiphy);
@@ -306,7 +306,7 @@ static void cfg80211_wiphy_work(struct work_struct *work)
 		spin_unlock_irq(&local->wiphy_work_lock);
 	}
 out:
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	rtnl_unlock();
 #else
 	wiphy_unlock(local->hw.wiphy);
@@ -363,7 +363,7 @@ EXPORT_SYMBOL(wiphy_delayed_work_flush);
 
 void wiphy_work_teardown(struct ieee80211_local *local)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	rtnl_lock();
 #else
 	wiphy_lock(local->hw.wiphy);
@@ -371,7 +371,7 @@ void wiphy_work_teardown(struct ieee80211_local *local)
 
 	wiphy_work_flush(local->hw.wiphy, NULL);
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	rtnl_unlock();
 #else
 	wiphy_unlock(local->hw.wiphy);
@@ -401,7 +401,7 @@ void wiphy_work_cancel(struct wiphy *wiphy, struct wiphy_work *work)
 	struct ieee80211_local *local = hw_to_local(hw);
 	unsigned long flags;
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	ASSERT_RTNL();
 #else
 	lockdep_assert_held(&wiphy->mtx);
@@ -446,9 +446,9 @@ void wiphy_delayed_work_cancel(struct wiphy *wiphy,
 	wiphy_work_cancel(wiphy, &dwork->work);
 }
 EXPORT_SYMBOL_GPL(wiphy_delayed_work_cancel);
-#endif /* CFG80211_VERSION < KERNEL_VERSION(6,5,0) */
+#endif /* LINUX_VERSION_IS_LESS(6,5,0) */
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 int nl80211_chan_width_to_mhz(enum nl80211_chan_width chan_width)
 {
 	int mhz;

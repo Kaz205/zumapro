@@ -39,7 +39,7 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 
 	wiphy_work_init(&link->csa.finalize_work,
 			ieee80211_csa_finalize_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	wiphy_work_init(&link->color_change_finalize_work,
 			ieee80211_color_change_finalize_work);
 #endif
@@ -50,7 +50,7 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 
 	if (!deflink) {
 		switch (sdata->vif.type) {
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 		case NL80211_IFTYPE_AP:
 			ether_addr_copy(link_conf->addr,
 					sdata->wdev.links[link_id].addr);

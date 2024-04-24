@@ -137,7 +137,7 @@ static int ieee80211_set_mon_options(struct ieee80211_sub_if_data *sdata,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_IS_GEQ(5,16,0)
 static int ieee80211_set_ap_mbssid_options(struct ieee80211_sub_if_data *sdata,
 					   struct cfg80211_mbssid_config params,
 					   struct ieee80211_bss_conf *link_conf)
@@ -434,7 +434,7 @@ static int ieee80211_set_noack_map(struct wiphy *wiphy,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 static int ieee80211_set_tx(struct ieee80211_sub_if_data *sdata,
 			    const u8 *mac_addr, u8 key_idx)
 {
@@ -465,13 +465,13 @@ static int ieee80211_set_tx(struct ieee80211_sub_if_data *sdata,
 #endif
 
 static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 			     int link_id,
 #endif
 			      u8 key_idx, bool pairwise,
 			     const u8 *mac_addr, struct key_params *params)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -490,7 +490,7 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 	if (IS_ERR(link))
 		return PTR_ERR(link);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 	if (pairwise && params->mode == NL80211_KEY_SET_TX)
 		return ieee80211_set_tx(sdata, mac_addr, key_idx);
 #endif
@@ -518,7 +518,7 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 	if (pairwise)
 		key->conf.flags |= IEEE80211_KEY_FLAG_PAIRWISE;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 	if (params->mode == NL80211_KEY_NO_TX)
 		key->conf.flags |= IEEE80211_KEY_FLAG_NO_AUTO_TX;
 #endif
@@ -643,13 +643,13 @@ ieee80211_lookup_key(struct ieee80211_sub_if_data *sdata, int link_id,
 }
 
 static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 			     int link_id,
 #endif
 			      u8 key_idx, bool pairwise,
 			     const u8 *mac_addr)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -668,7 +668,7 @@ static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 			     int link_id,
 #endif
 			      u8 key_idx, bool pairwise,
@@ -676,7 +676,7 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 			     void (*callback)(void *cookie,
 					      struct key_params *params))
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata;
@@ -780,13 +780,13 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 
 static int ieee80211_config_default_key(struct wiphy *wiphy,
 					struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 					int link_id,
 #endif
 					 u8 key_idx, bool uni,
 					bool multi)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -803,12 +803,12 @@ static int ieee80211_config_default_key(struct wiphy *wiphy,
 
 static int ieee80211_config_default_mgmt_key(struct wiphy *wiphy,
 					     struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 					     int link_id,
 #endif
 					      u8 key_idx)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -823,15 +823,15 @@ static int ieee80211_config_default_mgmt_key(struct wiphy *wiphy,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 static int ieee80211_config_default_beacon_key(struct wiphy *wiphy,
 					       struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 					       int link_id,
 #endif
 					        u8 key_idx)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_LESS(6,1,0)
 	int link_id = -1;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -984,7 +984,7 @@ ieee80211_set_probe_resp(struct ieee80211_sub_if_data *sdata,
 		memcpy(new->cntdwn_counter_offsets, csa->counter_offsets_presp,
 		       csa->n_counter_offsets_presp *
 		       sizeof(new->cntdwn_counter_offsets[0]));
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	else if (cca)
 		new->cntdwn_counter_offsets[0] = cca->counter_offset_presp;
 #endif
@@ -996,7 +996,7 @@ ieee80211_set_probe_resp(struct ieee80211_sub_if_data *sdata,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 static int ieee80211_set_fils_discovery(struct ieee80211_sub_if_data *sdata,
 					struct cfg80211_fils_discovery *params,
 					struct ieee80211_link_data *link,
@@ -1006,7 +1006,7 @@ static int ieee80211_set_fils_discovery(struct ieee80211_sub_if_data *sdata,
 	struct fils_discovery_data *new, *old = NULL;
 	struct ieee80211_fils_discovery *fd;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_GEQ(6,7,0)
 	if (!params->update)
 		return 0;
 #endif
@@ -1035,7 +1035,7 @@ static int ieee80211_set_fils_discovery(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 static int
 ieee80211_set_unsol_bcast_probe_resp(struct ieee80211_sub_if_data *sdata,
 				     struct cfg80211_unsol_bcast_probe_resp *params,
@@ -1045,7 +1045,7 @@ ieee80211_set_unsol_bcast_probe_resp(struct ieee80211_sub_if_data *sdata,
 {
 	struct unsol_bcast_probe_resp_data *new, *old = NULL;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_GEQ(6,7,0)
 	if (!params->update)
 		return 0;
 #endif
@@ -1072,7 +1072,7 @@ ieee80211_set_unsol_bcast_probe_resp(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 static int ieee80211_set_ftm_responder_params(
 				struct ieee80211_sub_if_data *sdata,
 				const u8 *lci, size_t lci_len,
@@ -1115,7 +1115,7 @@ static int ieee80211_set_ftm_responder_params(
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 static int
 ieee80211_copy_mbssid_beacon(u8 *pos, struct cfg80211_mbssid_elems *dst,
 			     struct cfg80211_mbssid_elems *src)
@@ -1134,7 +1134,7 @@ ieee80211_copy_mbssid_beacon(u8 *pos, struct cfg80211_mbssid_elems *dst,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 static int
 ieee80211_copy_rnr_beacon(u8 *pos, struct cfg80211_rnr_elems *dst,
 			  struct cfg80211_rnr_elems *src)
@@ -1161,9 +1161,9 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 			const struct ieee80211_color_change_settings *cca,
 			u64 *changed)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	struct cfg80211_mbssid_elems *mbssid = NULL;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 #endif
 	struct cfg80211_rnr_elems *rnr = NULL;
 #endif
@@ -1195,11 +1195,11 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	size = sizeof(*new) + new_head_len + new_tail_len;
 
 	/* new or old multiple BSSID elements? */
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (params->mbssid_ies) {
 		mbssid = params->mbssid_ies;
 		size += struct_size(new->mbssid_ies, elem, mbssid->cnt);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (params->rnr_ies) {
 			rnr = params->rnr_ies;
 			size += struct_size(new->rnr_ies, elem, rnr->cnt);
@@ -1212,7 +1212,7 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	} else if (old && old->mbssid_ies) {
 		mbssid = old->mbssid_ies;
 		size += struct_size(new->mbssid_ies, elem, mbssid->cnt);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (old && old->rnr_ies) {
 			rnr = old->rnr_ies;
 			size += struct_size(new->rnr_ies, elem, rnr->cnt);
@@ -1240,19 +1240,19 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	new->head_len = new_head_len;
 	new->tail_len = new_tail_len;
 	/* copy in optional mbssid_ies */
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (mbssid) {
 		u8 *pos = new->tail + new->tail_len;
 
 		new->mbssid_ies = (void *)pos;
 		pos += struct_size(new->mbssid_ies, elem, mbssid->cnt);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		pos += ieee80211_copy_mbssid_beacon(pos, new->mbssid_ies,
 						    mbssid);
 #else
 		ieee80211_copy_mbssid_beacon(pos, new->mbssid_ies, mbssid);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (rnr) {
 			new->rnr_ies = (void *)pos;
 			pos += struct_size(new->rnr_ies, elem, rnr->cnt);
@@ -1271,7 +1271,7 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 		       csa->n_counter_offsets_beacon *
 		       sizeof(new->cntdwn_counter_offsets[0]));
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	 else if (cca) {
 		new->cntdwn_current_counter = cca->count;
 		new->cntdwn_counter_offsets[0] = cca->counter_offset_beacon;
@@ -1300,7 +1300,7 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	if (err == 0)
 		_changed |= BSS_CHANGED_AP_PROBE_RESP;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	if (params->ftm_responder != -1) {
 		link_conf->ftm_responder = params->ftm_responder;
 		err = ieee80211_set_ftm_responder_params(sdata,
@@ -1429,9 +1429,9 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 		changed |= BSS_CHANGED_HE_OBSS_PD;
 
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0)
+#if LINUX_VERSION_IS_GEQ(5,19,0)
 		if (params->beacon.he_bss_color.enabled)
-#elif CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#elif LINUX_VERSION_IS_GEQ(5,4,0)
 		if (params->he_bss_color.enabled)
 #endif
 			changed |= BSS_CHANGED_HE_BSS_COLOR;
@@ -1455,7 +1455,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 				IEEE80211_HE_PHY_CAP2_UL_MU_FULL_MU_MIMO;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (params->eht_cap) {
 		if (!link_conf->he_support)
 			return -EOPNOTSUPP;
@@ -1478,11 +1478,11 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 		link_conf->eht_su_beamformer = false;
 		link_conf->eht_su_beamformee = false;
 		link_conf->eht_mu_beamformer = false;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	}
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_IS_GEQ(5,16,0)
 	if (sdata->vif.type == NL80211_IFTYPE_AP &&
 	    params->mbssid_config.tx_wdev) {
 		err = ieee80211_set_ap_mbssid_options(sdata,
@@ -1527,16 +1527,16 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 	link_conf->dtim_period = params->dtim_period;
 	link_conf->enable_beacon = true;
 	link_conf->allow_p2p_go_ps = sdata->vif.p2p;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,5,0)
+#if LINUX_VERSION_IS_GEQ(5,5,0)
 	link_conf->twt_responder = params->twt_responder;
 	link_conf->he_obss_pd = params->he_obss_pd;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0)
+#if LINUX_VERSION_IS_GEQ(5,19,0)
 	link_conf->he_bss_color = params->beacon.he_bss_color;
-#elif CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#elif LINUX_VERSION_IS_GEQ(5,4,0)
 	link_conf->he_bss_color = params->he_bss_color;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	sdata->vif.cfg.s1g = params->chandef.chan->band ==
 				  NL80211_BAND_S1GHZ;
 #endif
@@ -1556,7 +1556,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 		link_conf->p2p_noa_attr.oppps_ctwindow |=
 					IEEE80211_P2P_OPPPS_ENABLE_BIT;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	sdata->beacon_rate_set = false;
 	if (wiphy_ext_feature_isset(local->hw.wiphy,
 				    NL80211_EXT_FEATURE_BEACON_RATE_LEGACY)) {
@@ -1569,7 +1569,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 	}
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	if (ieee80211_hw_check(&local->hw, HAS_RATE_CONTROL))
 		link_conf->beacon_tx_rate = params->beacon_rate;
 #endif
@@ -1579,7 +1579,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 	if (err < 0)
 		goto error;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	err = ieee80211_set_fils_discovery(sdata, &params->fils_discovery,
 					   link, link_conf, &changed);
 	if (err < 0)
@@ -1621,7 +1621,7 @@ error:
 	return err;
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 				   struct cfg80211_beacon_data *params)
 #else
@@ -1631,7 +1631,7 @@ static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_link_data *link;
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	struct cfg80211_beacon_data *beacon = params;
 #else
 	struct cfg80211_beacon_data *beacon = &params->beacon;
@@ -1665,7 +1665,7 @@ static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 	if (err < 0)
 		return err;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_GEQ(6,7,0)
 	err = ieee80211_set_fils_discovery(sdata, &params->fils_discovery,
 					   link, link_conf, &changed);
 	if (err < 0)
@@ -1677,7 +1677,7 @@ static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 	if (err < 0)
 		return err;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0)
+#if LINUX_VERSION_IS_GEQ(5,19,0)
 	if (beacon->he_bss_color_valid &&
 	    beacon->he_bss_color.enabled != link_conf->he_bss_color.enabled) {
 		link_conf->he_bss_color.enabled = beacon->he_bss_color.enabled;
@@ -1694,10 +1694,10 @@ static void ieee80211_free_next_beacon(struct ieee80211_link_data *link)
 	if (!link->u.ap.next_beacon)
 		return;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	kfree(link->u.ap.next_beacon->mbssid_ies);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 	kfree(link->u.ap.next_beacon->rnr_ies);
 #endif
 	kfree(link->u.ap.next_beacon);
@@ -1705,13 +1705,13 @@ static void ieee80211_free_next_beacon(struct ieee80211_link_data *link)
 }
 
 static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 			     ,
 			     unsigned int link_id
 #endif
 			     )
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_LESS(6,0,0)
 	unsigned int link_id = 0;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -1943,7 +1943,7 @@ static void sta_apply_mesh_params(struct ieee80211_local *local,
 
 static int sta_link_apply_parameters(struct ieee80211_local *local,
 				     struct sta_info *sta, bool new_link,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 				     struct link_station_parameters *params)
 #else
 				     struct station_parameters *params)
@@ -1952,7 +1952,7 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	int ret = 0;
 	struct ieee80211_supported_band *sband;
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	u32 link_id = params->link_id < 0 ? 0 : params->link_id;
 #else
 	u32 link_id = 0;
@@ -1963,7 +1963,7 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 		rcu_dereference_protected(sta->link[link_id],
 					  lockdep_is_wiphy_held(local->hw.wiphy));
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	/*
 	 * If there are no changes, then accept a link that exist,
 	 * unless it's a new link.
@@ -1984,7 +1984,7 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	if (!sband)
 		return -EINVAL;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	if (params->link_mac) {
 		if (new_link) {
 			memcpy(link_sta->addr, params->link_mac, ETH_ALEN);
@@ -1998,8 +1998,8 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	}
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	if (params->txpwr_set) {
 #else
 	if (params->sta_modify_mask & STATION_PARAM_APPLY_STA_TXPOWER) {
@@ -2034,14 +2034,14 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 		ieee80211_he_cap_ie_to_sta_he_cap(sdata, sband,
 						  (void *)params->he_capa,
 						  params->he_capa_len,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 						  (void *)params->he_6ghz_capa,
 #else
 						  NULL,
 #endif
 						  link_sta);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (params->he_capa && params->eht_capa)
 		ieee80211_eht_cap_ie_to_sta_eht_cap(sdata, sband,
 						    (u8 *)params->he_capa,
@@ -2178,7 +2178,7 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 	if (params->listen_interval >= 0)
 		sta->listen_interval = params->listen_interval;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	ret = sta_link_apply_parameters(local, sta, false,
 					&params->link_sta_params);
 #else
@@ -2193,7 +2193,7 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 	if (ieee80211_vif_is_mesh(&sdata->vif))
 		sta_apply_mesh_params(local, sta, params);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 	if (params->airtime_weight)
 		sta->airtime_weight = params->airtime_weight;
 #endif
@@ -2294,7 +2294,7 @@ static int ieee80211_del_station(struct wiphy *wiphy, struct net_device *dev,
 
 	if (params->mac)
 		return sta_info_destroy_addr_bss(sdata, params->mac);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_GEQ(6,9,0)
 	sta_info_flush(sdata, params->link_id);
 #else
 	sta_info_flush(sdata, -1);
@@ -2665,7 +2665,7 @@ static int copy_mesh_setup(struct ieee80211_if_mesh *ifmsh,
 	sdata->vif.bss_conf.beacon_int = setup->beacon_interval;
 	sdata->vif.bss_conf.dtim_period = setup->dtim_period;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	sdata->beacon_rate_set = false;
 	if (wiphy_ext_feature_isset(sdata->local->hw.wiphy,
 				    NL80211_EXT_FEATURE_BEACON_RATE_LEGACY)) {
@@ -2988,7 +2988,7 @@ static int ieee80211_set_txq_params(struct wiphy *wiphy,
 static int ieee80211_suspend(struct wiphy *wiphy,
 			     struct cfg80211_wowlan *wowlan)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	wiphy_work_flush(wiphy, NULL);
 #endif
 	return __ieee80211_suspend(wiphy_priv(wiphy), wowlan);
@@ -2996,10 +2996,10 @@ static int ieee80211_suspend(struct wiphy *wiphy,
 
 static int ieee80211_resume(struct wiphy *wiphy)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	struct ieee80211_local *local = hw_to_local(wiphy_priv(wiphy));
 #endif
-#if CFG80211_VERSION < KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_LESS(5,12,0)
 	int ret = __ieee80211_resume(wiphy_priv(wiphy));
 
 	if (ret)
@@ -3008,7 +3008,7 @@ static int ieee80211_resume(struct wiphy *wiphy)
 	schedule_work(&local->wiphy_work);
 	return ret;
 #else
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	schedule_work(&local->wiphy_work);
 #endif
 	return __ieee80211_resume(wiphy_priv(wiphy));
@@ -3561,7 +3561,7 @@ static int ieee80211_set_cqm_rssi_range_config(struct wiphy *wiphy,
 
 static int ieee80211_set_bitrate_mask(struct wiphy *wiphy,
 				      struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 				      unsigned int link_id,
 #endif
 				      const u8 *addr,
@@ -3664,7 +3664,7 @@ static int ieee80211_start_radar_detection(struct wiphy *wiphy,
 	return err;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,5,0)
+#if LINUX_VERSION_IS_GEQ(5,5,0)
 static void ieee80211_end_cac(struct wiphy *wiphy,
 			      struct net_device *dev)
 {
@@ -3697,9 +3697,9 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 	      beacon->probe_resp_len + beacon_ftm_len(beacon, lci_len) + beacon_ftm_len(beacon,
 											civicloc_len);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (beacon->mbssid_ies)
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		len += ieee80211_get_mbssid_beacon_len(beacon->mbssid_ies,
 						       beacon->rnr_ies,
 						       beacon->mbssid_ies->cnt);
@@ -3713,7 +3713,7 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 	if (!new_beacon)
 		return NULL;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (beacon->mbssid_ies && beacon->mbssid_ies->cnt) {
 		new_beacon->mbssid_ies =
 			kzalloc(struct_size(new_beacon->mbssid_ies,
@@ -3724,7 +3724,7 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 			return NULL;
 		}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (beacon->rnr_ies && beacon->rnr_ies->cnt) {
 			new_beacon->rnr_ies =
 				kzalloc(struct_size(new_beacon->rnr_ies,
@@ -3777,12 +3777,12 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 		memcpy(pos, beacon->probe_resp, beacon->probe_resp_len);
 		pos += beacon->probe_resp_len;
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	if (beacon->mbssid_ies && beacon->mbssid_ies->cnt) {
 		pos += ieee80211_copy_mbssid_beacon(pos,
 						    new_beacon->mbssid_ies,
 						    beacon->mbssid_ies);
-#if CFG80211_VERSION >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_IS_GEQ(6,4,0)
 		if (beacon->rnr_ies && beacon->rnr_ies->cnt)
 			pos += ieee80211_copy_rnr_beacon(pos,
 							 new_beacon->rnr_ies,
@@ -3792,10 +3792,10 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 #endif
 
 	/* might copy -1, meaning no changes requested */
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	new_beacon->ftm_responder = beacon->ftm_responder;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	if (beacon->lci) {
 		new_beacon->lci_len = beacon_ftm_len(beacon, lci_len);
 		new_beacon->lci = pos;
@@ -3803,7 +3803,7 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 		pos += beacon_ftm_len(beacon, lci_len);
 	}
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	if (beacon->civicloc) {
 		new_beacon->civicloc_len = beacon_ftm_len(beacon,
 							  civicloc_len);
@@ -4133,7 +4133,7 @@ static int ieee80211_set_csa_beacon(struct ieee80211_link_data *link_data,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static void ieee80211_color_change_abort(struct ieee80211_sub_if_data  *sdata)
 {
 	sdata->vif.bss_conf.color_change_active = false;
@@ -4225,7 +4225,7 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 
 	/* if there is a color change in progress, abort it */
 	if (link_conf->color_change_active) {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 		ieee80211_color_change_abort(sdata);
 #endif
 	}
@@ -4316,7 +4316,7 @@ int ieee80211_attach_ack_skb(struct ieee80211_local *local, struct sk_buff *skb,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 static void
 ieee80211_update_mgmt_frame_registrations(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
@@ -4489,12 +4489,12 @@ unlock:
 
 static int ieee80211_cfg_get_channel(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 				     unsigned int link_id,
 #endif
 				     struct cfg80211_chan_def *chandef)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_LESS(6,0,0)
 	unsigned int link_id = 0;
 #endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
@@ -4577,13 +4577,13 @@ static int ieee80211_set_ap_chanwidth(struct wiphy *wiphy,
 
 	return ret;
 }
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_LESS(6,0,0)
 static int __ieee80211_set_ap_chanwidth(struct wiphy *wiphy,
 					struct net_device *dev,
 					struct cfg80211_chan_def *chandef){
 	return ieee80211_set_ap_chanwidth(wiphy, dev, 0, chandef);
 }
-#endif /* CFG80211_VERSION < KERNEL_VERSION(6,0,0) */
+#endif /* LINUX_VERSION_IS_LESS(6,0,0) */
 
 static int ieee80211_add_tx_ts(struct wiphy *wiphy, struct net_device *dev,
 			       u8 tsid, const u8 *peer, u8 up,
@@ -4813,7 +4813,7 @@ out:
 	return ret;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 static int
 ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
 				  struct net_device *dev,
@@ -4826,7 +4826,7 @@ ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,21,0)
+#if LINUX_VERSION_IS_GEQ(4,21,0)
 static int
 ieee80211_start_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 		     struct cfg80211_pmsr_request *request)
@@ -4838,7 +4838,7 @@ ieee80211_start_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,21,0)
+#if LINUX_VERSION_IS_GEQ(4,21,0)
 static void
 ieee80211_abort_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 		     struct cfg80211_pmsr_request *request)
@@ -4850,7 +4850,7 @@ ieee80211_abort_pmsr(struct wiphy *wiphy, struct wireless_dev *dev,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 static int ieee80211_set_tid_config(struct wiphy *wiphy,
 				    struct net_device *dev,
 				    struct cfg80211_tid_config *tid_conf)
@@ -4874,7 +4874,7 @@ static int ieee80211_set_tid_config(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 static int ieee80211_reset_tid_config(struct wiphy *wiphy,
 				      struct net_device *dev,
 				      const u8 *peer, u8 tids)
@@ -4898,7 +4898,7 @@ static int ieee80211_reset_tid_config(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_IS_GEQ(5,11,0)
 static int ieee80211_set_sar_specs(struct wiphy *wiphy,
 				   struct cfg80211_sar_specs *sar)
 {
@@ -4911,7 +4911,7 @@ static int ieee80211_set_sar_specs(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static int
 ieee80211_set_after_color_change_beacon(struct ieee80211_sub_if_data *sdata,
 					u64 *changed)
@@ -4942,7 +4942,7 @@ ieee80211_set_after_color_change_beacon(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static int
 ieee80211_set_color_change_beacon(struct ieee80211_sub_if_data *sdata,
 				  struct cfg80211_color_change_settings *params,
@@ -4983,7 +4983,7 @@ ieee80211_set_color_change_beacon(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static void
 ieee80211_color_change_bss_config_notify(struct ieee80211_sub_if_data *sdata,
 					 u8 color, int enable, u64 changed)
@@ -5012,7 +5012,7 @@ ieee80211_color_change_bss_config_notify(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static int ieee80211_color_change_finalize(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_local *local = sdata->local;
@@ -5038,7 +5038,7 @@ static int ieee80211_color_change_finalize(struct ieee80211_sub_if_data *sdata)
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 void ieee80211_color_change_finalize_work(struct wiphy *wiphy,
 					  struct wiphy_work *work)
 {
@@ -5068,16 +5068,16 @@ void ieee80211_color_collision_detection_work(struct work_struct *work)
 			     color_collision_detect_work);
 	struct ieee80211_sub_if_data *sdata = link->sdata;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0) && CFG80211_VERSION < KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(5,19,0) && LINUX_VERSION_IS_LESS(6,1,0)
 	cfg80211_obss_color_collision_notify(sdata->dev, link->color_bitmap, GFP_ATOMIC);
-#elif CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#elif LINUX_VERSION_IS_GEQ(5,15,0)
 	cfg80211_obss_color_collision_notify(sdata->dev, link->color_bitmap);
 #endif
 }
 
 void ieee80211_color_change_finish(struct ieee80211_vif *vif)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 
 	wiphy_work_queue(sdata->local->hw.wiphy,
@@ -5109,7 +5109,7 @@ ieee80211_obss_color_collision_notify(struct ieee80211_vif *vif,
 }
 EXPORT_SYMBOL_GPL(ieee80211_obss_color_collision_notify);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 static int
 ieee80211_color_change(struct wiphy *wiphy, struct net_device *dev,
 		       struct cfg80211_color_change_settings *params)
@@ -5153,7 +5153,7 @@ out:
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,17,0)
+#if LINUX_VERSION_IS_GEQ(5,17,0)
 static int
 ieee80211_set_radar_background(struct wiphy *wiphy,
 			       struct cfg80211_chan_def *chandef)
@@ -5167,7 +5167,7 @@ ieee80211_set_radar_background(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 static int ieee80211_add_intf_link(struct wiphy *wiphy,
 				   struct wireless_dev *wdev,
 				   unsigned int link_id)
@@ -5183,7 +5183,7 @@ static int ieee80211_add_intf_link(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 static void ieee80211_del_intf_link(struct wiphy *wiphy,
 				    struct wireless_dev *wdev,
 				    unsigned int link_id)
@@ -5196,7 +5196,7 @@ static void ieee80211_del_intf_link(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 static int
 ieee80211_add_link_station(struct wiphy *wiphy, struct net_device *dev,
 			   struct link_station_parameters *params)
@@ -5277,7 +5277,7 @@ ieee80211_del_link_station(struct wiphy *wiphy, struct net_device *dev,
 	return 0;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 static int ieee80211_set_hw_timestamp(struct wiphy *wiphy,
 				      struct net_device *dev,
 				      struct cfg80211_set_hw_timestamp *hwts)
@@ -5295,7 +5295,7 @@ static int ieee80211_set_hw_timestamp(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_GEQ(6,8,0)
 static int
 ieee80211_set_ttlm(struct wiphy *wiphy, struct net_device *dev,
 		   struct cfg80211_ttlm_params *params)
@@ -5320,7 +5320,7 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.get_key = ieee80211_get_key,
 	.set_default_key = ieee80211_config_default_key,
 	.set_default_mgmt_key = ieee80211_config_default_mgmt_key,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 	.set_default_beacon_key = ieee80211_config_default_beacon_key,
 #endif
 	.start_ap = ieee80211_start_ap,
@@ -5348,7 +5348,7 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.join_ocb = ieee80211_join_ocb,
 	.leave_ocb = ieee80211_leave_ocb,
 	.change_bss = ieee80211_change_bss,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,5,0)
+#if LINUX_VERSION_IS_GEQ(6,5,0)
 	.inform_bss = ieee80211_inform_bss,
 #endif
 	.set_txq_params = ieee80211_set_txq_params,
@@ -5380,7 +5380,7 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.mgmt_tx_cancel_wait = ieee80211_mgmt_tx_cancel_wait,
 	.set_cqm_rssi_config = ieee80211_set_cqm_rssi_config,
 	.set_cqm_rssi_range_config = ieee80211_set_cqm_rssi_range_config,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	.update_mgmt_frame_registrations =
 		ieee80211_update_mgmt_frame_registrations,
 #else
@@ -5401,12 +5401,12 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 	.get_channel = ieee80211_cfg_get_channel,
 	.start_radar_detection = ieee80211_start_radar_detection,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,5,0)
+#if LINUX_VERSION_IS_GEQ(5,5,0)
 	.end_cac = ieee80211_end_cac,
 #endif
 	.channel_switch = ieee80211_channel_switch,
 	.set_qos_map = ieee80211_set_qos_map,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	.set_ap_chanwidth = ieee80211_set_ap_chanwidth,
 #else
 	.set_ap_chanwidth = __ieee80211_set_ap_chanwidth,
@@ -5420,55 +5420,55 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.add_nan_func = ieee80211_add_nan_func,
 	.del_nan_func = ieee80211_del_nan_func,
 	.set_multicast_to_unicast = ieee80211_set_multicast_to_unicast,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	.tx_control_port = ieee80211_tx_control_port,
 #else
 	.tx_control_port = bp_ieee80211_tx_control_port,
 #endif
 
 	.get_txq_stats = ieee80211_get_txq_stats,
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,21,0)
+#if LINUX_VERSION_IS_GEQ(4,21,0)
 	.start_pmsr = ieee80211_start_pmsr,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,21,0)
+#if LINUX_VERSION_IS_GEQ(4,21,0)
 	.abort_pmsr = ieee80211_abort_pmsr,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 	.probe_mesh_link = ieee80211_probe_mesh_link,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 	.set_tid_config = ieee80211_set_tid_config,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_IS_GEQ(5,7,0)
 	.reset_tid_config = ieee80211_reset_tid_config,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_IS_GEQ(5,11,0)
 	.set_sar_specs = ieee80211_set_sar_specs,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	.color_change = ieee80211_color_change,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,17,0)
+#if LINUX_VERSION_IS_GEQ(5,17,0)
 	.set_radar_background = ieee80211_set_radar_background,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	.add_intf_link = ieee80211_add_intf_link,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	.del_intf_link = ieee80211_del_intf_link,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	.add_link_station = ieee80211_add_link_station,
 	.mod_link_station = ieee80211_mod_link_station,
 	.del_link_station = ieee80211_del_link_station,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 	.set_hw_timestamp = ieee80211_set_hw_timestamp,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_GEQ(6,8,0)
 	.set_ttlm = ieee80211_set_ttlm,
 #endif
 };

@@ -175,7 +175,7 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	};
 	struct cfg80211_inform_bss bss_meta = {
 		.boottime_ns = rx_status->boottime_ns,
-#if CFG80211_VERSION >= KERNEL_VERSION(6,5,0)
+#if LINUX_VERSION_IS_GEQ(6,5,0)
 		.drv_data = (void *)&update_data,
 #endif
 	};
@@ -225,7 +225,7 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	}
 	rcu_read_unlock();
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 	if (!ieee80211_uhb_power_type_valid(mgmt, len, channel))cbss = NULL;
 	else
 #endif
@@ -233,7 +233,7 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 		cbss = cfg80211_inform_bss_frame_data(local->hw.wiphy,
 						      &bss_meta,
 						      mgmt, len, GFP_ATOMIC);
-#if CFG80211_VERSION < KERNEL_VERSION(6,5,0)
+#if LINUX_VERSION_IS_LESS(6,5,0)
 	if (cbss) {
 		struct cfg80211_bss *non_tx_cbss;
 		rcu_read_lock();
@@ -241,7 +241,7 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 				     rcu_dereference(cbss->ies),
 				     (void *)&update_data);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 		list_for_each_entry (non_tx_cbss, &cbss->nontrans_list,
 				     nontrans_list)
 			ieee80211_inform_bss(local->hw.wiphy, non_tx_cbss,
@@ -317,7 +317,7 @@ void ieee80211_scan_rx(struct ieee80211_local *local, struct sk_buff *skb)
 		wiphy_delayed_work_queue(local->hw.wiphy, &local->scan_work, 0);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	channel = ieee80211_get_channel_khz(local->hw.wiphy,
 					    ieee80211_rx_status_to_khz(rx_status));
 #else
@@ -797,14 +797,14 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 							     cfg80211_scan_request_tsf_report_link_id(req));
 
 		local->hw_scan_band = 0;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 		local->hw_scan_req->req.n_6ghz_params = req->n_6ghz_params;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 		local->hw_scan_req->req.scan_6ghz_params =
 			req->scan_6ghz_params;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 		local->hw_scan_req->req.scan_6ghz = cfg80211_scan_req_6ghz(req);
 #endif
 

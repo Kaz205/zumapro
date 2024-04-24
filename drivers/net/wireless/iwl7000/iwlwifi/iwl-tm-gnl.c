@@ -1071,7 +1071,7 @@ static const struct genl_ops iwl_tm_gnl_ops[] = {
 #endif
 
 	  .doit = iwl_tm_gnl_cmd_do,
-#if CFG80211_VERSION < KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_LESS(5,2,0)
 	  .policy = iwl_tm_gnl_msg_policy,
 #endif
 	  .dumpit = iwl_tm_gnl_dump,
@@ -1084,7 +1084,7 @@ static const struct genl_ops iwl_tm_gnl_ops[] = {
 #endif
 
 		.doit = iwl_tm_gnl_cmd_subscribe,
-#if CFG80211_VERSION < KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_LESS(5,2,0)
 		.policy	= iwl_tm_gnl_msg_policy,
 #endif
 	},
@@ -1095,7 +1095,7 @@ static struct genl_family iwl_tm_gnl_family __genl_ro_after_init = {
 	.name		= IWL_TM_GNL_FAMILY_NAME,
 	.version	= IWL_TM_GNL_VERSION_NR,
 	.maxattr	= IWL_TM_GNL_MSG_ATTR_MAX,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 	.policy		= iwl_tm_gnl_msg_policy,
 #endif
 	.module		= THIS_MODULE,

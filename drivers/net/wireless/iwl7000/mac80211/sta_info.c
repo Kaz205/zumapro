@@ -2460,7 +2460,7 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u32 rate,
 		rinfo->he_ru_alloc = STA_STATS_GET(HE_RU, rate);
 		rinfo->he_dcm = STA_STATS_GET(HE_DCM, rate);
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 	case STA_STATS_RATE_TYPE_EHT:
 		rinfo->flags = RATE_INFO_FLAGS_EHT_MCS;
 		rinfo->mcs = STA_STATS_GET(EHT_MCS, rate);
@@ -2602,7 +2602,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 	}
 
 	sinfo->connected_time = ktime_get_seconds() - sta->last_connected;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#if LINUX_VERSION_IS_GEQ(5,4,0)
 	sinfo->assoc_at = sta->assoc_at;
 #endif
 	sinfo->inactive_time =
@@ -2664,7 +2664,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_RX_DURATION))) {
 		for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
 			sinfo->rx_duration += sta->airtime[ac].rx_airtime;
@@ -2827,7 +2827,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,20,0)
+#if LINUX_VERSION_IS_GEQ(4,20,0)
 	if (!(sinfo->filled & BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG)) &&
 	    sta->deflink.status_stats.ack_signal_filled) {
 		sinfo->avg_ack_signal =
@@ -2838,7 +2838,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 	}
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,2,0)
+#if LINUX_VERSION_IS_GEQ(5,2,0)
 	if (ieee80211_vif_is_mesh(&sdata->vif)) {
 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_AIRTIME_LINK_METRIC);
 		sinfo->airtime_link_metric =

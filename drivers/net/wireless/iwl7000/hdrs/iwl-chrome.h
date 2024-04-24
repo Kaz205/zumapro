@@ -16,13 +16,13 @@
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
 
-#include <hdrs/mac80211-exp.h>
-
 #define LINUX_VERSION_IS_LESS(x1,x2,x3) (LINUX_VERSION_CODE < KERNEL_VERSION(x1,x2,x3))
 #define LINUX_VERSION_IS_GEQ(x1,x2,x3)  (LINUX_VERSION_CODE >= KERNEL_VERSION(x1,x2,x3))
 #define LINUX_VERSION_IN_RANGE(x1,x2,x3, y1,y2,y3) \
         (LINUX_VERSION_IS_GEQ(x1,x2,x3) && LINUX_VERSION_IS_LESS(y1,y2,y3))
 #define LINUX_BACKPORT(sym) backport_ ## sym
+
+#include <hdrs/mac80211-exp.h>
 
 #include <net/genetlink.h>
 #include <linux/crypto.h>

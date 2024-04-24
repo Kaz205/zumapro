@@ -170,7 +170,7 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 		.chan = channel,
 		.width = NL80211_CHAN_WIDTH_20_NOHT,
 		.center_freq1 = channel->center_freq,
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 		.freq1_offset = cfg80211_chan_freq_offset(channel),
 #endif
 	};
@@ -321,7 +321,7 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 		ieee80211_chandef_eht_oper((const void *)eht_oper->optional,
 					   &eht_chandef);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,9,0)
+#if LINUX_VERSION_IS_GEQ(6,9,0)
 		eht_chandef.punctured =
 			ieee80211_eht_oper_dis_subchan_bitmap(eht_oper);
 #else
@@ -1601,7 +1601,7 @@ static size_t ieee80211_assoc_link_elems(struct ieee80211_sub_if_data *sdata,
 		ieee80211_add_s1g_capab_ie(sdata, &sband->s1g_cap, skb);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,14,0)
+#if LINUX_VERSION_IS_GEQ(5,14,0)
 	if (iftd && iftd->vendor_elems.data && iftd->vendor_elems.len)
 		skb_put_data(skb, iftd->vendor_elems.data, iftd->vendor_elems.len);
 #else
@@ -1821,7 +1821,7 @@ static int ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata)
 
 	for (link_id = 0; link_id < IEEE80211_MLD_MAX_NUM_LINKS; link_id++) {
 		struct cfg80211_bss *cbss = assoc_data->link[link_id].bss;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,14,0)
+#if LINUX_VERSION_IS_GEQ(5,14,0)
 		const struct ieee80211_sband_iftype_data *iftd;
 #endif
 		struct ieee80211_supported_band *sband;
@@ -1839,7 +1839,7 @@ static int ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata)
 		/* supported channels */
 		size += 2 + 2 * sband->n_channels;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,14,0)
+#if LINUX_VERSION_IS_GEQ(5,14,0)
 		iftd = ieee80211_get_sband_iftype_data(sband, iftype);
 		if (iftd)
 			size += iftd->vendor_elems.len;
@@ -4944,7 +4944,7 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 		bss_conf->he_bss_color.partial =
 			le32_get_bits(elems->he_operation->he_oper_params,
 				      IEEE80211_HE_OPERATION_PARTIAL_BSS_COLOR);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
+#if LINUX_VERSION_IS_GEQ(5,4,0)
 		bss_conf->he_bss_color.enabled =
 			!le32_get_bits(elems->he_operation->he_oper_params,
 				       IEEE80211_HE_OPERATION_BSS_COLOR_DISABLED);
@@ -4973,7 +4973,7 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 		/* TODO: OPEN: what happens if BSS color disable is set? */
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 	if (cbss->transmitted_bss) {
 		bss_conf->nontransmitted = true;
 		ether_addr_copy(bss_conf->transmitter_bssid,
@@ -5768,7 +5768,7 @@ static void ieee80211_assoc_comeback(struct net_device *dev,
 				     struct ieee80211_mgd_assoc_data *assoc_data,
 				     u32 timeout)
 {
-#if CFG80211_VERSION < KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_LESS(6,0,0)
 	int i;
 
 	if (WARN_ON(!assoc_data->link[0].bss))
@@ -5785,7 +5785,7 @@ static void ieee80211_rx_mgmt_assoc_resp(struct ieee80211_sub_if_data *sdata,
 					 struct ieee80211_mgmt *mgmt,
 					 size_t len)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0) && CFG80211_VERSION < KERNEL_VERSION(6,5,7)
+#if LINUX_VERSION_IS_GEQ(6,0,0) && LINUX_VERSION_IS_LESS(6,5,7)
 	u8 link_addrs[IEEE80211_MLD_MAX_NUM_LINKS][ETH_ALEN];
 #endif
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
@@ -5806,7 +5806,7 @@ static void ieee80211_rx_mgmt_assoc_resp(struct ieee80211_sub_if_data *sdata,
 		.u.mlme.data = ASSOC_EVENT,
 	};
 	struct ieee80211_prep_tx_info info = {};
-#if CFG80211_VERSION < KERNEL_VERSION(6,7,0)
+#if LINUX_VERSION_IS_LESS(6,7,0)
 	struct cfg80211_rx_assoc_resp resp = {
 #else
 	struct cfg80211_rx_assoc_resp_data resp = {
@@ -5970,14 +5970,14 @@ static void ieee80211_rx_mgmt_assoc_resp(struct ieee80211_sub_if_data *sdata,
 			continue;
 
 		resp.links[link_id].bss = assoc_data->link[link_id].bss;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0) && CFG80211_VERSION < KERNEL_VERSION(6,5,7)
+#if LINUX_VERSION_IS_GEQ(6,0,0) && LINUX_VERSION_IS_LESS(6,5,7)
 		ether_addr_copy(link_addrs[link_id], assoc_data->link[link_id].addr);
 		resp.links[link_id].addr = link_addrs[link_id];
 #else
 		ether_addr_copy(resp.links[link_id].addr,
 				assoc_data->link[link_id].addr);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(6,2,0)
+#if LINUX_VERSION_IS_GEQ(6,2,0)
 		resp.links[link_id].status = assoc_data->link[link_id].status;
 #endif
 
@@ -6027,7 +6027,7 @@ static void ieee80211_rx_bss_info(struct ieee80211_link_data *link,
 
 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	channel = ieee80211_get_channel_khz(local->hw.wiphy,
 					ieee80211_rx_status_to_khz(rx_status));
 #else
@@ -6214,7 +6214,7 @@ static bool ieee80211_rx_our_beacon(const u8 *tx_bssid,
 {
 	if (ether_addr_equal(tx_bssid, bss->bssid))
 		return true;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,1,0)
+#if LINUX_VERSION_IS_GEQ(5,1,0)
 	if (!bss->transmitted_bss)
 		return false;
 	return ether_addr_equal(tx_bssid, bss->transmitted_bss->bssid);
@@ -6793,7 +6793,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 		return;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_GEQ(5,8,0)
 	if (ieee80211_rx_status_to_khz(rx_status) !=
 	    ieee80211_channel_to_khz(chanctx_conf->def.chan)) {
 #else
@@ -8703,7 +8703,7 @@ ieee80211_setup_assoc_link(struct ieee80211_sub_if_data *sdata,
 		assoc_data->supp_rates_len = bss->supp_rates_len;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_IS_GEQ(6,0,0)
 	/* copy and link elems for the STA profile */
 	if (cfg80211_req_link_elems_len(req, link_id)) {
 		memcpy(assoc_data->ie_pos, req->links[link_id].elems,
@@ -8931,7 +8931,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	memcpy(&ifmgd->vht_capa_mask, &req->vht_capa_mask,
 	       sizeof(ifmgd->vht_capa_mask));
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	memcpy(&ifmgd->s1g_capa, &req->s1g_capa, sizeof(ifmgd->s1g_capa));
 	memcpy(&ifmgd->s1g_capa_mask, &req->s1g_capa_mask,
 	       sizeof(ifmgd->s1g_capa_mask));
@@ -8967,7 +8967,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 			if (!bss->wmm_used) {
 				err = -EINVAL;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 				req->links[i].error = err;
 #endif
 				goto err_free;
@@ -8975,7 +8975,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 			if (link_cbss->channel->band == NL80211_BAND_S1GHZ) {
 				err = -EINVAL;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 				req->links[i].error = err;
 #endif
 				goto err_free;
@@ -9006,7 +9006,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 			if (assoc_data->link[i].conn.mode < IEEE80211_CONN_MODE_EHT) {
 				err = -EINVAL;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 				req->links[i].error = err;
 #endif
 				goto err_free;
@@ -9016,7 +9016,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 							       assoc_data, i);
 			if (err) {
 				err = -EINVAL;
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 				req->links[i].error = err;
 #endif
 				goto err_free;
@@ -9183,7 +9183,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 					     assoc_data->link[i].bss, true,
 					     &assoc_data->link[i].conn);
 		if (err) {
-#if CFG80211_VERSION >= KERNEL_VERSION(6,1,0)
+#if LINUX_VERSION_IS_GEQ(6,1,0)
 			req->links[i].error = err;
 #endif
 			goto err_clear;

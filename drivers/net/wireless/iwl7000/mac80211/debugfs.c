@@ -288,7 +288,7 @@ static ssize_t aql_txq_limit_write(struct file *file,
 	q_limit_low_old = local->aql_txq_limit_low[ac];
 	q_limit_high_old = local->aql_txq_limit_high[ac];
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #else
 	rtnl_lock();
@@ -304,7 +304,7 @@ static ssize_t aql_txq_limit_write(struct file *file,
 			sta->airtime[ac].aql_limit_high = q_limit_high;
 		}
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #else
 	rtnl_unlock();
@@ -435,12 +435,12 @@ static ssize_t reset_write(struct file *file, const char __user *user_buf,
 	int ret;
 
 	rtnl_lock();
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #endif
 	__ieee80211_suspend(&local->hw, NULL);
 	ret = __ieee80211_resume(&local->hw);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 
@@ -616,13 +616,13 @@ static ssize_t format_devstat_counter(struct ieee80211_local *local,
 	char buf[20];
 	int res;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #else
 	rtnl_lock();
 #endif
 	res = drv_get_stats(local, &stats);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #else
 	rtnl_unlock();

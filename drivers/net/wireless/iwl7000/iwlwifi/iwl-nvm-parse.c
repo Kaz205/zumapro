@@ -380,7 +380,7 @@ static u32 iwl_get_channel_flags(u8 ch_num, int ch_idx, enum nl80211_band band,
 static int iwl_nl80211_band_from_channel_idx(int ch_idx)
 {
 	if (ch_idx >= NUM_2GHZ_CHANNELS + NUM_5GHZ_CHANNELS)
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 		return NL80211_BAND_6GHZ;
 #else
 		return -1;
@@ -591,7 +591,7 @@ static void iwl_init_vht_hw_capab(struct iwl_trans *trans,
 		cpu_to_le16(IEEE80211_VHT_EXT_NSS_BW_CAPABLE);
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,14,0)
+#if LINUX_VERSION_IS_GEQ(5,14,0)
 static const u8 iwl_vendor_caps[] = {
 	0xdd,			/* vendor element */
 	0x06,			/* length */
@@ -687,7 +687,7 @@ static const struct ieee80211_sband_iftype_data iwl_he_eht_capa[] = {
 			 */
 			.ppe_thres = {0x61, 0x1c, 0xc7, 0x71},
 		},
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		.eht_cap = {
 			.has_eht = true,
 			.eht_cap_elem = {
@@ -817,7 +817,7 @@ static const struct ieee80211_sband_iftype_data iwl_he_eht_capa[] = {
 			 */
 			.ppe_thres = {0x61, 0x1c, 0xc7, 0x71},
 		},
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		.eht_cap = {
 			.has_eht = true,
 			.eht_cap_elem = {
@@ -868,7 +868,7 @@ static const struct ieee80211_sband_iftype_data iwl_he_eht_capa[] = {
 	},
 };
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_IS_LESS(5,8,0)
 static void iwl_init_he_6ghz_capa(struct iwl_trans *trans,
 				  struct iwl_nvm_data *data,
 				  struct ieee80211_supported_band *sband,
@@ -959,14 +959,14 @@ iwl_nvm_fixup_sband_iftd(struct iwl_trans *trans,
 	case NL80211_BAND_2GHZ:
 		iftype_data->he_cap.he_cap_elem.phy_cap_info[0] |=
 			IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		cfg_eht_cap(iftype_data)->eht_cap_elem.mac_cap_info[0] |=
 				u8_encode_bits(IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_11454,
 					       IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_MASK);
 #endif
 		break;
 	case NL80211_BAND_6GHZ:
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		if (!no_320) {
 			cfg_eht_cap(iftype_data)->eht_cap_elem.phy_cap_info[0] |=
 					IEEE80211_EHT_PHY_CAP0_320MHZ_IN_6GHZ;
@@ -1095,7 +1095,7 @@ iwl_nvm_fixup_sband_iftd(struct iwl_trans *trans,
 		iftype_data->he_cap.he_cap_elem.mac_cap_info[2] |=
 			IEEE80211_HE_MAC_CAP2_BCAST_TWT;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,14,0)
+#if LINUX_VERSION_IS_GEQ(5,14,0)
 	if (trans->trans_cfg->device_family == IWL_DEVICE_FAMILY_22000 &&
 	    !is_ap) {
 		iftype_data->vendor_elems.data = iwl_vendor_caps;
@@ -1356,15 +1356,15 @@ static void iwl_init_eht_band_override(struct iwl_trans *trans,
 			memset(mcs_nss, 0x11, sizeof(*mcs_nss));
 		}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		if (IWL_COPY_BIN(eht_ppe_thres, eht_cap.eht_ppe_thres))
 			cfg_eht_cap(iftype_data)->eht_cap_elem.phy_cap_info[5] |=
 					IEEE80211_EHT_PHY_CAP5_PPE_THRESHOLD_PRESENT;
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		IWL_COPY_BIN(eht_mac_cap, eht_cap.eht_cap_elem.mac_cap_info);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 		IWL_COPY_BIN(eht_phy_cap, eht_cap.eht_cap_elem.phy_cap_info);
 #endif
 
@@ -1374,18 +1374,18 @@ static void iwl_init_eht_band_override(struct iwl_trans *trans,
 		 */
 		if (sband->band == NL80211_BAND_2GHZ &&
 		    trans->dbg_cfg.eht_mcs_only_20Mhz.len) {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			IWL_COPY_BIN(eht_mcs_only_20Mhz,
 				     eht_cap.eht_mcs_nss_supp.only_20mhz);
 #endif
 		} else {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			IWL_COPY_BIN(eht_mcs_80, eht_cap.eht_mcs_nss_supp.bw._80);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			IWL_COPY_BIN(eht_mcs_160, eht_cap.eht_mcs_nss_supp.bw._160);
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 			IWL_COPY_BIN(eht_mcs_320, eht_cap.eht_mcs_nss_supp.bw._320);
 #endif
 		}
@@ -1436,7 +1436,7 @@ void iwl_reinit_cab(struct iwl_trans *trans, struct iwl_nvm_data *data,
 		iwl_init_he_hw_capab(trans, data, sband, tx_chains, rx_chains,
 				     fw);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	sband = &data->bands[NL80211_BAND_6GHZ];
 	if (data->sku_cap_11ax_enable && !iwlwifi_mod_params.disable_11ax)
 		iwl_init_he_hw_capab(trans, data, sband, tx_chains, rx_chains,
@@ -1487,7 +1487,7 @@ static void iwl_init_sbands(struct iwl_trans *trans,
 		iwl_init_he_hw_capab(trans, data, sband, tx_chains, rx_chains,
 				     fw);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	/* 6GHz band. */
 	sband = &data->bands[NL80211_BAND_6GHZ];
 	sband->band = NL80211_BAND_6GHZ;
@@ -2025,7 +2025,7 @@ static struct iwl_reg_capa iwl_get_reg_capa(u32 flags, u8 resp_ver)
 
 struct ieee80211_regdomain *
 iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 		       struct iwl_nvm_data *nvm_data,
 #endif
 		       int num_of_ch, __le32 *channels, u16 fw_mcc,
@@ -2081,7 +2081,7 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 	reg_capa = iwl_get_reg_capa(cap, resp_ver);
 
 	for (ch_idx = 0; ch_idx < num_of_ch; ch_idx++) {
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 		struct ieee80211_channel *chan = &nvm_data->channels[ch_idx];
 #endif
 		band = iwl_nl80211_band_from_channel_idx(ch_idx);
@@ -2103,7 +2103,7 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 							     ch_flags, reg_capa,
 							     cfg, uats_enabled);
 
-#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_IS_LESS(6,8,0)
 		if (band == NL80211_BAND_6GHZ) {
 			chan->flags |= IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT | IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT;
 			if (ch_flags & NVM_CHANNEL_AFC)

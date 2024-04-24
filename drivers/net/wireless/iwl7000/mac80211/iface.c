@@ -312,11 +312,11 @@ static int ieee80211_change_mac(struct net_device *dev, void *addr)
 	if (!wdev_registered(dev->ieee80211_ptr))
 		return 0;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #endif
 	ret = _ieee80211_change_mac(sdata, addr);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 
@@ -456,7 +456,7 @@ static int ieee80211_open(struct net_device *dev)
 	if (!is_valid_ether_addr(dev->dev_addr))
 		return -EADDRNOTAVAIL;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
 #endif
 	err = ieee80211_check_concurrent_iface(sdata, sdata->vif.type);
@@ -465,7 +465,7 @@ static int ieee80211_open(struct net_device *dev)
 
 	err = ieee80211_do_open(&sdata->wdev, true);
 out:
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
 #endif
 
@@ -565,7 +565,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 	}
 
 	wiphy_work_cancel(local->hw.wiphy, &sdata->deflink.csa.finalize_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+#if LINUX_VERSION_IS_GEQ(5,15,0)
 	wiphy_work_cancel(local->hw.wiphy,
 			  &sdata->deflink.color_change_finalize_work);
 #endif
@@ -774,13 +774,13 @@ static int ieee80211_stop(struct net_device *dev)
 		ieee80211_stop_mbssid(sdata);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
 #endif
 	wiphy_work_cancel(sdata->local->hw.wiphy, &sdata->activate_links_work);
 
 	ieee80211_do_stop(sdata, true);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
 #endif
 
@@ -2334,7 +2334,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 	 */
 	cfg80211_shutdown_all_interfaces(local->hw.wiphy);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_lock(local->hw.wiphy);
 #endif
 
@@ -2366,7 +2366,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 		if (!netdev)
 			kfree(sdata);
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_IS_GEQ(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
 #endif
 }

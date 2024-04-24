@@ -1419,7 +1419,7 @@ static void iwl_mvm_decode_eht_ext_tb(struct iwl_mvm *mvm,
 	}
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_IS_GEQ(5,18,0)
 static void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
 				  struct ieee80211_rx_status *rx_status,
 				  struct ieee80211_radiotap_eht *eht)

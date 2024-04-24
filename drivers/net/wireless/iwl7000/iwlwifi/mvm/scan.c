@@ -797,7 +797,7 @@ iwl_mvm_build_scan_probe(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		cpu_to_le16(ies->len[NL80211_BAND_5GHZ]);
 	pos += ies->len[NL80211_BAND_5GHZ];
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	memcpy(pos, ies->ies[NL80211_BAND_6GHZ],
 	       ies->len[NL80211_BAND_6GHZ]);
 	params->preq.band_data[2].offset = cpu_to_le16(pos - params->preq.buf);
@@ -1674,7 +1674,7 @@ iwl_mvm_umac_scan_cfg_channels_v7(struct iwl_mvm *mvm,
 	}
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_LESS(5,10,0)
 static void
 iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
 				    struct iwl_mvm_scan_params *params,
@@ -1756,7 +1756,7 @@ iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
 }
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_LESS(5,10,0)
 static u32
 iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
 				     struct iwl_mvm_scan_params *params,
@@ -1825,7 +1825,7 @@ iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
 			/* Use the highest PSD value allowed as advertised by
 			 * APs for this channel
 			 */
-#if CFG80211_VERSION < KERNEL_VERSION(6,5,0)
+#if LINUX_VERSION_IS_LESS(6,5,0)
 			tmp_psd_20 = IEEE80211_RNR_TBTT_PARAMS_PSD_RESERVED;
 #else
 			tmp_psd_20 = scan_6ghz_params[j].psd_20;
@@ -2023,7 +2023,7 @@ static void iwl_mvm_scan_6ghz_passive_scan(struct iwl_mvm *mvm,
 					   struct iwl_mvm_scan_params *params,
 					   struct ieee80211_vif *vif)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	struct ieee80211_supported_band *sband =
 		&mvm->nvm_data->bands[NL80211_BAND_6GHZ];
 	u32 n_disabled, i;
@@ -2107,7 +2107,7 @@ static void iwl_mvm_scan_6ghz_passive_scan(struct iwl_mvm *mvm,
 	/* all conditions to enable 6ghz passive scan are satisfied */
 	IWL_DEBUG_SCAN(mvm, "6GHz passive scan: can be enabled\n");
 	params->enable_6ghz_passive = true;
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(5,10,0) */
+#endif /* LINUX_VERSION_IS_GEQ(5,10,0) */
 }
 
 static u16 iwl_mvm_scan_umac_flags_v2(struct iwl_mvm *mvm,
@@ -2493,7 +2493,7 @@ iwl_mvm_scan_umac_fill_ch_p_v7(struct iwl_mvm *mvm,
 					  channel_cfg_flags,
 					  vif->type, version);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	if (params->enable_6ghz_passive) {
 		struct ieee80211_supported_band *sband =
 			&mvm->nvm_data->bands[NL80211_BAND_6GHZ];
@@ -2963,7 +2963,7 @@ static int _iwl_mvm_single_scan_start(struct iwl_mvm *mvm,
 	params.scan_plans = &scan_plan;
 	params.n_scan_plans = 1;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_IS_GEQ(5,10,0)
 	params.n_6ghz_params = req->n_6ghz_params;
 	params.scan_6ghz_params = req->scan_6ghz_params;
 	params.scan_6ghz = cfg80211_scan_req_6ghz(req);
