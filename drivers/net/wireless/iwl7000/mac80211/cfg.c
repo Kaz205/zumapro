@@ -880,9 +880,8 @@ void sta_set_rate_info_tx(struct sta_info *sta,
 }
 
 static int ieee80211_dump_station(struct wiphy *wiphy, struct net_device *dev,
-				  int idx, u8 *mac, cfg_station_info_t *cfginfo)
+				  int idx, u8 *mac, struct station_info *sinfo)
 {
-	struct station_info _sinfo = {}, *sinfo = &_sinfo;
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta;
@@ -897,27 +896,20 @@ static int ieee80211_dump_station(struct wiphy *wiphy, struct net_device *dev,
 		sta_set_sinfo(sta, sinfo, true);
 	}
 
-	iwl7000_convert_sinfo(sinfo, cfginfo);
-
 	return ret;
 }
 
 static int ieee80211_dump_survey(struct wiphy *wiphy, struct net_device *dev,
-				 int idx, cfg_survey_info_t *cfgsurvey)
+				 int idx, struct survey_info *survey)
 {
 	struct ieee80211_local *local = wdev_priv(dev->ieee80211_ptr);
-	struct survey_info _survey = {}, *survey = &_survey;
-	int ret;
 
-	ret = drv_get_survey(local, idx, survey);
-	iwl7000_convert_survey_info(survey, cfgsurvey);
-	return ret;
+	return drv_get_survey(local, idx, survey);
 }
 
 static int ieee80211_get_station(struct wiphy *wiphy, struct net_device *dev,
-				 const u8 *mac, cfg_station_info_t *cfginfo)
+				 const u8 *mac, struct station_info *sinfo)
 {
-	struct station_info _sinfo = {}, *sinfo = &_sinfo;
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta;
@@ -930,8 +922,6 @@ static int ieee80211_get_station(struct wiphy *wiphy, struct net_device *dev,
 		ret = 0;
 		sta_set_sinfo(sta, sinfo, true);
 	}
-
-	iwl7000_convert_sinfo(sinfo, cfginfo);
 
 	return ret;
 }

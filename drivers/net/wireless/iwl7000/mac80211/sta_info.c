@@ -2602,7 +2602,9 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 	}
 
 	sinfo->connected_time = ktime_get_seconds() - sta->last_connected;
+#if CFG80211_VERSION >= KERNEL_VERSION(5,4,0)
 	sinfo->assoc_at = sta->assoc_at;
+#endif
 	sinfo->inactive_time =
 		jiffies_to_msecs(jiffies - ieee80211_sta_last_active(sta));
 
