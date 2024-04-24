@@ -4034,18 +4034,18 @@ static int ieee80211_set_csa_beacon(struct ieee80211_link_data *link_data,
 		if (params->count <= 1)
 			break;
 
-		if ((csa_n_counter_offsets_beacon(params) >
+		if ((params->n_counter_offsets_beacon >
 		     IEEE80211_MAX_CNTDWN_COUNTERS_NUM) ||
-		    (csa_n_counter_offsets_presp(params) >
+		    (params->n_counter_offsets_presp >
 		     IEEE80211_MAX_CNTDWN_COUNTERS_NUM)) {
 			ieee80211_free_next_beacon(link_data);
 			return -EINVAL;
 		}
 
-		csa.counter_offsets_beacon = csa_counter_offsets_beacon(params);
-		csa.counter_offsets_presp = csa_counter_offsets_presp(params);
-		csa.n_counter_offsets_beacon = csa_n_counter_offsets_beacon(params);
-		csa.n_counter_offsets_presp = csa_n_counter_offsets_presp(params);
+		csa.counter_offsets_beacon = params->counter_offsets_beacon;
+		csa.counter_offsets_presp = params->counter_offsets_presp;
+		csa.n_counter_offsets_beacon = params->n_counter_offsets_beacon;
+		csa.n_counter_offsets_presp = params->n_counter_offsets_presp;
 		csa.count = params->count;
 
 		err = ieee80211_assign_beacon(sdata, link_data,

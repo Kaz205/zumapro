@@ -28,30 +28,6 @@
 #define netdev_tstats(dev)	dev->tstats
 #define netdev_assign_tstats(dev, e)	dev->tstats = (e);
 
-static inline unsigned int
-csa_n_counter_offsets_beacon(struct cfg80211_csa_settings *s)
-{
-	return s->n_counter_offsets_beacon;
-}
-
-static inline unsigned int
-csa_n_counter_offsets_presp(struct cfg80211_csa_settings *s)
-{
-	return s->n_counter_offsets_presp;
-}
-
-static inline const u16 *
-csa_counter_offsets_beacon(struct cfg80211_csa_settings *s)
-{
-	return s->counter_offsets_beacon;
-}
-
-static inline const u16 *
-csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
-{
-	return s->counter_offsets_presp;
-}
-
 #if LINUX_VERSION_IS_LESS(6,9,0)
 bool
 ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
