@@ -225,7 +225,7 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	}
 	rcu_read_unlock();
 
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 	if (!ieee80211_uhb_power_type_valid(mgmt, len, channel))cbss = NULL;
 	else
 #endif
@@ -797,14 +797,14 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 							     cfg80211_scan_request_tsf_report_link_id(req));
 
 		local->hw_scan_band = 0;
-#if CFG80211_VERSION > KERNEL_VERSION(5,10,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 		local->hw_scan_req->req.n_6ghz_params = req->n_6ghz_params;
 #endif
-#if CFG80211_VERSION > KERNEL_VERSION(5,10,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 		local->hw_scan_req->req.scan_6ghz_params =
 			req->scan_6ghz_params;
 #endif
-#if CFG80211_VERSION > KERNEL_VERSION(5,10,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 		local->hw_scan_req->req.scan_6ghz = cfg80211_scan_req_6ghz(req);
 #endif
 

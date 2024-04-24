@@ -277,7 +277,7 @@ void ieee80211_fragment_element(struct sk_buff *skb, u8 *len_pos, u8 frag_id)
 EXPORT_SYMBOL(ieee80211_fragment_element);
 #endif
 
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 bool
 ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
 			       struct ieee80211_channel *channel)

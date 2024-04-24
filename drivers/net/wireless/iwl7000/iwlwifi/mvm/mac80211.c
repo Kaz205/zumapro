@@ -180,7 +180,7 @@ struct ieee80211_regdomain *iwl_mvm_get_regdomain(struct wiphy *wiphy,
 	IWL_DEBUG_LAR(mvm, "MCC update response version: %d\n", resp_ver);
 
 	regd = iwl_parse_nvm_mcc_info(mvm->trans->dev, mvm->cfg,
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 				      mvm->nvm_data,
 #endif
 				      __le32_to_cpu(resp->n_channels),

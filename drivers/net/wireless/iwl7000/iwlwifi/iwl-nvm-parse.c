@@ -2025,7 +2025,7 @@ static struct iwl_reg_capa iwl_get_reg_capa(u32 flags, u8 resp_ver)
 
 struct ieee80211_regdomain *
 iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 		       struct iwl_nvm_data *nvm_data,
 #endif
 		       int num_of_ch, __le32 *channels, u16 fw_mcc,
@@ -2081,7 +2081,7 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 	reg_capa = iwl_get_reg_capa(cap, resp_ver);
 
 	for (ch_idx = 0; ch_idx < num_of_ch; ch_idx++) {
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 		struct ieee80211_channel *chan = &nvm_data->channels[ch_idx];
 #endif
 		band = iwl_nl80211_band_from_channel_idx(ch_idx);
@@ -2103,7 +2103,7 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 							     ch_flags, reg_capa,
 							     cfg, uats_enabled);
 
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,8,0)
 		if (band == NL80211_BAND_6GHZ) {
 			chan->flags |= IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT | IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT;
 			if (ch_flags & NVM_CHANNEL_AFC)
