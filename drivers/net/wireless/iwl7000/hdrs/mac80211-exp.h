@@ -11,8 +11,6 @@
 #define ieee80211_stop_tx_ba_cb_irqsafe __iwl7000_ieee80211_stop_tx_ba_cb_irqsafe
 #define ieee80211_calc_rx_airtime __iwl7000_ieee80211_calc_rx_airtime
 #define ieee80211_calc_tx_airtime __iwl7000_ieee80211_calc_tx_airtime
-#define arc4_setkey __iwl7000_arc4_setkey
-#define arc4_crypt __iwl7000_arc4_crypt
 #define wiphy_work_flush __iwl7000_wiphy_work_flush
 #define wiphy_delayed_work_flush __iwl7000_wiphy_delayed_work_flush
 #define wiphy_work_queue __iwl7000_wiphy_work_queue
