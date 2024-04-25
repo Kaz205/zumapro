@@ -7,7 +7,6 @@
 #include <linux/ieee80211.h>
 #include <linux/etherdevice.h>
 #include <linux/tcp.h>
-#include <net/gso.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 

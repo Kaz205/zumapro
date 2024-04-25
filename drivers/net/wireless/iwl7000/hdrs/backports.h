@@ -146,6 +146,10 @@ struct backport_thermal_trip {
 #define thermal_trip backport_thermal_trip
 #endif
 
+#define SKB_CONSUMED (SKB_DROP_REASON_MAX + 1)
+#define VISIBLE_IF_KUNIT static
+#define EXPORT_SYMBOL_IF_KUNIT(...)
+
 #define kvmemdup LINUX_BACKPORT(kvmemdup)
 static inline void *kvmemdup(const void *src, size_t len, gfp_t gfp)
 {
@@ -192,6 +196,31 @@ iwl7000_cfg80211_rx_control_port(struct net_device *dev, struct sk_buff *skb,
 }
 #define cfg80211_rx_control_port iwl7000_cfg80211_rx_control_port
 
+enum skb_drop_reason_subsys {
+	SKB_DROP_REASON_SUBSYS_CORE,
+	SKB_DROP_REASON_SUBSYS_MAC80211_UNUSABLE,
+	SKB_DROP_REASON_SUBSYS_MAC80211_MONITOR,
+	SKB_DROP_REASON_SUBSYS_NUM
+};
+
+struct drop_reason_list {
+	const char * const *reasons;
+	size_t n_reasons;
+};
+
+#define SKB_DROP_REASON_SUBSYS_SHIFT	16
+#define SKB_DROP_REASON_SUBSYS_MASK	0xffff0000
+
+static inline void
+drop_reasons_register_subsys(enum skb_drop_reason_subsys subsys,
+			     const struct drop_reason_list *list)
+{}
+
+static inline void
+drop_reasons_unregister_subsys(enum skb_drop_reason_subsys subsys)
+{}
+
+#include <hdrs/linux/compiler_attributes.h>
 #include <linux/leds.h>
 
 #define NL80211_RRF_NO_EHT 0

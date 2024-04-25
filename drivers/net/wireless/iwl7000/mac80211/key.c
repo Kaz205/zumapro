@@ -9,7 +9,7 @@
  * Copyright 2018-2020, 2022-2024  Intel Corporation
  */
 
-#include <crypto/utils.h>
+#include <crypto/algapi.h>
 #include <linux/if_ether.h>
 #include <linux/etherdevice.h>
 #include <linux/list.h>

@@ -26,7 +26,6 @@
 #include <net/codel_impl.h>
 #include <asm/unaligned.h>
 #include <net/fq_impl.h>
-#include <net/gso.h>
 
 #include "ieee80211_i.h"
 #include "driver-ops.h"

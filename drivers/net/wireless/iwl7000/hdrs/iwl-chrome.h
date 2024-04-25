@@ -34,9 +34,6 @@
 #include <linux/if_vlan.h>
 #include "net/fq.h"
 
-#include <hdrs/linux/compiler_attributes.h>
-#include <hdrs/net/dropreason.h>
-
 #ifndef DECLARE_FLEX_ARRAY
 /**
  * __DECLARE_FLEX_ARRAY() - Declare a flexible array usable in a union
@@ -123,7 +120,6 @@
  */
 #include <hdrs/linux/bitfield.h>
 #include <hdrs/linux/ieee80211.h>
-#include <hdrs/linux/average.h>
 #include <hdrs/net/ieee80211_radiotap.h>
 #include <linux/if_ether.h>
 #include <net/cfg80211.h>

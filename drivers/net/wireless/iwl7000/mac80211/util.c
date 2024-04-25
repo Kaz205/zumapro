@@ -24,7 +24,6 @@
 #include <net/net_namespace.h>
 #include <net/cfg80211.h>
 #include <net/rtnetlink.h>
-#include <kunit/visibility.h>
 
 #include "ieee80211_i.h"
 #include "driver-ops.h"
