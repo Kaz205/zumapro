@@ -27,11 +27,6 @@ static inline bool iwl7000_wiphy_ext_feature_isset(struct wiphy *wiphy,
 #define wiphy_ext_feature_set iwl7000_wiphy_ext_feature_set
 #define wiphy_ext_feature_isset iwl7000_wiphy_ext_feature_isset
 
-int ieee80211_tx_control_port(struct wiphy *wiphy, struct net_device *dev,
-			      const u8 *buf, size_t len,
-			      const u8 *dest, __be16 proto, bool unencrypted,
-			      int link_id, u64 *cookie);
-
 #define SKB_CONSUMED (SKB_DROP_REASON_MAX + 1)
 #define VISIBLE_IF_KUNIT static
 #define EXPORT_SYMBOL_IF_KUNIT(...)
