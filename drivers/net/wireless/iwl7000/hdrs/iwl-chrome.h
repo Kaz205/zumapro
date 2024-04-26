@@ -75,13 +75,7 @@ struct backport_thermal_trip {
 #include <hdrs/net/mac80211.h>
 
 /* artifacts of backports - never in upstream */
-#define genl_info_snd_portid(__genl_info) (__genl_info->snd_portid)
-#define NETLINK_CB_PORTID(__skb) NETLINK_CB(cb->skb).portid
-#define netlink_notify_portid(__notify) __notify->portid
-#define __genl_const const
 #define __genl_ro_after_init __ro_after_init
-#define netdev_tstats(dev)	dev->tstats
-#define netdev_assign_tstats(dev, e)	dev->tstats = (e);
 #define netdev_set_priv_destructor(_dev, _destructor) \
 	(_dev)->needs_free_netdev = true; \
 	(_dev)->priv_destructor = (_destructor);
