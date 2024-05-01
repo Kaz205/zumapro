@@ -11,7 +11,7 @@
 #include <net/ipv6.h>
 
 #include "iwl-trans.h"
-#include "iwl-eeprom-parse.h"
+#include "iwl-nvm-utils.h"
 #include "mvm.h"
 #include "sta.h"
 #include "time-sync.h"
