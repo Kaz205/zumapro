@@ -411,6 +411,29 @@ int for_each_thermal_trip(struct thermal_zone_device *tz,
 #endif /* >= 6,0,0 */
 #endif /* CONFIG_THERMAL */
 
+static inline struct net_device *alloc_netdev_dummy(int sizeof_priv)
+{
+	struct net_device *dev;
+	dev = kzalloc(sizeof(*dev) +
+		      ALIGN(sizeof(struct net_device), NETDEV_ALIGN) +
+		      sizeof_priv,
+		      GFP_KERNEL);
+	if (!dev)
+		return NULL;
+	init_dummy_netdev(dev);
+	return dev;
+}
+
+static inline void LINUX_BACKPORT(free_netdev)(struct net_device *dev)
+{
+	if (dev->reg_state == NETREG_DUMMY) {
+		kfree(dev);
+		return;
+	}
+	free_netdev(dev);
+}
+#define free_netdev LINUX_BACKPORT(free_netdev)
+
 enum ieee80211_ap_reg_power {
 	IEEE80211_REG_UNSET_AP,
 	IEEE80211_REG_LPI_AP,
