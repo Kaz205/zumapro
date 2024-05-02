@@ -17,42 +17,47 @@ enum MTK_APU_SMC_REVISER_CTRL {
 	REVISER_CTRL_RESTORE,
 };
 
-static void mtk_apu_setup_reviser(struct mtk_apu *apu, int boundary, int ns, int domain)
+static int mtk_apu_setup_reviser(struct mtk_apu *apu, int boundary, int ns, int domain)
 {
 	struct device *dev = apu->dev;
 
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_SETUP_REVISER, 0);
-	else
+	if (!apu->platdata->flags.secure_boot) {
 		dev_err(dev, "Not support non-secure boot\n");
+		return -EINVAL;
+	}
+
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_SETUP_REVISER, 0);
 }
 
-static void mtk_apu_setup_devapc(struct mtk_apu *apu)
+static int mtk_apu_setup_devapc(struct mtk_apu *apu)
 {
-	int32_t ret;
 	struct device *dev = apu->dev;
 
-	ret = (int32_t)mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_DEVAPC_INIT_RCX, 0);
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_DEVAPC_INIT_RCX, 0);
 }
 
-static void mtk_apu_reset_mp(struct mtk_apu *apu)
+static int mtk_apu_reset_mp(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_RESET_MP, 0);
-	else
+	if (!apu->platdata->flags.secure_boot) {
 		dev_err(dev, "Not support non-secure boot\n");
+		return -EINVAL;
+	}
+
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_RESET_MP, 0);
 }
 
-static void mtk_apu_setup_boot(struct mtk_apu *apu)
+static int mtk_apu_setup_boot(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_SETUP_BOOT, 0);
-	else
+	if (!apu->platdata->flags.secure_boot) {
 		dev_err(dev, "Not support non-secure boot\n");
+		return -EINVAL;
+	}
+
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_SETUP_BOOT, 0);
 }
 
 static int mt8188_rproc_setup(struct mtk_apu *apu)
@@ -60,14 +65,31 @@ static int mt8188_rproc_setup(struct mtk_apu *apu)
 	int ns = 1; /* Non Secure */
 	int domain = 0;
 	int boundary = (u32) upper_32_bits(apu->code_da);
+	int ret;
 
-	mtk_apu_setup_devapc(apu);
+	ret = mtk_apu_setup_devapc(apu);
+	if (ret) {
+		dev_err(apu->dev, "Failed to setup devapc\n");
+		return ret;
+	}
 
-	mtk_apu_setup_reviser(apu, boundary, ns, domain);
+	ret = mtk_apu_setup_reviser(apu, boundary, ns, domain);
+	if (ret) {
+		dev_err(apu->dev, "Failed to setup reviser\n");
+		return ret;
+	}
 
-	mtk_apu_reset_mp(apu);
+	ret = mtk_apu_reset_mp(apu);
+	if (ret) {
+		dev_err(apu->dev, "Failed to reset mp\n");
+		return ret;
+	}
 
-	mtk_apu_setup_boot(apu);
+	ret = mtk_apu_setup_boot(apu);
+	if (ret) {
+		dev_err(apu->dev, "Failed to setup boot\n");
+		return ret;
+	}
 
 	return 0;
 }
@@ -76,25 +98,24 @@ static int mt8188_rproc_start(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_START_MP, 0);
-	else
+	if (!apu->platdata->flags.secure_boot) {
 		dev_err(dev, "Not support non-secure boot\n");
+		return -EINVAL;
+	}
 
-	return 0;
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_START_MP, 0);
 }
 
 static int mt8188_rproc_stop(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 
-	/* Hold runstall */
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_STOP_MP, 0);
-	else
+	if (!apu->platdata->flags.secure_boot) {
 		dev_err(dev, "Not support non-secure boot\n");
+		return -EINVAL;
+	}
 
-	return 0;
+	return mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_STOP_MP, 0);
 }
 
 static int mt8188_apu_power_on(struct mtk_apu *apu)
@@ -102,7 +123,7 @@ static int mt8188_apu_power_on(struct mtk_apu *apu)
 	struct device *dev = apu->dev;
 	int ret;
 
-	ret = pm_runtime_get_sync(dev);
+	ret = pm_runtime_resume_and_get(dev);
 	if (ret < 0) {
 		dev_err(dev, "runtime PM get_sync failed: %d\n", ret);
 		return ret;
@@ -118,7 +139,7 @@ static int mt8188_apu_power_off(struct mtk_apu *apu)
 
 	ret = pm_runtime_put_sync(dev);
 	if (ret) {
-		dev_warn(dev, "%s: runtime PM put_sync(dev) failed: %d\n", __func__, ret);
+		dev_err(dev, "%s: runtime PM put_sync(dev) failed: %d\n", __func__, ret);
 		goto error_genpd;
 	}
 
@@ -137,7 +158,7 @@ static int mt8188_apu_power_off(struct mtk_apu *apu)
 	return 0;
 
 error_genpd:
-	pm_runtime_get_sync(dev);
+	pm_runtime_get_noresume(dev);
 
 	return ret;
 }

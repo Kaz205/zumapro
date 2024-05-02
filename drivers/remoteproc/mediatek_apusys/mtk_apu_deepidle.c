@@ -54,16 +54,20 @@ int mtk_apu_deepidle_power_on_aputop(struct mtk_apu *apu)
 	apu->run.signaled = 0;
 
 	apu->conf_buf->time_offset = sched_clock();
-	ret = hw_ops->power_on(apu);
-	hw_ops->start(apu);
 
-	if (ret == 0) {
-		if (apu->hw_logger_data != NULL)
-			mtk_apu_hw_logger_deep_idle_leave(apu->hw_logger_data);
-	}
-	else {
+	ret = hw_ops->power_on(apu);
+	if (ret)
+		return ret;
+
+	ret = hw_ops->start(apu);
+	if (ret) {
+		dev_err(dev, "failed to start APU\n");
+		hw_ops->power_off(apu);
 		return ret;
 	}
+
+	if (apu->hw_logger_data != NULL)
+		mtk_apu_hw_logger_deep_idle_leave(apu->hw_logger_data);
 
 	if (!apu->platdata->flags.secure_boot)
 		dev_err(dev, "Not support non-secure boot\n");
@@ -157,14 +161,14 @@ static void __mtk_apu_deepidle(struct mtk_apu *apu)
 		ret = hw_ops->power_off(apu);
 		if (ret) {
 			dev_info(apu->dev, "failed to power off ret=%d\n", ret);
-			if (apu->hw_logger_data != NULL)
-				mtk_apu_hw_logger_deep_idle_enter_post(apu->hw_logger_data);
-			mtk_apu_ipi_unlock(apu);
-			WARN_ON(0);
-			return;
+			goto power_off_fail;
 		}
 
-		hw_ops->stop(apu);
+		ret = hw_ops->stop(apu);
+		if (ret) {
+			dev_err(apu->dev, "failed to stop apu\n");
+			goto power_off_fail;
+		}
 
 		if (apu->hw_logger_data != NULL)
 			mtk_apu_hw_logger_deep_idle_enter_post(apu->hw_logger_data);
@@ -176,6 +180,15 @@ static void __mtk_apu_deepidle(struct mtk_apu *apu)
 		dev_info(apu->dev, "unknown cmd %x\n", msg->cmd);
 		break;
 	}
+
+	return;
+
+power_off_fail:
+	if (apu->hw_logger_data != NULL)
+		mtk_apu_hw_logger_deep_idle_enter_post(apu->hw_logger_data);
+	mtk_apu_ipi_unlock(apu);
+	WARN_ON(0);
+	return;
 }
 
 static void mtk_apu_deepidle_ipi_handler(void *data, unsigned int len, void *priv)

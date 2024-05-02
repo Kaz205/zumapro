@@ -181,9 +181,19 @@ static int __mtk_apu_run(struct rproc *rproc)
 		return -EINVAL;
 	}
 
-	hw_ops->power_on(apu);
-	hw_ops->setup(apu);
-	hw_ops->start(apu);
+	ret = hw_ops->power_on(apu);
+	if (ret)
+		return ret;
+
+	ret = hw_ops->setup(apu);
+	if (ret)
+		goto stop;
+
+	ret = hw_ops->start(apu);
+	if (ret) {
+		dev_err(dev, "failed to start APU\n");
+		goto stop;
+	}
 
 	while (wait_cnt > 0) {
 		/* check if boot success */
@@ -280,12 +290,17 @@ static int mtk_apu_stop(struct rproc *rproc)
 {
 	struct mtk_apu *apu = (struct mtk_apu *)rproc->priv;
 	const struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+	int ret;
 
 	if (!hw_ops->stop) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
-	hw_ops->stop(apu);
+	ret = hw_ops->stop(apu);
+	if (ret) {
+		dev_err(apu->dev, "Failed to stop APU\n");
+		return ret;
+	}
 
 	mtk_apu_dram_boot_remove(apu);
 	mtk_apu_config_remove(apu);
