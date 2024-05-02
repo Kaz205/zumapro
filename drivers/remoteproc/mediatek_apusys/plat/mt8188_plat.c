@@ -55,17 +55,7 @@ static void mtk_apu_setup_boot(struct mtk_apu *apu)
 		dev_err(dev, "Not support non-secure boot\n");
 }
 
-static void mtk_apu_start_mp(struct mtk_apu *apu)
-{
-	struct device *dev = apu->dev;
-
-	if (apu->platdata->flags.secure_boot)
-		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_START_MP, 0);
-	else
-		dev_err(dev, "Not support non-secure boot\n");
-}
-
-static int mt8188_rproc_start(struct mtk_apu *apu)
+static int mt8188_rproc_setup(struct mtk_apu *apu)
 {
 	int ns = 1; /* Non Secure */
 	int domain = 0;
@@ -79,7 +69,17 @@ static int mt8188_rproc_start(struct mtk_apu *apu)
 
 	mtk_apu_setup_boot(apu);
 
-	mtk_apu_start_mp(apu);
+	return 0;
+}
+
+static int mt8188_rproc_start(struct mtk_apu *apu)
+{
+	struct device *dev = apu->dev;
+
+	if (apu->platdata->flags.secure_boot)
+		mtk_apu_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_RV_START_MP, 0);
+	else
+		dev_err(dev, "Not support non-secure boot\n");
 
 	return 0;
 }
@@ -161,6 +161,7 @@ const struct mtk_apu_platdata mt8188_platdata = {
 	.ops	= {
 		.start	= mt8188_rproc_start,
 		.stop	= mt8188_rproc_stop,
+		.setup = mt8188_rproc_setup,
 		.power_on = mt8188_apu_power_on,
 		.power_off = mt8188_apu_power_off,
 	},

@@ -182,6 +182,7 @@ static int __mtk_apu_run(struct rproc *rproc)
 	}
 
 	hw_ops->power_on(apu);
+	hw_ops->setup(apu);
 	hw_ops->start(apu);
 
 	while (wait_cnt > 0) {

@@ -191,10 +191,6 @@ static struct generic_pm_domain *mtk_apu_add_one_domain(struct apusys *apusys,
 		goto err_put_clocks;
 	}
 
-	/* Workaround to prevent power on/off triggered by system-wise suspend/resume */
-	pd->genpd.domain.ops.suspend_noirq = NULL;
-	pd->genpd.domain.ops.resume_noirq = NULL;
-
 	apusys->domains[id] = &pd->genpd;
 
 	return apusys->pd_data.domains[id];

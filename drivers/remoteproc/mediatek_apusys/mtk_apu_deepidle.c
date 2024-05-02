@@ -55,6 +55,7 @@ int mtk_apu_deepidle_power_on_aputop(struct mtk_apu *apu)
 
 	apu->conf_buf->time_offset = sched_clock();
 	ret = hw_ops->power_on(apu);
+	hw_ops->start(apu);
 
 	if (ret == 0) {
 		if (apu->hw_logger_data != NULL)
@@ -162,6 +163,8 @@ static void __mtk_apu_deepidle(struct mtk_apu *apu)
 			WARN_ON(0);
 			return;
 		}
+
+		hw_ops->stop(apu);
 
 		if (apu->hw_logger_data != NULL)
 			mtk_apu_hw_logger_deep_idle_enter_post(apu->hw_logger_data);

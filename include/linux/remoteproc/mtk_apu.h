@@ -17,6 +17,7 @@ struct mtk_apu;
 struct mtk_apu_hw_ops {
 	int (*start)(struct mtk_apu *apu);
 	int (*stop)(struct mtk_apu *apu);
+	int (*setup)(struct mtk_apu *apu);
 	int (*mtk_apu_memmap_init)(struct mtk_apu *apu);
 
 	/* power related ops */
