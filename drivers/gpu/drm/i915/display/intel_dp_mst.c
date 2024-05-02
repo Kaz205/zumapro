@@ -542,8 +542,7 @@ static int intel_dp_mst_compute_config(struct intel_encoder *encoder,
 	if (adjusted_mode->flags & DRM_MODE_FLAG_DBLSCAN)
 		return -EINVAL;
 
-	if (DISPLAY_VER(dev_priv) > 13 &&
-	    intel_dp_need_bigjoiner(intel_dp, adjusted_mode->crtc_hdisplay,
+	if (intel_dp_need_bigjoiner(intel_dp, adjusted_mode->crtc_hdisplay,
 				    adjusted_mode->crtc_clock))
 		pipe_config->bigjoiner_pipes = GENMASK(crtc->pipe + 1, crtc->pipe);
 
@@ -1348,11 +1347,6 @@ intel_dp_mst_mode_valid_ctx(struct drm_connector *connector,
 	}
 
 	if (intel_dp_need_bigjoiner(intel_dp, mode->hdisplay, target_clock)) {
-		if (DISPLAY_VER(dev_priv) < 14) {
-			*status = MODE_CLOCK_HIGH;
-			return 0;
-		}
-
 		bigjoiner = true;
 		max_dotclk *= 2;
 	}
