@@ -109,6 +109,7 @@ enum rtw89_core_chip_id {
 	RTL8852B,
 	RTL8852C,
 	RTL8851B,
+	RTL8922A,
 };
 
 enum rtw89_cv {
