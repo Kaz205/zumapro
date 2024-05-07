@@ -1995,7 +1995,6 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 	const u16 *nvm_chan;
 	struct ieee80211_regdomain *regd, *copy_rd;
 	struct ieee80211_reg_rule *rule;
-	int band;
 	int center_freq, prev_center_freq = 0;
 	int valid_rules = 0;
 	bool new_rule;
@@ -2039,8 +2038,8 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 	reg_capa = iwl_get_reg_capa(cap, resp_ver);
 
 	for (ch_idx = 0; ch_idx < num_of_ch; ch_idx++) {
-		struct ieee80211_channel *chan = &nvm_data->channels[ch_idx];
-		band = iwl_nl80211_band_from_channel_idx(ch_idx);
+		int band = iwl_nl80211_band_from_channel_idx(ch_idx);
+
 		if (band == -1)
 			continue;
 
@@ -2058,14 +2057,6 @@ iwl_parse_nvm_mcc_info(struct device *dev, const struct iwl_cfg *cfg,
 		reg_rule_flags = iwl_nvm_get_regdom_bw_flags(nvm_chan, ch_idx,
 							     ch_flags, reg_capa,
 							     cfg, uats_enabled);
-
-		if (band == NL80211_BAND_6GHZ) {
-			chan->flags |= IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT | IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT;
-			if (ch_flags & NVM_CHANNEL_AFC)
-				chan->flags &= ~IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT;
-			if (ch_flags & NVM_CHANNEL_VLP)
-				chan->flags &= ~IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT;
-		}
 
 		/* we can't continue the same rule */
 		if (ch_idx == 0 || prev_reg_rule_flags != reg_rule_flags ||
