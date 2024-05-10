@@ -410,3 +410,10 @@ int for_each_thermal_trip(struct thermal_zone_device *tz,
 }
 #endif /* >= 6,0,0 */
 #endif /* CONFIG_THERMAL */
+
+enum ieee80211_ap_reg_power {
+	IEEE80211_REG_UNSET_AP,
+	IEEE80211_REG_LPI_AP,
+	IEEE80211_REG_SP_AP,
+	IEEE80211_REG_VLP_AP,
+};
