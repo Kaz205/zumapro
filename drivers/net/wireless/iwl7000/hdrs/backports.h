@@ -411,6 +411,10 @@ int for_each_thermal_trip(struct thermal_zone_device *tz,
 #endif /* >= 6,0,0 */
 #endif /* CONFIG_THERMAL */
 
+struct cfg80211_iface_usage {
+	u32 types_mask;
+};
+
 static inline struct net_device *alloc_netdev_dummy(int sizeof_priv)
 {
 	struct net_device *dev;
