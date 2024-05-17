@@ -33,19 +33,13 @@ static struct ipesys_me_device *me_dev;
 
 void ipesys_me_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 {
-	int ret;
-
 	pm_runtime_get_sync(me_dev->dev);
-	ret = clk_bulk_prepare_enable(me_dev->me_clk.clk_num, me_dev->me_clk.clks);
-	if (ret)
-		pr_info("failed to enable clock:%d\n", ret);
 }
 EXPORT_SYMBOL(ipesys_me_set_initial_value);
 
 void ipesys_me_uninit(struct mtk_imgsys_dev *imgsys_dev)
 {
 	pm_runtime_put_sync(me_dev->dev);
-	clk_bulk_disable_unprepare(me_dev->me_clk.clk_num, me_dev->me_clk.clks);
 }
 EXPORT_SYMBOL(ipesys_me_uninit);
 
@@ -130,6 +124,7 @@ static int mtk_ipesys_me_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	me_dev->dev = &pdev->dev;
+	dev_set_drvdata(&pdev->dev, me_dev);
 	me_dev->me_clk.clk_num = ARRAY_SIZE(imgsys_isp7_me_clks);
 	me_dev->me_clk.clks = imgsys_isp7_me_clks;
 	me_dev->regs = of_iomap(pdev->dev.of_node, 0);
@@ -176,21 +171,62 @@ static int mtk_ipesys_me_remove(struct platform_device *pdev)
 
 static int __maybe_unused mtk_ipesys_me_runtime_suspend(struct device *dev)
 {
+	struct ipesys_me_device *ipesys_me_dev = dev_get_drvdata(dev);
+
+	clk_bulk_disable_unprepare(ipesys_me_dev->me_clk.clk_num, ipesys_me_dev->me_clk.clks);
+
 	return 0;
 }
 
 static int __maybe_unused mtk_ipesys_me_runtime_resume(struct device *dev)
 {
+	struct ipesys_me_device *ipesys_me_dev = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_bulk_prepare_enable(ipesys_me_dev->me_clk.clk_num, ipesys_me_dev->me_clk.clks);
+	if (ret)
+		pr_info("failed to enable clock:%d\n", ret);
+
 	return 0;
 }
 
 static int __maybe_unused mtk_ipesys_me_pm_suspend(struct device *dev)
 {
+	int ret;
+
+	if (pm_runtime_suspended(dev)) {
+		dev_info(dev, "%s: pm_runtime_suspended is true, no action\n",
+			__func__);
+		return 0;
+	}
+
+	ret = pm_runtime_force_suspend(dev);
+	if (ret) {
+		dev_info(dev, "%s: pm_runtime_put_sync failed:(%d)\n",
+			__func__, ret);
+		return ret;
+	}
+
 	return 0;
 }
 
 static int __maybe_unused mtk_ipesys_me_pm_resume(struct device *dev)
 {
+	int ret;
+
+	if (pm_runtime_suspended(dev)) {
+		dev_info(dev, "%s: pm_runtime_suspended is true, no action\n",
+			__func__);
+		return 0;
+	}
+
+	ret = pm_runtime_force_resume(dev);
+	if (ret) {
+		dev_info(dev, "%s: pm_runtime_get_sync failed:(%d)\n",
+			__func__, ret);
+		return ret;
+	}
+
 	return 0;
 }
 

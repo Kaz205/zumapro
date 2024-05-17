@@ -14,8 +14,6 @@
 #include "linux/mtkisp_imgsys.h"
 #include <linux/pm_runtime.h>
 #include <linux/remoteproc.h>
-#include <linux/suspend.h>
-#include <linux/rtc.h>
 #include <linux/videodev2.h>
 
 #include <media/videobuf2-dma-contig.h>
@@ -42,8 +40,6 @@
 #include "mtk_imgsys-debug.h"
 
 #define IMGSYS_MAX_BUFFERS	256
-
-static struct device *imgsys_pm_dev;
 
 struct mtk_imgsys_larb_device {
 	struct device	*dev;
@@ -1550,26 +1546,25 @@ static int __maybe_unused mtk_imgsys_pm_suspend(struct device *dev)
 
 		return -EBUSY;
 	}
-#ifdef NEED_PM
+
 	if (pm_runtime_suspended(dev)) {
 		dev_info(dev, "%s: pm_runtime_suspended is true, no action\n",
 			 __func__);
 		return 0;
 	}
 
-	ret = pm_runtime_put_sync(dev);
+	ret = pm_runtime_force_suspend(dev);
 	if (ret) {
-		dev_info(dev, "%s: pm_runtime_put_sync failed:(%d)\n",
+		dev_info(dev, "%s: pm_runtime_force_suspend failed:(%d)\n",
 			 __func__, ret);
 		return ret;
 	}
-#endif
+
 	return 0;
 }
 
 static int __maybe_unused mtk_imgsys_pm_resume(struct device *dev)
 {
-#ifdef NEED_PM
 	int ret;
 
 	if (pm_runtime_suspended(dev)) {
@@ -1578,49 +1573,15 @@ static int __maybe_unused mtk_imgsys_pm_resume(struct device *dev)
 		return 0;
 	}
 
-	ret = pm_runtime_get_sync(dev);
+	ret = pm_runtime_force_resume(dev);
 	if (ret) {
-		dev_info(dev, "%s: pm_runtime_get_sync failed:(%d)\n",
+		dev_info(dev, "%s: pm_runtime_force_resume failed:(%d)\n",
 			 __func__, ret);
 		return ret;
 	}
-#endif
+
 	return 0;
 }
-
-#if IS_ENABLED(CONFIG_PM)
-static int imgsys_pm_event(struct notifier_block *notifier,
-			   unsigned long pm_event, void *unused)
-{
-	struct timespec64 ts;
-	struct rtc_time tm;
-
-	ktime_get_ts64(&ts);
-	rtc_time64_to_tm(ts.tv_sec, &tm);
-
-	switch (pm_event) {
-	case PM_HIBERNATION_PREPARE:
-		return NOTIFY_DONE;
-	case PM_RESTORE_PREPARE:
-		return NOTIFY_DONE;
-	case PM_POST_HIBERNATION:
-		return NOTIFY_DONE;
-	case PM_SUSPEND_PREPARE: /*enter suspend*/
-		mtk_imgsys_pm_suspend(imgsys_pm_dev);
-		return NOTIFY_DONE;
-	case PM_POST_SUSPEND:    /*after resume*/
-		mtk_imgsys_pm_resume(imgsys_pm_dev);
-		return NOTIFY_DONE;
-	}
-
-	return NOTIFY_OK;
-}
-
-static struct notifier_block imgsys_notifier_block = {
-	.notifier_call = imgsys_pm_event,
-	.priority = 0,
-};
-#endif
 
 static int mtk_imgsys_of_rproc(struct mtk_imgsys_dev *imgsys,
 			       struct platform_device *pdev)
@@ -1769,18 +1730,9 @@ static int mtk_imgsys_probe(struct platform_device *pdev)
 
 	imgsys_cmdq_init(imgsys_dev, 1);
 
-	//pm_runtime_set_autosuspend_delay(&pdev->dev, 3000);
-	//pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 3000);
+	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-
-	imgsys_pm_dev = &pdev->dev;
-#if IS_ENABLED(CONFIG_PM)
-	ret = register_pm_notifier(&imgsys_notifier_block);
-	if (ret) {
-		dev_info(imgsys_dev->dev, "failed to register notifier block.\n");
-		goto err_release_deinit_v4l2;
-	}
-#endif
 
 	ret = platform_driver_register(&mtk_imgsys_larb_driver);
 	if (ret) {
@@ -1844,6 +1796,7 @@ static int __maybe_unused mtk_imgsys_runtime_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops mtk_imgsys_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(mtk_imgsys_pm_suspend, mtk_imgsys_pm_resume)
 	SET_RUNTIME_PM_OPS(mtk_imgsys_runtime_suspend,
 			   mtk_imgsys_runtime_resume, NULL)
 };
