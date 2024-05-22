@@ -44,9 +44,14 @@ static const struct mtk_imgsys_dev_format traw_imgi_fmts[] = {
 		.scan_align = 1,
 	},
 	{
+		.fmt = &mtk_imgsys_format_2p010p,
+		.align = 1,
+		.scan_align = 1,
+	},
+	{
 		.fmt = &mtk_imgsys_format_warp2p,
-		.align = 1168,
-		.scan_align = 217,
+		.align = 8,
+		.scan_align = 1,
 	},
 	{
 		.fmt = &mtk_imgsys_format_y8,
@@ -104,8 +109,8 @@ static const struct mtk_imgsys_dev_format traw_yuvo_fmts[] = {
 	},
 	{
 		.fmt = &mtk_imgsys_format_warp2p,
-		.align = 1168,
-		.scan_align = 217,
+		.align = 8,
+		.scan_align = 1,
 	},
 	{
 		.fmt = &mtk_imgsys_format_y8,
