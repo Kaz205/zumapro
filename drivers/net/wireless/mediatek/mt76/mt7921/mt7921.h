@@ -303,6 +303,7 @@ struct mt7921_dev {
 	bool hw_init_done:1;
 	bool fw_assert:1;
 	bool regd_in_progress:1;
+	bool aspm_supported:1;
 	wait_queue_head_t wait;
 
 	struct list_head sta_poll_list;
