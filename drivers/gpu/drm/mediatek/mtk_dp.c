@@ -2107,10 +2107,13 @@ static void mtk_dp_hdcp_atomic_check(struct mtk_dp *mtk_dp, struct drm_connector
 		mtk_dp->hdcp_info.content_protection = content_protection;
 
 		dev_dbg(mtk_dp->dev, "disable HDCP\n");
-		if (mtk_dp->hdcp_info.hdcp2_info.enable)
+		if (mtk_dp->hdcp_info.hdcp2_info.enable) {
+			if (mtk_dp->hdcp_info.auth_status == AUTH_PASS)
+				kthread_stop(mtk_dp->hdcp_info.hdcp2_info.cp_irq_thread);
 			dp_tx_hdcp2_set_start_auth(&mtk_dp->hdcp_info, false);
-		else if (mtk_dp->hdcp_info.hdcp1x_info.enable)
+		} else if (mtk_dp->hdcp_info.hdcp1x_info.enable) {
 			dp_tx_hdcp1x_set_start_auth(&mtk_dp->hdcp_info, false);
+		}
 
 		drm_hdcp_update_content_protection(mtk_dp->conn,
 						   mtk_dp->hdcp_info.content_protection);
@@ -2593,10 +2596,13 @@ static void mtk_dp_bridge_atomic_disable(struct drm_bridge *bridge,
 {
 	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
 
-	if (mtk_dp->hdcp_info.hdcp2_info.enable)
+	if (mtk_dp->hdcp_info.hdcp2_info.enable) {
+		if (mtk_dp->hdcp_info.auth_status == AUTH_PASS)
+			kthread_stop(mtk_dp->hdcp_info.hdcp2_info.cp_irq_thread);
 		dp_tx_hdcp2_set_start_auth(&mtk_dp->hdcp_info, false);
-	else if (mtk_dp->hdcp_info.hdcp1x_info.enable)
+	} else if (mtk_dp->hdcp_info.hdcp1x_info.enable) {
 		dp_tx_hdcp1x_set_start_auth(&mtk_dp->hdcp_info, false);
+	}
 
 	if (mtk_dp->hdcp_info.content_protection != DRM_MODE_CONTENT_PROTECTION_UNDESIRED) {
 		mtk_dp->hdcp_info.content_protection = DRM_MODE_CONTENT_PROTECTION_DESIRED;

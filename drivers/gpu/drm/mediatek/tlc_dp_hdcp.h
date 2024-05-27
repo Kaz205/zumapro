@@ -148,6 +148,9 @@ struct hdcp1x_info {
 };
 
 struct hdcp2_info {
+	struct task_struct *cp_irq_thread;
+	wait_queue_head_t cp_irq_queue;
+	atomic_t cp_irq_num;
 	struct hdcp2_info_tx hdcp_tx;
 	struct hdcp2_info_rx hdcp_rx;
 	struct hdcp2_ake_stored_km ake_stored_km;

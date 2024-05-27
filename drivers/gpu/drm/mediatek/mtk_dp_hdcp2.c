@@ -461,8 +461,29 @@ static void dp_tx_hdcp2_rest_variable(struct mtk_hdcp_info *hdcp_info)
 	hdcp_info->hdcp2_info.read_v_prime = false;
 }
 
+static int dp_tx_hdcp2_cp_irq_kthread(void *data)
+{
+	struct mtk_dp *mtk_dp = data;
+
+	init_waitqueue_head(&mtk_dp->hdcp_info.hdcp2_info.cp_irq_queue);
+	while (!kthread_should_stop()) {
+		wait_event_interruptible(mtk_dp->hdcp_info.hdcp2_info.cp_irq_queue,
+					 atomic_read(&mtk_dp->hdcp_info.hdcp2_info.cp_irq_num));
+
+		atomic_set(&mtk_dp->hdcp_info.hdcp2_info.cp_irq_num, 0);
+
+		dp_tx_hdcp2_set_start_auth(&mtk_dp->hdcp_info, false);
+		mtk_dp_authentication(&mtk_dp->hdcp_info);
+
+		break;
+	}
+
+	return 0;
+}
+
 int dp_tx_hdcp2_fsm(struct mtk_hdcp_info *hdcp_info)
 {
+	struct mtk_dp *mtk_dp = container_of(hdcp_info, struct mtk_dp, hdcp_info);
 	static u64 timeout_value;
 	static u8 pre_main;
 	static u8 pre_sub;
@@ -784,6 +805,10 @@ int dp_tx_hdcp2_fsm(struct mtk_hdcp_info *hdcp_info)
 			hdcp_info->hdcp2_info.retry_count = 0;
 			dp_tx_hdcp2_set_state(hdcp_info, HDCP2_MS_A5F5, HDCP_2_2_NULL_MSG);
 			dp_tx_hdcp2_enable_auth(hdcp_info, true);
+
+			hdcp_info->hdcp2_info.cp_irq_thread =
+				kthread_run(dp_tx_hdcp2_cp_irq_kthread,
+					    (void *)mtk_dp, "mtk_hdcp2_cp_irq_task");
 		}
 		break;
 
@@ -1014,7 +1039,9 @@ bool dp_tx_hdcp2_irq(struct mtk_hdcp_info *hdcp_info)
 	if (rx_status & BIT(4) || rx_status & BIT(3)) {
 		DPTXHDCPMSG("2.x: Re-Auth HDCP2X!\n");
 		dp_tx_hdcp2_set_start_auth(hdcp_info, true);
-		mtk_dp_authentication(hdcp_info);
+
+		atomic_set(&mtk_dp->hdcp_info.hdcp2_info.cp_irq_num, 1);
+		wake_up_interruptible(&mtk_dp->hdcp_info.hdcp2_info.cp_irq_queue);
 	}
 
 	return true;
