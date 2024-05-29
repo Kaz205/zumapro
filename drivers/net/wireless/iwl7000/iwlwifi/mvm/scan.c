@@ -2020,7 +2020,7 @@ static void iwl_mvm_scan_6ghz_passive_scan(struct iwl_mvm *mvm,
 
 	params->enable_6ghz_passive = false;
 
-	if (cfg80211_scan_req_6ghz(params))
+	if (params->scan_6ghz)
 		return;
 
 	if (!fw_has_capa(&mvm->fw->ucode_capa,
@@ -2182,7 +2182,7 @@ static u8 iwl_mvm_scan_umac_flags2(struct iwl_mvm *mvm,
 				IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_RESPECT_P2P_GO_HB;
 	}
 
-	if (cfg80211_scan_req_6ghz(params) &&
+	if (params->scan_6ghz &&
 	    fw_has_capa(&mvm->fw->ucode_capa,
 			IWL_UCODE_TLV_CAPA_SCAN_DONT_TOGGLE_ANT))
 		flags |= IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_DONT_TOGGLE_ANT;
@@ -2579,7 +2579,7 @@ static int iwl_mvm_scan_umac_v14_and_above(struct iwl_mvm *mvm,
 	if (ret)
 		return ret;
 
-	if (!cfg80211_scan_req_6ghz(params)) {
+	if (!params->scan_6ghz) {
 		iwl_mvm_scan_umac_fill_probe_p_v4(params,
 						  &scan_p->probe_params,
 						  &bitmap_ssid);
@@ -2952,7 +2952,7 @@ static int _iwl_mvm_single_scan_start(struct iwl_mvm *mvm,
 #if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	params.n_6ghz_params = req->n_6ghz_params;
 	params.scan_6ghz_params = req->scan_6ghz_params;
-	params.scan_6ghz = cfg80211_scan_req_6ghz(req);
+	params.scan_6ghz = req->scan_6ghz;
 #endif
 	iwl_mvm_fill_scan_type(mvm, &params, vif);
 	iwl_mvm_fill_respect_p2p_go(mvm, &params, vif);

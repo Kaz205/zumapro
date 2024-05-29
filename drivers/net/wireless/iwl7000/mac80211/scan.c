@@ -801,7 +801,7 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 			req->scan_6ghz_params;
 #endif
 #if CFG80211_VERSION > KERNEL_VERSION(5,10,0)
-		local->hw_scan_req->req.scan_6ghz = cfg80211_scan_req_6ghz(req);
+		local->hw_scan_req->req.scan_6ghz = req->scan_6ghz;
 #endif
 
 		/*

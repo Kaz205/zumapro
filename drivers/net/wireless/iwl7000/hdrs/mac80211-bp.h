@@ -2006,7 +2006,6 @@ static inline void backport_netif_napi_add(struct net_device *dev,
 
 #if CFG80211_VERSION < KERNEL_VERSION(6,5,0)
 #define cfg80211_req_link_disabled(req, link)	0
-#define cfg80211_scan_req_6ghz(req) false
 #define NL80211_RRF_NO_EHT 0
 static inline void
 cfg80211_links_removed(struct net_device *dev, u16 removed_links)
@@ -2014,7 +2013,6 @@ cfg80211_links_removed(struct net_device *dev, u16 removed_links)
 }
 #else
 #define cfg80211_req_link_disabled(req, link)	((req)->links[link].disabled)
-#define cfg80211_scan_req_6ghz(req) (req)->scan_6ghz
 #endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(6,4,0)
