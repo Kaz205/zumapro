@@ -218,6 +218,24 @@ void mtk_ovl_crc_read(struct device *dev)
 	mtk_crtc_read_crc(&ovl->crc, ovl->regs);
 }
 
+void mtk_ovl_crc_start(struct device *dev)
+{
+	struct mtk_disp_ovl *ovl = dev_get_drvdata(dev);
+
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	mtk_crtc_start_crc_cmdq(&ovl->crc);
+#endif
+}
+
+void mtk_ovl_crc_stop(struct device *dev)
+{
+	struct mtk_disp_ovl *ovl = dev_get_drvdata(dev);
+
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	mtk_crtc_stop_crc_cmdq(&ovl->crc);
+#endif
+}
+
 static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_ovl *priv = dev_id;
@@ -318,19 +336,12 @@ void mtk_ovl_start(struct device *dev)
 		reg |= OVL_OP_8BIT_MODE | OVL_HG_FOVL_CK_ON | OVL_HF_FOVL_CK_ON;
 	}
 	writel_relaxed(reg, ovl->regs + DISP_REG_OVL_EN);
-
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-	mtk_crtc_start_crc_cmdq(&ovl->crc);
-#endif
 }
 
 void mtk_ovl_stop(struct device *dev)
 {
 	struct mtk_disp_ovl *ovl = dev_get_drvdata(dev);
 
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-	mtk_crtc_stop_crc_cmdq(&ovl->crc);
-#endif
 	writel_relaxed(0x0, ovl->regs + DISP_REG_OVL_EN);
 	if (ovl->data->smi_id_en) {
 		unsigned int reg;

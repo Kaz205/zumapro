@@ -108,6 +108,8 @@ size_t mtk_ovl_get_num_formats(struct device *dev);
 size_t mtk_ovl_crc_cnt(struct device *dev);
 u32 *mtk_ovl_crc_entry(struct device *dev);
 void mtk_ovl_crc_read(struct device *dev);
+void mtk_ovl_crc_start(struct device *dev);
+void mtk_ovl_crc_stop(struct device *dev);
 
 void mtk_ovl_adaptor_add_comp(struct device *dev, struct mtk_mutex *mutex);
 void mtk_ovl_adaptor_remove_comp(struct device *dev, struct mtk_mutex *mutex);
@@ -141,6 +143,8 @@ enum drm_mode_status mtk_ovl_adaptor_mode_valid(struct device *dev,
 size_t mtk_ovl_adaptor_crc_cnt(struct device *dev);
 u32 *mtk_ovl_adaptor_crc_entry(struct device *dev);
 void mtk_ovl_adaptor_crc_read(struct device *dev);
+void mtk_ovl_adaptor_crc_start(struct device *dev);
+void mtk_ovl_adaptor_crc_stop(struct device *dev);
 
 void mtk_rdma_bypass_shadow(struct device *dev);
 int mtk_rdma_clk_enable(struct device *dev);

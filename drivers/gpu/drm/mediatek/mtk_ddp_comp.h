@@ -91,6 +91,8 @@ struct mtk_ddp_comp_funcs {
 	size_t (*crc_cnt)(struct device *dev);
 	u32 *(*crc_entry)(struct device *dev);
 	void (*crc_read)(struct device *dev);
+	void (*crc_start)(struct device *dev);
+	void (*crc_stop)(struct device *dev);
 };
 
 struct mtk_ddp_comp {

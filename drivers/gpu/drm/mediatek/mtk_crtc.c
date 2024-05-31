@@ -712,9 +712,9 @@ static void mtk_crtc_crc_work(struct kthread_work *base)
 	struct drm_vblank_work *work = to_drm_vblank_work(base);
 	struct mtk_crtc *mtk_crtc =
 		container_of(work, typeof(*mtk_crtc), crc_work);
+	struct mtk_ddp_comp *comp = mtk_crtc->crc_provider;
 
 	if (mtk_crtc->base.crc.opened) {
-		struct mtk_ddp_comp *comp = mtk_crtc->crc_provider;
 		u64 vblank = drm_crtc_vblank_count(&mtk_crtc->base);
 
 		comp->funcs->crc_read(comp->dev);
@@ -724,12 +724,15 @@ static void mtk_crtc_crc_work(struct kthread_work *base)
 				       comp->funcs->crc_entry(comp->dev));
 
 		drm_vblank_work_schedule(&mtk_crtc->crc_work, vblank + 1, true);
+	} else {
+		comp->funcs->crc_stop(comp->dev);
 	}
 }
 
 static int mtk_crtc_set_crc_source(struct drm_crtc *crtc, const char *src)
 {
 	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = mtk_crtc->crc_provider;
 
 	if (!src)
 		return -EINVAL;
@@ -739,6 +742,8 @@ static int mtk_crtc_set_crc_source(struct drm_crtc *crtc, const char *src)
 			  __func__, drm_crtc_index(crtc), src);
 		return -EINVAL;
 	}
+
+	comp->funcs->crc_start(comp->dev);
 
 	/*
 	 * skip the first crc because the first frame (vblank + 1) is configured

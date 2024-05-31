@@ -135,6 +135,24 @@ void mtk_ethdr_crc_read(struct device *dev)
 	mtk_crtc_read_crc(&priv->crc, priv->ethdr_comp[ETHDR_MIXER].regs);
 }
 
+void mtk_ethdr_crc_start(struct device *dev)
+{
+	struct mtk_ethdr *priv = dev_get_drvdata(dev);
+
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	mtk_crtc_start_crc_cmdq(&priv->crc);
+#endif
+}
+
+void mtk_ethdr_crc_stop(struct device *dev)
+{
+	struct mtk_ethdr *priv = dev_get_drvdata(dev);
+
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	mtk_crtc_stop_crc_cmdq(&priv->crc);
+#endif
+}
+
 void mtk_ethdr_register_vblank_cb(struct device *dev,
 				  void (*vblank_cb)(void *),
 				  void *vblank_cb_data)
@@ -292,12 +310,8 @@ void mtk_ethdr_start(struct device *dev)
 
 	writel(1, mixer->regs + MIX_EN);
 
-	if (priv->crc.cnt) {
+	if (priv->crc.cnt)
 		writel(MIX_TRIG_CRC_EN, mixer->regs + MIX_TRIG);
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-		mtk_crtc_start_crc_cmdq(&priv->crc);
-#endif
-	}
 }
 
 void mtk_ethdr_stop(struct device *dev)
@@ -305,9 +319,6 @@ void mtk_ethdr_stop(struct device *dev)
 	struct mtk_ethdr *priv = dev_get_drvdata(dev);
 	struct mtk_ethdr_comp *mixer = &priv->ethdr_comp[ETHDR_MIXER];
 
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-	mtk_crtc_stop_crc_cmdq(&priv->crc);
-#endif
 	writel(0, mixer->regs + MIX_EN);
 	writel(1, mixer->regs + MIX_RST);
 	reset_control_reset(priv->reset_ctl);
