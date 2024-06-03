@@ -272,7 +272,8 @@ iwl_mld_nic_error(struct iwl_op_mode *op_mode, bool sync)
 
 	mld->fw_status.running = false;
 
-	if (!test_bit(STATUS_TRANS_DEAD, &mld->trans->status))
+	if (!test_bit(STATUS_TRANS_DEAD, &mld->trans->status) &&
+	    !mld->fw_status.do_not_dump_once)
 		iwl_fwrt_dump_error_logs(&mld->fwrt);
 
 	/* TODO: call WRT, but only if sync = true because this means we're
@@ -280,6 +281,7 @@ iwl_mld_nic_error(struct iwl_op_mode *op_mode, bool sync)
 	 *
 	 * TODO: restart the device.
 	 */
+	mld->fw_status.do_not_dump_once = false;
 }
 
 static void
