@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef _MTK_DIP_HW_H_
-#define _MTK_DIP_HW_H_
+#ifndef _MTK_IMGSYS_HW_H_
+#define _MTK_IMGSYS_HW_H_
 
 #include "linux/dma-buf.h"
 #include "linux/scatterlist.h"
@@ -41,5 +41,5 @@ struct mtk_imgsys_init_array {
 	unsigned int    val;
 };
 
-#endif /* _MTK_DIP_HW_H_ */
+#endif /* _MTK_IMGSYS_HW_H_ */
 
