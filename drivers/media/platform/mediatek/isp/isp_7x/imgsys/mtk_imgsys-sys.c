@@ -106,20 +106,14 @@ err_alloc:
 
 void mtk_imgsys_hw_working_buf_pool_release(struct mtk_imgsys_dev *imgsys_dev)
 {
-	struct mtk_imgsys_hw_working_buf *buf;
-	int i;
+	struct mtk_imgsys_hw_working_buf *buf = &imgsys_dev->working_bufs[0];
 
-	for (i = 0; i < IMGSYS_WORKING_BUF_NUM; i++) {
-		buf = &imgsys_dev->working_bufs[i];
-		dma_unmap_resource(imgsys_dev->dev, buf->isp_daddr,
-				   sizeof(struct singlenode_desc_norm),
-				   DMA_TO_DEVICE, 0);
-		dma_free_coherent(imgsys_dev->dev,
-				  sizeof(struct singlenode_desc_norm),
-				  buf->sd_norm, buf->scp_daddr);
-		list_del(&buf->list);
-	}
-
+	dma_unmap_resource(imgsys_dev->dev, buf->isp_daddr,
+			   sizeof(struct singlenode_desc_norm) * IMGSYS_WORKING_BUF_NUM,
+			   DMA_TO_DEVICE, 0);
+	dma_free_coherent(imgsys_dev->dev,
+			  sizeof(struct singlenode_desc_norm) * IMGSYS_WORKING_BUF_NUM,
+			  buf->sd_norm, buf->scp_daddr);
 	kfree(imgsys_dev->working_bufs);
 }
 
