@@ -106,12 +106,14 @@ static const struct iwl_hcmd_names iwl_mld_reg_and_nvm_names[] = {
 	HCMD_NAME(NVM_GET_INFO),
 };
 
-static const struct iwl_hcmd_arr iwl_mld_groups[] = {
+VISIBLE_IF_IWLWIFI_KUNIT
+const struct iwl_hcmd_arr iwl_mld_groups[] = {
 	[LEGACY_GROUP] = HCMD_ARR(iwl_mld_legacy_names),
 	[LONG_GROUP] = HCMD_ARR(iwl_mld_long_names),
 	[SYSTEM_GROUP] = HCMD_ARR(iwl_mld_system_names),
 	[REGULATORY_AND_NVM_GROUP] = HCMD_ARR(iwl_mld_reg_and_nvm_names),
 };
+EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mld_groups);
 
 static void
 iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
