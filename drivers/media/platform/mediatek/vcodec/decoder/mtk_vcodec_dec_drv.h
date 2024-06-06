@@ -219,6 +219,12 @@ struct mtk_vcodec_dec_ctx {
 	void *vpu_inst;
 
 	bool is_10bit_bitstream;
+
+	/*
+	 * CHROMIUM(b/345414592): Add is_secure_playback to make it compatible
+	 * with the MT8188 SVP FROMLIST changes in the common code.
+	 */
+	bool is_secure_playback;
 };
 
 /**
