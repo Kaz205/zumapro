@@ -1674,6 +1674,7 @@ static int vdec_vp9_slice_setup_core_buffer(struct vdec_vp9_slice_instance *inst
 	struct vb2_queue *vq;
 	struct vdec_vp9_slice_reference *ref;
 	int plane;
+	int size;
 	int w;
 	int h;
 	int i;
@@ -1681,14 +1682,12 @@ static int vdec_vp9_slice_setup_core_buffer(struct vdec_vp9_slice_instance *inst
 	plane = instance->ctx->q_data[MTK_Q_DATA_DST].fmt->num_planes;
 	w = vsi->frame.uh.frame_width;
 	h = vsi->frame.uh.frame_height;
-
-	vsi->fb.y.size = instance->ctx->picinfo.fb_sz[0];
-	vsi->fb.c.size = instance->ctx->picinfo.fb_sz[1];
+	size = ALIGN(w, 64) * ALIGN(h, 64);
 
 	/* frame buffer */
 	vsi->fb.y.dma_addr = fb->base_y.dma_addr;
 	if (plane == 1)
-		vsi->fb.c.dma_addr = fb->base_y.dma_addr + vsi->fb.y.size;
+		vsi->fb.c.dma_addr = fb->base_y.dma_addr + size;
 	else
 		vsi->fb.c.dma_addr = fb->base_c.dma_addr;
 
@@ -1732,7 +1731,7 @@ static int vdec_vp9_slice_setup_core_buffer(struct vdec_vp9_slice_instance *inst
 				vb2_dma_contig_plane_dma_addr(vb, 0);
 			if (plane == 1)
 				vsi->ref[i].c.dma_addr =
-					vsi->ref[i].y.dma_addr + vsi->fb.y.size;
+					vsi->ref[i].y.dma_addr + size;
 			else
 				vsi->ref[i].c.dma_addr =
 					vb2_dma_contig_plane_dma_addr(vb, 1);
