@@ -181,7 +181,7 @@ static int mtk_vcodec_init_dec_resources(struct mtk_vcodec_dec_dev *dev)
 		return ret;
 	}
 
-	ret = mtk_vcodec_init_dec_clk(pdev, &dev->pm);
+	ret = mtk_vcodec_init_dec_clk_mt8188(pdev, &dev->pm);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to get mt vcodec clock source");
 		return ret;
@@ -535,23 +535,7 @@ err_dec_pm:
 
 static const struct of_device_id mtk_vcodec_match[] = {
 	{
-		.compatible = "mediatek,mt8173-vcodec-dec",
-		.data = &mtk_vdec_8173_pdata,
-	},
-	{
-		.compatible = "mediatek,mt8183-vcodec-dec",
-		.data = &mtk_vdec_8183_pdata,
-	},
-	{
-		.compatible = "mediatek,mt8192-vcodec-dec",
-		.data = &mtk_lat_sig_core_pdata,
-	},
-	{
-		.compatible = "mediatek,mt8186-vcodec-dec",
-		.data = &mtk_vdec_single_core_pdata,
-	},
-	{
-		.compatible = "mediatek,mt8195-vcodec-dec",
+		.compatible = "mediatek,mt8188-vcodec-dec",
 		.data = &mtk_lat_sig_core_pdata,
 	},
 	{},
