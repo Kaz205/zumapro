@@ -130,9 +130,3 @@ const struct mtk_imgsys_format mtk_imgsys_format_ctrlmeta = {
 	.num_planes = 1,
 	.buffer_size = 28672,
 };
-
-const struct mtk_imgsys_format mtk_imgsys_format_desc_norm = {
-	.format = V4L2_META_FMT_MTISP_DESC_NORM,
-	.num_planes = 1,
-	.buffer_size = sizeof(struct singlenode_desc_norm),
-};

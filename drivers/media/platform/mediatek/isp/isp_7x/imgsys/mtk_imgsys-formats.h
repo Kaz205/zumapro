@@ -47,6 +47,4 @@ extern const struct mtk_imgsys_format mtk_imgsys_format_stt;
 
 extern const struct mtk_imgsys_format mtk_imgsys_format_ctrlmeta;
 
-extern const struct mtk_imgsys_format mtk_imgsys_format_desc_norm;
-
 #endif /* _MTK_IMGSYS_FORMATS_H_ */

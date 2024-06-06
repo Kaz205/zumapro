@@ -62,12 +62,6 @@ static const struct mtk_imgsys_mod_pipe_desc module_pipe_isp7[] = {
 	}
 };
 
-static const struct mtk_imgsys_dev_format sd_fmts[] = {
-	{
-		.fmt = &mtk_imgsys_format_desc_norm,
-	},
-};
-
 static const struct mtk_imgsys_dev_format tuning_fmts[] = {
 	{
 		.fmt = &mtk_imgsys_format_metai,
@@ -107,36 +101,6 @@ queues_setting[MTK_IMGSYS_VIDEO_NODE_ID_TOTAL_NUM] = {
 		.dma_port = 0,
 		.frmsizeenum = &dip_in_frmsizeenum,
 		.description = "Control meta data for flow control",
-	},
-	/* TODO: remove this. We don't need to expose this video node.*/
-	[MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_OUT] = {
-		.id = MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_OUT,
-		.name = "Single Device",
-		.cap = V4L2_CAP_META_OUTPUT | V4L2_CAP_STREAMING,
-		.buf_type = V4L2_BUF_TYPE_META_OUTPUT,
-		.smem_alloc = 0,
-		.flags = MEDIA_LNK_FL_DYNAMIC,
-		.fmts = sd_fmts,
-		.num_fmts = ARRAY_SIZE(sd_fmts),
-		.default_width = MTK_DIP_OUTPUT_MAX_WIDTH,
-		.default_height = MTK_DIP_OUTPUT_MAX_HEIGHT,
-		.dma_port = 0,
-		.frmsizeenum = &dip_in_frmsizeenum,
-		.description = "Single Device Node",
-	},
-	/* TODO: remove this. We don't need to expose this video node.*/
-	[MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_NORM_OUT] = {
-		.id = MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_NORM_OUT,
-		.name = "SIGDEVN",
-		.cap = V4L2_CAP_META_OUTPUT | V4L2_CAP_STREAMING,
-		.buf_type = V4L2_BUF_TYPE_META_OUTPUT,
-		.smem_alloc = 0,
-		.flags = MEDIA_LNK_FL_DYNAMIC,
-		.fmts = sd_fmts,
-		.num_fmts = ARRAY_SIZE(sd_fmts),
-		.dma_port = 0,
-		.frmsizeenum = &dip_in_frmsizeenum,
-		.description = "Single Device Norm",
 	},
 };
 

@@ -50,9 +50,5 @@ enum img_resize_ratio {
 #define V4L2_META_FMT_MTISP_PARAMS v4l2_fourcc('M', 'T', 'f', 'p')
 /* ISP description fmt*/
 #define V4L2_META_FMT_MTISP_DESC   v4l2_fourcc('M', 'T', 'f', 'd')
-/* ISP SMVR DESC fmt*/
-#define V4L2_META_FMT_MTISP_DESC_NORM   v4l2_fourcc('M', 'T', 'f', 'r')
-/* ISP SMVR SD fmt*/
-#define V4L2_META_FMT_MTISP_SDNORM   v4l2_fourcc('M', 'T', 's', 'r')
 
 #endif /* _MTKISP_IMGSYS_USER_H */

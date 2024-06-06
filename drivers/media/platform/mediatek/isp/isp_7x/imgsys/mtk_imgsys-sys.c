@@ -661,9 +661,6 @@ static void imgsys_fill_buf_info(int idx, struct mtk_imgsys_dev_buffer *dev_buf,
 	sd_norm->dmas_enable[idx][0] = 1;
 
 	switch (idx) {
-	case MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_NORM_OUT:
-	case MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_OUT:
-		return;
 	case MTK_IMGSYS_VIDEO_NODE_ID_TUNING_OUT:
 		imgsys_fill_meta_buf(dev_buf, &sd_norm->tuning_meta, req);
 		break;
