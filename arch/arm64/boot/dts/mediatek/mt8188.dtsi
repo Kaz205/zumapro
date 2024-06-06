@@ -2201,13 +2201,27 @@
 		};
 
 		smi_img0: syscon@15002000 {
-			compatible = "mediatek,mt8188-smi-img0", "syscon";
+			compatible = "mediatek,mt8188-smi-img0",
+				     "mediatek,mt8188-smi-sub-common", "syscon";
+			mediatek,common-id = <3>;
+			mediatek,smi = <&vdo_smi_common>;
 			reg = <0 0x15002000 0 0x1000>;
+			clocks = <&vdosys0 CLK_VDO0_SMI_COMMON>,
+				 <&vdosys0 CLK_VDO0_SMI_GALS>;
+			clock-names = "apb", "smi";
+			power-domains = <&spm MT8188_POWER_DOMAIN_IMG_MAIN>;
 		};
 
 		smi_img1: syscon@15003000 {
-			compatible = "mediatek,mt8188-smi-img1", "syscon";
+			compatible = "mediatek,mt8188-smi-img1",
+				     "mediatek,mt8188-smi-sub-common", "syscon";
+			mediatek,common-id = <4>;
+			mediatek,smi = <&vpp_smi_common>;
 			reg = <0 0x15003000 0 0x1000>;
+			clocks = <&vppsys0 CLK_VPP0_SMI_COMMON_LARB4>,
+				 <&vppsys0 CLK_VPP0_SMI_COMMON_LARB4>;
+			clock-names = "apb", "smi";
+			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
 		};
 
 		imgsys1_dip_top: clock-controller@15110000 {
@@ -2227,6 +2241,7 @@
 				 <&imgsys1_dip_top CLK_IMGSYS1_DIP_TOP_LARB10>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
+			mediatek,smi-reset = <&imgsys1_dip_top MT8188_SMI_RST_LARB10>;
 		};
 
 		imgsys1_dip_nr: clock-controller@15130000 {
@@ -2246,6 +2261,7 @@
 				 <&imgsys1_dip_nr CLK_IMGSYS1_DIP_NR_LARB15>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
+			mediatek,smi-reset = <&imgsys1_dip_nr MT8188_SMI_RST_LARB15>;
 		};
 
 		imgsys_wpe1: clock-controller@15220000 {
@@ -2265,6 +2281,7 @@
 				 <&imgsys_wpe1 CLK_IMGSYS_WPE1_LARB11>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
+			mediatek,smi-reset = <&imgsys_wpe1 MT8188_SMI_RST_LARB11A>;
 		};
 
 		vmm_proxy_label: vmm-proxy {
@@ -3466,6 +3483,7 @@
 				 <&ipesys CLK_IPE_SMI_LARB12>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_IPE>;
+			mediatek,smi-reset = <&ipesys MT8188_SMI_RST_LARB12>;
 		};
 
 		imgsys_wpe2: clock-controller@15520000 {
@@ -3485,6 +3503,7 @@
 				 <&imgsys_wpe2 CLK_IMGSYS_WPE2_LARB11>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
+			mediatek,smi-reset = <&imgsys_wpe2 MT8188_SMI_RST_LARB11B>;
 		};
 
 		imgsys_wpe3: clock-controller@15620000 {
@@ -3504,6 +3523,7 @@
 				 <&imgsys_wpe3 CLK_IMGSYS_WPE3_LARB11>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_DIP>;
+			mediatek,smi-reset = <&imgsys_wpe3 MT8188_SMI_RST_LARB11C>;
 		};
 
 		camsys: clock-controller@16000000 {
@@ -3547,13 +3567,27 @@
 		};
 
 		smi_cam0: syscon@16005000 {
-			compatible = "mediatek,mt8188-smi-cam0", "syscon";
+			compatible = "mediatek,mt8188-smi-cam0",
+				     "mediatek,mt8188-smi-sub-common", "syscon";
+			mediatek,common-id = <5>;
+			mediatek,smi = <&vdo_smi_common>;
 			reg = <0 0x16005000 0 0x1000>;
+			clocks = <&camsys CLK_CAM_MAIN_CAM_SUBB>,
+				 <&camsys_rawb CLK_CAM_RAWB_LARBX>;
+			clock-names = "apb", "smi";
+			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBB>;
 		};
 
 		smi_cam1: syscon@16006000 {
-			compatible = "mediatek,mt8188-smi-cam1", "syscon";
+			compatible = "mediatek,mt8188-smi-cam1",
+				     "mediatek,mt8188-smi-sub-common", "syscon";
+			mediatek,common-id = <6>;
+			mediatek,smi = <&vpp_smi_common>;
 			reg = <0 0x16006000 0 0x1000>;
+			clocks = <&camsys CLK_CAM_MAIN_CAM_SUBA>,
+				 <&camsys_rawa CLK_CAM_RAWA_LARBX>;
+			clock-names = "apb", "smi";
+			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBA>;
 		};
 
 		larb16a: larb@16008000 {
@@ -3567,6 +3601,7 @@
 				 <&camsys_rawa CLK_CAM_RAWA_LARBX>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBA>;
+			mediatek,smi-reset = <&camsys_rawa MT8188_SMI_RST_LARB16A>;
 		};
 
 		larb17a: larb@16009000 {
@@ -3580,6 +3615,7 @@
 				 <&camsys_yuva CLK_CAM_YUVA_LARBX>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBA>;
+			mediatek,smi-reset = <&camsys_yuva MT8188_SMI_RST_LARB17A>;
 		};
 
 		larb16b: larb@1600a000 {
@@ -3593,6 +3629,7 @@
 				 <&camsys_rawb CLK_CAM_RAWB_LARBX>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBB>;
+			mediatek,smi-reset = <&camsys_rawb MT8188_SMI_RST_LARB16B>;
 		};
 
 		larb17b: larb@1600b000 {
@@ -3606,6 +3643,7 @@
 				 <&camsys_yuvb CLK_CAM_YUVB_LARBX>;
 			clock-names = "apb", "smi";
 			power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBB>;
+			mediatek,smi-reset = <&camsys_yuvb MT8188_SMI_RST_LARB17B>;
 		};
 
 		seninf_top: seninf-top@16010000 {
