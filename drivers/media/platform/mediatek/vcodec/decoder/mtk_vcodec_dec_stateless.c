@@ -424,6 +424,10 @@ static int mtk_vcodec_get_pic_info(struct mtk_vcodec_dec_ctx *ctx)
 	int ret = 0;
 
 	q_data = &ctx->q_data[MTK_Q_DATA_DST];
+	if (q_data->fmt->num_planes == 1) {
+		mtk_v4l2_vdec_err(ctx, "[%d]Error!! 10bit mode not support one plane", ctx->id);
+		return -EINVAL;
+	}
 
 	ctx->capture_fourcc = q_data->fmt->fourcc;
 	ret = vdec_if_get_param(ctx, GET_PARAM_PIC_INFO, &ctx->picinfo);
@@ -838,7 +842,6 @@ static void mtk_vcodec_add_formats(unsigned int fourcc,
 		mtk_video_formats[count_formats].num_planes = 2;
 		break;
 	case V4L2_PIX_FMT_MS21:
-	case V4L2_PIX_FMT_MS2110T:
 		mtk_video_formats[count_formats].fourcc = fourcc;
 		mtk_video_formats[count_formats].type = MTK_FMT_FRAME;
 		mtk_video_formats[count_formats].num_planes = 1;
@@ -868,8 +871,6 @@ static void mtk_vcodec_get_supported_formats(struct mtk_vcodec_dec_ctx *ctx)
 		mtk_vcodec_add_formats(V4L2_PIX_FMT_MT2110T, ctx);
 		cap_format_count++;
 		mtk_vcodec_add_formats(V4L2_PIX_FMT_MT2110R, ctx);
-		cap_format_count++;
-		mtk_vcodec_add_formats(V4L2_PIX_FMT_MS2110T, ctx);
 		cap_format_count++;
 	}
 	if (ctx->dev->dec_capability & MTK_VDEC_FORMAT_MM21) {
