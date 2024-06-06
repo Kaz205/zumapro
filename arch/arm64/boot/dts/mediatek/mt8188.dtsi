@@ -3862,7 +3862,7 @@
 			assigned-clock-parents = <&topckgen CLK_TOP_UNIVPLL_D6>;
 
 			vcodec-lat@10000 {
-				compatible = "mediatek,mtk-vcodec-lat";
+				compatible = "mediatek,mtk-vcodec-lat-mt8188";
 				reg = <0x10000 0x800>;          /* VDEC_MISC */
 				interrupts = <GIC_SPI 708 IRQ_TYPE_LEVEL_HIGH 0>;
 				iommus = <&vpp_iommu M4U_PORT_L23_HW_VDEC_LAT0_VLD_EXT>,
@@ -3881,7 +3881,7 @@
 			};
 
 			vcodec-core@25000 {
-				compatible = "mediatek,mtk-vcodec-core";
+				compatible = "mediatek,mtk-vcodec-core-mt8188";
 				reg = <0x25000 0x1000>;         /* VDEC_CORE_MISC */
 				interrupts = <GIC_SPI 707 IRQ_TYPE_LEVEL_HIGH 0>;
 				iommus = <&vdo_iommu M4U_PORT_L21_HW_VDEC_MC_EXT>,
