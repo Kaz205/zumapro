@@ -454,46 +454,6 @@ static int mtk_vcodec_get_pic_info(struct mtk_vcodec_dec_ctx *ctx)
 	return ret;
 }
 
-static int mtk_dma_contig_get_secure_handle(struct mtk_vcodec_dec_ctx *ctx, int fd)
-{
-	int secure_handle = 0;
-	struct dma_buf *buf;
-	struct dma_buf_attachment *dba;
-	struct sg_table *sgt;
-	struct device *dev = &ctx->dev->plat_dev->dev;
-
-	buf = dma_buf_get(fd);
-	if (IS_ERR(buf)) {
-		mtk_v4l2_vdec_err(ctx, "dma_buf_get fail fd:%d", fd);
-		return 0;
-	}
-
-	dba = dma_buf_attach(buf, dev);
-	if (IS_ERR(dba)) {
-		mtk_v4l2_vdec_err(ctx, "dma_buf_attach fail fd:%d", fd);
-		goto err_attach;
-	}
-
-	sgt = dma_buf_map_attachment(dba, DMA_BIDIRECTIONAL);
-	if (IS_ERR(sgt)) {
-		mtk_v4l2_vdec_err(ctx, "dma_buf_map_attachment fail fd:%d", fd);
-		goto err_map;
-	}
-	secure_handle = sg_dma_address(sgt->sgl);
-
-	dma_buf_unmap_attachment(dba, sgt, DMA_BIDIRECTIONAL);
-	dma_buf_detach(buf, dba);
-	dma_buf_put(buf);
-
-	return secure_handle;
-err_map:
-	dma_buf_detach(buf, dba);
-err_attach:
-	dma_buf_put(buf);
-
-	return 0;
-}
-
 static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct mtk_vcodec_dec_ctx *ctx = ctrl_to_dec_ctx(ctrl);
@@ -504,7 +464,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct v4l2_ctrl *hdr_ctrl;
 	const struct mtk_vcodec_dec_pdata *dec_pdata = ctx->dev->vdec_pdata;
 	const struct mtk_video_fmt *fmt;
-	int i = 0, ret = 0, sec_fd;
+	int i = 0, ret = 0;
 
 	hdr_ctrl = ctrl;
 	if (!hdr_ctrl || !hdr_ctrl->p_new.p)
@@ -555,29 +515,6 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		} else if (seq->bit_depth != 8) {
 			mtk_v4l2_vdec_err(ctx, "AV1: bit_depth:%d", seq->bit_depth);
 			return -EINVAL;
-		}
-		break;
-	case V4L2_CID_MPEG_MTK_GET_SECURE_HANDLE:
-		sec_fd = ctrl->val;
-		if (sec_fd <= 0)
-			return ret;
-
-		ctrl->val = mtk_dma_contig_get_secure_handle(ctx, ctrl->val);
-		mtk_v4l2_vdec_dbg(3, ctx, "get secure handle: %d => 0x%x", sec_fd, ctrl->val);
-		break;
-	case V4L2_CID_MPEG_MTK_SET_SECURE_MODE:
-		if (!ctx->is_secure_playback) {
-			ret = mtk_vcodec_dec_optee_open(ctx->dev->optee_private);
-			if (ret) {
-				mtk_v4l2_vdec_err(ctx, "Failed to open decoder optee os");
-				return ret;
-			}
-			ctx->is_secure_playback = ctrl->val;
-			mtk_v4l2_vdec_dbg(1, ctx, "open tee interface:%d", ctx->is_secure_playback);
-		}
-
-		if (ctrl->val) {
-			mtk_v4l2_vdec_dbg(1, ctx, "decoder in secure mode: %d", ctrl->val);
 		}
 		break;
 	default:
@@ -751,9 +688,8 @@ static void mtk_vcodec_dec_reset_controls(struct v4l2_ctrl_config *cfg,
 static int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_dec_ctx *ctx)
 {
 	unsigned int i;
-	struct v4l2_ctrl *ctrl;
 
-	v4l2_ctrl_handler_init(&ctx->ctrl_hdl, NUM_CTRLS + 2);
+	v4l2_ctrl_handler_init(&ctx->ctrl_hdl, NUM_CTRLS);
 	if (ctx->ctrl_hdl.error) {
 		mtk_v4l2_vdec_err(ctx, "v4l2_ctrl_handler_init failed\n");
 		return ctx->ctrl_hdl.error;
@@ -771,11 +707,6 @@ static int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_dec_ctx *ctx)
 			return ctx->ctrl_hdl.error;
 		}
 	}
-
-	ctrl = v4l2_ctrl_new_std(&ctx->ctrl_hdl, &mtk_vcodec_dec_ctrl_ops,
-				 V4L2_CID_MPEG_MTK_GET_SECURE_HANDLE, 0, 65535, 1 , 0);
-	ctrl = v4l2_ctrl_new_std(&ctx->ctrl_hdl, &mtk_vcodec_dec_ctrl_ops,
-				 V4L2_CID_MPEG_MTK_SET_SECURE_MODE, 0, 65535, 1 , 0);
 
 	v4l2_ctrl_handler_setup(&ctx->ctrl_hdl);
 

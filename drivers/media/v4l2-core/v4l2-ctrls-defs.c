@@ -1042,8 +1042,6 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_MPEG_VIDEO_HEVC_SIZE_OF_LENGTH_FIELD:	return "HEVC Size of Length Field";
 	case V4L2_CID_MPEG_VIDEO_REF_NUMBER_FOR_PFRAMES:	return "Reference Frames for a P-Frame";
 	case V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR:		return "Prepend SPS and PPS to IDR";
-	case V4L2_CID_MPEG_MTK_GET_SECURE_HANDLE:		return "Mediatek Decoder get secure handle";
-	case V4L2_CID_MPEG_MTK_SET_SECURE_MODE: 		return "Mediatek Decoder set secure mode";
 
 	/* AV1 controls */
 	case V4L2_CID_MPEG_VIDEO_AV1_PROFILE:			return "AV1 Profile";
@@ -1437,14 +1435,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_MPEG_VIDEO_VPX_NUM_PARTITIONS:
 	case V4L2_CID_MPEG_VIDEO_VPX_NUM_REF_FRAMES:
 		*type = V4L2_CTRL_TYPE_INTEGER_MENU;
-		break;
-	case V4L2_CID_MPEG_MTK_GET_SECURE_HANDLE:
-		*type = V4L2_CTRL_TYPE_INTEGER;
-		*flags |= V4L2_CTRL_FLAG_WRITE_ONLY;
-		break;
-	case V4L2_CID_MPEG_MTK_SET_SECURE_MODE:
-		*type = V4L2_CTRL_TYPE_INTEGER;
-		*flags |= V4L2_CTRL_FLAG_WRITE_ONLY;
 		break;
 	case V4L2_CID_USER_CLASS:
 	case V4L2_CID_CAMERA_CLASS:
