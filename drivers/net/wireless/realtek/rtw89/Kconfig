@@ -19,6 +19,9 @@ config RTW89_PCI
 config RTW89_8852A
 	tristate
 
+config RTW89_8852B_COMMON
+	tristate
+
 config RTW89_8852B
 	tristate
 
@@ -42,6 +45,7 @@ config RTW89_8852BE
 	select RTW89_CORE
 	select RTW89_PCI
 	select RTW89_8852B
+	select RTW89_8852B_COMMON
 	help
 	  Select this option will enable support for 8852BE chipset
 
