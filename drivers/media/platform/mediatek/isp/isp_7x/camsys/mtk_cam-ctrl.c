@@ -233,6 +233,7 @@ void mtk_cam_set_sensor_full(struct mtk_cam_request_stream_data *s_data,
 		mtk_cam_m2m_sensor_skip(s_data);
 		return;
 	}
+
 	/* sensor_worker task */
 	ctx = mtk_cam_s_data_get_ctx(s_data);
 	cam = ctx->cam;
@@ -827,6 +828,8 @@ static void mtk_camsys_raw_frame_start(struct mtk_raw_device *raw_dev,
 	struct mtk_camsys_sensor_ctrl *sensor_ctrl = &ctx->sensor_ctrl;
 	struct mtk_cam_working_buf_entry *buf_entry;
 	struct mtk_camsys_ctrl_state *current_state;
+	struct mtk_cam_buffer *buf;
+
 	dma_addr_t base_addr;
 	enum MTK_CAMSYS_STATE_RESULT state_handle_ret;
 
@@ -838,9 +841,20 @@ static void mtk_camsys_raw_frame_start(struct mtk_raw_device *raw_dev,
 	/* Send V4L2_EVENT_FRAME_SYNC event */
 	mtk_cam_event_frame_sync(ctx->pipe, dequeued_frame_seq_no);
 
+	/* Handle directly enque buffers */
+	spin_lock(&ctx->cam->dma_processing_lock);
+	list_for_each_entry(buf, &ctx->cam->dma_processing, list) {
+		if (buf->state.estate == E_BUF_STATE_COMPOSED) {
+			spin_unlock(&ctx->cam->dma_processing_lock);
+			goto apply_cq;
+		}
+	}
+	spin_unlock(&ctx->cam->dma_processing_lock);
+	buf = NULL;
+	current_state = NULL;
+
 	/* Find request of this dequeued frame */
 	req_stream_data = mtk_cam_get_req_s_data(ctx, ctx->stream_id, dequeued_frame_seq_no);
-
 	/* Detect no frame done and trigger camsys dump for debugging */
 	mtk_cam_debug_detect_dequeue_failed(req_stream_data, 30, irq_info, raw_dev);
 	if (ctx->sensor) {
@@ -854,6 +868,8 @@ static void mtk_camsys_raw_frame_start(struct mtk_raw_device *raw_dev,
 			return;
 		}
 	}
+
+apply_cq:
 	/* Update CQ base address if needed */
 	if (ctx->composed_frame_seq_no <= dequeued_frame_seq_no) {
 		dev_info_ratelimited(raw_dev->dev,
@@ -889,6 +905,10 @@ static void mtk_camsys_raw_frame_start(struct mtk_raw_device *raw_dev,
 				     buf_entry->sub_cq_desc_size,
 				     buf_entry->sub_cq_desc_offset);
 
+		if (buf) {
+			buf->state.estate = E_BUF_STATE_CQ;
+			return;
+		}
 		/* req_stream_data of req_cq*/
 		req_stream_data = mtk_cam_ctrl_state_to_req_s_data(current_state);
 		/* Transit state from Sensor -> CQ */
@@ -954,10 +974,23 @@ static void mtk_camsys_raw_cq_done(struct mtk_raw_device *raw_dev,
 	struct mtk_camsys_sensor_ctrl *sensor_ctrl = &ctx->sensor_ctrl;
 	struct mtk_camsys_ctrl_state *state_entry;
 	struct mtk_cam_request_stream_data *req_stream_data;
+	struct mtk_cam_buffer *buf;
 
 	/* initial CQ done */
 	if (raw_dev->sof_count == 0) {
 		sensor_ctrl->initial_cq_done = 1;
+		spin_lock(&ctx->cam->dma_processing_lock);
+		if (!list_empty(&ctx->cam->dma_processing)) {
+			buf = list_first_entry(&ctx->cam->dma_processing,
+					       struct mtk_cam_buffer,
+					       list);
+			if (buf->state.estate == E_BUF_STATE_CQ)
+				buf->state.estate = E_BUF_STATE_OUTER;
+			spin_unlock(&ctx->cam->dma_processing_lock);
+			mtk_cam_stream_on(raw_dev, ctx);
+			return;
+		}
+		spin_unlock(&ctx->cam->dma_processing_lock);
 		req_stream_data = mtk_cam_get_req_s_data(ctx, ctx->stream_id, 1);
 		if (req_stream_data->state.estate >= E_STATE_SENSOR ||
 		    !ctx->sensor) {
@@ -1292,6 +1325,37 @@ void mtk_camsys_frame_done(struct mtk_cam_ctx *ctx,
 {
 	struct mtk_cam_req_work *frame_done_work;
 	struct mtk_cam_request_stream_data *req_stream_data;
+	struct mtk_cam_buffer *buf;
+	struct mtk_cam_working_buf_entry *buf_entry = NULL;
+	bool is_pending_buffer = false;
+
+	spin_lock(&ctx->cam->dma_processing_lock);
+	if (!list_empty(&ctx->cam->dma_processing)) {
+		buf = list_first_entry(&ctx->cam->dma_processing,
+				       struct mtk_cam_buffer,
+				       list);
+		list_del(&buf->list);
+		ctx->cam->dma_processing_count--;
+		vb2_buffer_done(&buf->vbb.vb2_buf, VB2_BUF_STATE_DONE);
+		is_pending_buffer = true;
+	}
+	spin_unlock(&ctx->cam->dma_processing_lock);
+	if (is_pending_buffer) {
+		spin_lock(&ctx->processing_buffer_list.lock);
+		if (!list_empty(&ctx->processing_buffer_list.list)) {
+			buf_entry = list_first_entry(&ctx->processing_buffer_list.list,
+						     struct mtk_cam_working_buf_entry,
+						     list_entry);
+			list_del(&buf_entry->list_entry);
+			ctx->processing_buffer_list.cnt--;
+		}
+		spin_unlock(&ctx->processing_buffer_list.lock);
+		if (buf_entry)
+			mtk_cam_working_buf_put(buf_entry);
+
+		mtk_cam_buf_try_queue(ctx);
+		return;
+	}
 
 	req_stream_data = mtk_cam_get_req_s_data(ctx, pipe_id, frame_seq_no);
 	if (!req_stream_data) {

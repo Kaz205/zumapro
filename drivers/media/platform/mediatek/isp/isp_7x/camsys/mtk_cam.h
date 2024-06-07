@@ -391,6 +391,13 @@ struct mtk_cam_device {
 	unsigned int running_job_count;
 	spinlock_t running_job_lock; /* protect running_job_list */
 
+	/* standard v4l2 buffer control */
+	struct list_head dma_pending;
+	spinlock_t dma_pending_lock; /* protect dma_pending_list */
+	struct list_head dma_processing;
+	spinlock_t dma_processing_lock; /* protect dma_processing_list and dma_processing_count */
+	unsigned int dma_processing_count;
+
 	struct mtk_cam_debug_fs *debug_fs;
 	struct workqueue_struct *debug_wq;
 	struct workqueue_struct *debug_exception_wq;
@@ -656,6 +663,7 @@ static inline struct device *mtk_cam_find_raw_dev(struct mtk_cam_device *cam,
 	return NULL;
 }
 
+void mtk_cam_buf_try_queue(struct mtk_cam_ctx *ctx);
 struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 				      struct mtk_cam_video_device *node);
 struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,

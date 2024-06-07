@@ -2495,7 +2495,6 @@ static int mtk_raw_init_cfg(struct v4l2_subdev *sd,
 	for (i = 0; i < sd->entity.num_pads; i++) {
 		mf = v4l2_subdev_get_try_format(sd, sd_state, i);
 		*mf = mfmt_default;
-		pipe->cfg[i].mbus_fmt = mfmt_default;
 
 		dev_dbg(raw->cam_dev, "%s init pad:%d format:0x%x\n",
 			sd->name, i, mf->code);
@@ -4806,6 +4805,9 @@ static int mtk_raw_pipeline_register(unsigned int id, struct device *dev,
 		if (ret)
 			goto fail_unregister_video;
 	}
+
+	for (i = 0; i < sd->entity.num_pads; i++)
+		pipe->cfg[i].mbus_fmt = mfmt_default;
 
 	return 0;
 
