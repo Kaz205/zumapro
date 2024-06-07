@@ -1976,7 +1976,7 @@ static int rtw89_pci_write_config_byte(struct rtw89_dev *rtwdev, u16 addr,
 	if (!ret)
 		return 0;
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B)
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev))
 		ret = rtw89_dbi_write8(rtwdev, addr, data);
 
 	return ret;
@@ -1994,7 +1994,7 @@ static int rtw89_pci_read_config_byte(struct rtw89_dev *rtwdev, u16 addr,
 	if (!ret)
 		return 0;
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B)
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev))
 		ret = rtw89_dbi_read8(rtwdev, addr, value);
 
 	return ret;
@@ -2074,10 +2074,9 @@ __get_target(struct rtw89_dev *rtwdev, u16 *target, enum rtw89_pcie_phy phy_rate
 
 static int rtw89_pci_autok_x(struct rtw89_dev *rtwdev)
 {
-	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 	int ret;
 
-	if (chip_id != RTL8852B && chip_id != RTL8851B)
+	if (!rtw89_is_rtl885xb(rtwdev))
 		return 0;
 
 	ret = rtw89_write16_mdio_mask(rtwdev, RAC_REG_FLD_0, BAC_AUTOK_N_MASK,
@@ -2087,14 +2086,13 @@ static int rtw89_pci_autok_x(struct rtw89_dev *rtwdev)
 
 static int rtw89_pci_auto_refclk_cal(struct rtw89_dev *rtwdev, bool autook_en)
 {
-	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 	enum rtw89_pcie_phy phy_rate;
 	u16 val16, mgn_set, div_set, tar;
 	u8 val8, bdr_ori;
 	bool l1_flag = false;
 	int ret = 0;
 
-	if (chip_id != RTL8852B && chip_id != RTL8851B)
+	if (!rtw89_is_rtl885xb(rtwdev))
 		return 0;
 
 	ret = rtw89_pci_read_config_byte(rtwdev, RTW89_PCIE_PHY_RATE, &val8);
@@ -2335,7 +2333,7 @@ static void rtw89_pci_l1off_pwroff(struct rtw89_dev *rtwdev)
 {
 	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 
-	if (chip_id != RTL8852A && chip_id != RTL8852B && chip_id != RTL8851B)
+	if (chip_id != RTL8852A && !rtw89_is_rtl885xb(rtwdev))
 		return;
 
 	rtw89_write32_clr(rtwdev, R_AX_PCIE_PS_CTRL, B_AX_L1OFF_PWR_OFF_EN);
@@ -2365,7 +2363,7 @@ static void rtw89_pci_aphy_pwrcut(struct rtw89_dev *rtwdev)
 {
 	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 
-	if (chip_id != RTL8852A && chip_id != RTL8852B && chip_id != RTL8851B)
+	if (chip_id != RTL8852A && !rtw89_is_rtl885xb(rtwdev))
 		return;
 
 	rtw89_write32_clr(rtwdev, R_AX_SYS_PW_CTRL, B_AX_PSUS_OFF_CAPC_EN);
@@ -2375,7 +2373,7 @@ static void rtw89_pci_hci_ldo(struct rtw89_dev *rtwdev)
 {
 	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		rtw89_write32_set(rtwdev, R_AX_SYS_SDIO_CTRL,
 				  B_AX_PCIE_DIS_L2_CTRL_LDO_HCI);
 		rtw89_write32_clr(rtwdev, R_AX_SYS_SDIO_CTRL,
@@ -2388,9 +2386,7 @@ static void rtw89_pci_hci_ldo(struct rtw89_dev *rtwdev)
 
 static int rtw89_pci_dphy_delay(struct rtw89_dev *rtwdev)
 {
-	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
-
-	if (chip_id != RTL8852B && chip_id != RTL8851B)
+	if (!rtw89_is_rtl885xb(rtwdev))
 		return 0;
 
 	return rtw89_write16_mdio_mask(rtwdev, RAC_REG_REV2, BAC_CMU_EN_DLY_MASK,
@@ -2652,7 +2648,7 @@ static int rtw89_pci_mode_op(struct rtw89_dev *rtwdev)
 					   B_AX_PCIE_RX_APPLEN_MASK, 0);
 	}
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		rtw89_write32_mask(rtwdev, R_AX_PCIE_INIT_CFG1, B_AX_PCIE_MAX_TXDMA_MASK, tx_burst);
 		rtw89_write32_mask(rtwdev, R_AX_PCIE_INIT_CFG1, B_AX_PCIE_MAX_RXDMA_MASK, rx_burst);
 	} else if (chip_id == RTL8852C) {
@@ -2660,7 +2656,7 @@ static int rtw89_pci_mode_op(struct rtw89_dev *rtwdev)
 		rtw89_write32_mask(rtwdev, R_AX_HAXI_INIT_CFG1, B_AX_HAXI_MAX_RXDMA_MASK, rx_burst);
 	}
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		if (tag_mode == MAC_AX_TAG_SGL) {
 			val32 = rtw89_read32(rtwdev, R_AX_PCIE_INIT_CFG1) &
 					    ~B_AX_LATENCY_CONTROL;
@@ -2675,7 +2671,7 @@ static int rtw89_pci_mode_op(struct rtw89_dev *rtwdev)
 	rtw89_write32_mask(rtwdev, info->exp_ctrl_reg, info->max_tag_num_mask,
 			   info->multi_tag_num);
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		rtw89_write32_mask(rtwdev, R_AX_PCIE_INIT_CFG2, B_AX_WD_ITVL_IDLE,
 				   wd_dma_idle_intvl);
 		rtw89_write32_mask(rtwdev, R_AX_PCIE_INIT_CFG2, B_AX_WD_ITVL_ACT,
@@ -2888,7 +2884,7 @@ static int rtw89_pci_ops_mac_post_init_ax(struct rtw89_dev *rtwdev)
 		/* ltr sw trigger */
 		rtw89_write32_set(rtwdev, R_AX_LTR_CTRL_0, B_AX_APP_LTR_ACT);
 	}
-	if (chip_id == RTL8852A || chip_id == RTL8852B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		/* ADDR info 8-byte mode */
 		rtw89_write32_set(rtwdev, R_AX_TX_ADDRESS_INFO_MODE_SETTING,
 				  B_AX_HOST_ADDR_INFO_8B_SEL);
@@ -3636,7 +3632,7 @@ static void rtw89_pci_clkreq_set(struct rtw89_dev *rtwdev, bool enable)
 	if (ret)
 		rtw89_err(rtwdev, "failed to set CLKREQ Delay\n");
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		if (enable)
 			ret = rtw89_pci_config_byte_set(rtwdev,
 							RTW89_PCIE_L1_CTRL,
@@ -3681,7 +3677,7 @@ static void rtw89_pci_aspm_set(struct rtw89_dev *rtwdev, bool enable)
 	if (ret)
 		rtw89_err(rtwdev, "failed to read ASPM Delay\n");
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		if (enable)
 			ret = rtw89_pci_config_byte_set(rtwdev,
 							RTW89_PCIE_L1_CTRL,
@@ -3762,7 +3758,7 @@ static void rtw89_pci_l1ss_set(struct rtw89_dev *rtwdev, bool enable)
 	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 	int ret;
 
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		if (enable)
 			ret = rtw89_pci_config_byte_set(rtwdev,
 							RTW89_PCIE_TIMER_CTRL,
@@ -3961,7 +3957,7 @@ static int __maybe_unused rtw89_pci_suspend(struct device *dev)
 	rtw89_write32_set(rtwdev, R_AX_RSV_CTRL, B_AX_WLOCK_1C_BIT6);
 	rtw89_write32_set(rtwdev, R_AX_RSV_CTRL, B_AX_R_DIS_PRST);
 	rtw89_write32_clr(rtwdev, R_AX_RSV_CTRL, B_AX_WLOCK_1C_BIT6);
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		rtw89_write32_clr(rtwdev, R_AX_SYS_SDIO_CTRL,
 				  B_AX_PCIE_DIS_L2_CTRL_LDO_HCI);
 		rtw89_write32_set(rtwdev, R_AX_PCIE_INIT_CFG1,
@@ -3995,7 +3991,7 @@ static int __maybe_unused rtw89_pci_resume(struct device *dev)
 	rtw89_write32_set(rtwdev, R_AX_RSV_CTRL, B_AX_WLOCK_1C_BIT6);
 	rtw89_write32_clr(rtwdev, R_AX_RSV_CTRL, B_AX_R_DIS_PRST);
 	rtw89_write32_clr(rtwdev, R_AX_RSV_CTRL, B_AX_WLOCK_1C_BIT6);
-	if (chip_id == RTL8852A || chip_id == RTL8852B || chip_id == RTL8851B) {
+	if (chip_id == RTL8852A || rtw89_is_rtl885xb(rtwdev)) {
 		rtw89_write32_set(rtwdev, R_AX_SYS_SDIO_CTRL,
 				  B_AX_PCIE_DIS_L2_CTRL_LDO_HCI);
 		rtw89_write32_clr(rtwdev, R_AX_PCIE_INIT_CFG1,
