@@ -449,11 +449,10 @@ static int cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	iwc_msg->command.wait_cookie = sec_task->wait_cookie;
 	iwc_msg->command.reset_exec = sec_task->reset_exec;
 
-	if (data->addr_metadata_cnt) {
-		iwc_msg->command.metadata.addr_list_length = data->addr_metadata_cnt;
-		memcpy(iwc_msg->command.metadata.addr_list,
-		       (u32 *)(unsigned long)data->addr_metadatas,
-		       data->addr_metadata_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
+	if (data->meta_cnt) {
+		iwc_msg->command.metadata.addr_list_length = data->meta_cnt;
+		memcpy(iwc_msg->command.metadata.addr_list, data->meta_list,
+		       data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
 	}
 
 	iwc_msg->command.normal_task_handle = (unsigned long)sec_task->task.pkt;

@@ -14,7 +14,6 @@
 
 #define CMDQ_INVALID_THREAD		(-1)
 #define CMDQ_MAX_TASK_IN_SECURE_THREAD	(16)
-#define ADDR_METADATA_MAX_COUNT_ORIGIN	(8)
 
 /**
  * CMDQ_MAX_COOKIE_VALUE - max value of CMDQ_THR_EXEC_CNT_PA (value starts from 0)
@@ -87,15 +86,13 @@ extern struct cmdq_sec_mailbox cmdq_sec_mbox;
 
 /**
  * struct cmdq_sec_data - used to translate secure buffer PA related instruction
- * @addr_metadata_cnt: count of element in addr_list.
- * @addr_metadatas: array of iwc_cmdq_addr_metadata_t.
- * @addr_metadata_max_cnt: Reserved.
+ * @meta_cnt: count of element in addr_list.
+ * @meta_list: array of iwc_cmdq_addr_metadata_t.
  * @scenario: scenario config for secure world.
  */
 struct cmdq_sec_data {
-	u32 addr_metadata_cnt;
-	u64 addr_metadatas;
-	u32 addr_metadata_max_cnt;
+	u32 meta_cnt;
+	struct iwc_cmdq_addr_metadata_t meta_list[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
 	enum cmdq_sec_scenario scenario;
 };
 

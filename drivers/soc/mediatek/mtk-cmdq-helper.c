@@ -591,28 +591,6 @@ int cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 }
 EXPORT_SYMBOL_GPL(cmdq_sec_insert_backup_cookie);
 
-static int cmdq_sec_realloc_addr_list(struct cmdq_pkt *pkt, const u32 count)
-{
-	struct cmdq_sec_data *sec_data = (struct cmdq_sec_data *)pkt->sec_data;
-	void *prev = (void *)(unsigned long)sec_data->addr_metadatas, *curr;
-
-	if (count <= sec_data->addr_metadata_max_cnt)
-		return 0;
-
-	curr = kcalloc(count, sizeof(*sec_data), GFP_KERNEL);
-	if (!curr)
-		return -ENOMEM;
-
-	if (count && sec_data->addr_metadatas)
-		memcpy(curr, prev, sizeof(*sec_data) * sec_data->addr_metadata_max_cnt);
-
-	kfree(prev);
-
-	sec_data->addr_metadatas = (uintptr_t)curr;
-	sec_data->addr_metadata_max_cnt = count;
-	return 0;
-}
-
 void cmdq_sec_pkt_free_sec_data(struct cmdq_pkt *pkt)
 {
 	kfree(pkt->sec_data);
@@ -641,8 +619,7 @@ static int cmdq_sec_append_metadata(struct cmdq_pkt *pkt,
 				    const u32 base, const u32 offset)
 {
 	struct cmdq_sec_data *sec_data;
-	struct iwc_cmdq_addr_metadata_t *meta;
-	int idx, max, ret;
+	int idx, ret;
 
 	pr_debug("[%s %d] pkt:%p type:%u base:%#x offset:%#x",
 		 __func__, __LINE__, pkt, type, base, offset);
@@ -652,38 +629,17 @@ static int cmdq_sec_append_metadata(struct cmdq_pkt *pkt,
 		return ret;
 
 	sec_data = (struct cmdq_sec_data *)pkt->sec_data;
-	idx = sec_data->addr_metadata_cnt;
+	idx = sec_data->meta_cnt;
 	if (idx >= CMDQ_IWC_MAX_ADDR_LIST_LENGTH) {
 		pr_err("idx:%u reach over:%u", idx, CMDQ_IWC_MAX_ADDR_LIST_LENGTH);
 		return -EFAULT;
 	}
 
-	if (!sec_data->addr_metadata_max_cnt)
-		max = ADDR_METADATA_MAX_COUNT_ORIGIN;
-	else if (idx >= sec_data->addr_metadata_max_cnt)
-		max = sec_data->addr_metadata_max_cnt * 2;
-	else
-		max = sec_data->addr_metadata_max_cnt;
+	sec_data->meta_list[idx].type = type;
+	sec_data->meta_list[idx].base_handle = base;
+	sec_data->meta_list[idx].offset = offset;
+	sec_data->meta_cnt += 1;
 
-	ret = cmdq_sec_realloc_addr_list(pkt, max);
-	if (ret)
-		return ret;
-
-	if (!sec_data->addr_metadatas) {
-		pr_info("addr_metadatas is missing");
-
-		meta = kzalloc(sizeof(*meta), GFP_KERNEL);
-		if (!meta)
-			return -ENOMEM;
-
-		sec_data->addr_metadatas = (uintptr_t)(void *)meta;
-	}
-	meta = (struct iwc_cmdq_addr_metadata_t *)(uintptr_t)sec_data->addr_metadatas;
-
-	meta[idx].type = type;
-	meta[idx].base_handle = base;
-	meta[idx].offset = offset;
-	sec_data->addr_metadata_cnt += 1;
 	return 0;
 }
 

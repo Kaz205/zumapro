@@ -147,11 +147,11 @@ void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
 	mtk_crtc->sec_cmdq_handle.cmd_buf_size = 0;
 
 	if (mtk_crtc->sec_cmdq_handle.sec_data) {
-		struct cmdq_sec_data *sec_data;
+		struct cmdq_sec_data *sec_data = mtk_crtc->sec_cmdq_handle.sec_data;
 
-		sec_data = mtk_crtc->sec_cmdq_handle.sec_data;
-		sec_data->addr_metadata_cnt = 0;
-		sec_data->addr_metadatas = (uintptr_t)NULL;
+		memset(sec_data->meta_list, 0,
+		       sec_data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
+		sec_data->meta_cnt = 0;
 	}
 
 	/*
@@ -779,9 +779,9 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
 		if (mtk_crtc->sec_cmdq_handle.sec_data) {
 			struct cmdq_sec_data *sec_data = mtk_crtc->sec_cmdq_handle.sec_data;
 
-			memset((void *)sec_data->addr_metadatas, 0,
-			       sec_data->addr_metadata_cnt * sizeof(u64));
-			sec_data->addr_metadata_cnt = 0;
+			memset(sec_data->meta_list, 0,
+			       sec_data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
+			sec_data->meta_cnt = 0;
 		}
 
 		mtk_crtc_enable_secure_state(crtc);
