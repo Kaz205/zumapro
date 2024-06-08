@@ -229,13 +229,13 @@ static void mtk_crtc_plane_switch_sec_state(struct drm_crtc *crtc,
 #if IS_REACHABLE(CONFIG_MTK_CMDQ)
 	bool sec_on[MAX_CRTC] = {0};
 	int i;
-	struct drm_crtc_state *crtc_state;
+	struct drm_crtc_state *new_crtc_state;
 	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct drm_plane *plane;
-	struct drm_plane_state *old_plane_state;
+	struct drm_plane_state *new_plane_state;
 
-	for_each_old_plane_in_state(state, plane, old_plane_state, i) {
-		if (!old_plane_state->crtc || !plane->state->crtc)
+	for_each_new_plane_in_state(state, plane, new_plane_state, i) {
+		if (!plane->state->crtc || !new_plane_state->crtc)
 			continue;
 
 		if (plane->state->fb &&
@@ -244,16 +244,16 @@ static void mtk_crtc_plane_switch_sec_state(struct drm_crtc *crtc,
 			sec_on[drm_crtc_index(plane->state->crtc)] = true;
 	}
 
-	for_each_old_crtc_in_state(state, crtc, crtc_state, i) {
-		if (!crtc_state->active)
-			continue;
-
+	for_each_new_crtc_in_state(state, crtc, new_crtc_state, i) {
 		mtk_crtc = to_mtk_crtc(crtc);
 
 		if (!sec_on[i]) {
 			mtk_crtc_disable_secure_state(crtc);
 			continue;
 		}
+
+		if (!new_crtc_state->active)
+			continue;
 
 		mutex_lock(&mtk_crtc->hw_lock);
 		mtk_crtc->sec_on = true;
