@@ -112,4 +112,9 @@ static inline u8 iwl_mld_get_valid_rx_ant(const struct iwl_mld *mld)
 
 extern const struct ieee80211_ops iwl_mld_hw_ops;
 
+/* memset the part of the struct that requires cleanup on restart */
+#define CLEANUP_STRUCT(_ptr)				\
+	memset((void *)&_ptr->zeroed_on_hw_restart, 0,	\
+	       sizeof(_ptr->zeroed_on_hw_restart))
+
 #endif /* __iwl_mld_h__ */
