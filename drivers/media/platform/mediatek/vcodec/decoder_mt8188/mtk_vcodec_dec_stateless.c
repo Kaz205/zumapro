@@ -501,6 +501,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	const struct mtk_vcodec_dec_pdata *dec_pdata = ctx->dev->vdec_pdata;
 	const struct mtk_video_fmt *fmt;
 	int i = 0, ret = 0, sec_fd;
+	struct vb2_queue *src_vq;
 
 	hdr_ctrl = ctrl;
 	if (!hdr_ctrl || !hdr_ctrl->p_new.p)
@@ -570,6 +571,14 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 			}
 			ctx->is_secure_playback = ctrl->val;
 			mtk_v4l2_vdec_dbg(1, ctx, "open tee interface:%d", ctx->is_secure_playback);
+
+			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+			if (src_vq && ctx->m2m_ctx)
+				src_vq->restricted_mem = ctrl->val;
+
+			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+			if (src_vq && ctx->m2m_ctx)
+				src_vq->restricted_mem = ctrl->val;
 		}
 
 		if (ctrl->val) {
