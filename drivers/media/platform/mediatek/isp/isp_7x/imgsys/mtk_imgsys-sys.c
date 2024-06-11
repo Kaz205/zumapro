@@ -187,7 +187,7 @@ static void cmdq_cb_done_worker(struct work_struct *work)
 	struct mtk_imgsys_pipe *pipe;
 	struct swfrm_info_t *gwfrm_info = NULL;
 	struct gce_cb_work *gwork;
-	struct img_sw_buffer swbuf_data;
+	struct img_sw_buffer swbuf_data = {0};
 
 	gwork = container_of(work, struct gce_cb_work, work);
 	gwfrm_info = gwork->req_sbuf_kva;
@@ -347,7 +347,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	swfrm_info->hw_hang = -1;
 	total_framenum = swfrm_info->total_frmnum;
 
-	if (total_framenum < 0 || total_framenum > TMAX) {
+	if (total_framenum < 0 || total_framenum > TIME_MAX) {
 		dev_info(imgsys_dev->dev,
 			 "%s:unexpected total_framenum (%d -> %d), batchnum(%d) MAX (%d/%d)\n",
 			 __func__, swfrm_info->total_frmnum,
@@ -656,6 +656,9 @@ static void imgsys_fill_buf_info(int idx, struct mtk_imgsys_dev_buffer *dev_buf,
 				 struct mtk_imgsys_request *req)
 {
 	if (!dev_buf)
+		return;
+
+	if (idx < 0 || idx >= IMG_MAX_HW_DMAS)
 		return;
 
 	sd_norm->dmas_enable[idx][0] = 1;
