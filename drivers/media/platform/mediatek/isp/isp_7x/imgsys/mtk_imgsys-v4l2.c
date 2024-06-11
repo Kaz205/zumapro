@@ -1811,10 +1811,6 @@ static int __maybe_unused mtk_imgsys_runtime_resume(struct device *dev)
 		return ret;
 	}
 
-	if (ret)
-		clk_bulk_disable_unprepare(imgsys_dev->num_clks,
-					   imgsys_dev->clks);
-
 	return 0;
 }
 

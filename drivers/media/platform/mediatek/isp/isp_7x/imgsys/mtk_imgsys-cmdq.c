@@ -613,10 +613,7 @@ int imgsys_cmdq_sendtask(struct mtk_imgsys_dev *imgsys_dev,
 					__func__, cmd_idx, cmd[cmd_idx].opcode,
 					blk_idx, frm_idx, frm_num);
 				imgsys_destroy_pkt(&cb_param->pkt);
-
-				if (!cb_param)
-					vfree(cb_param);
-
+				vfree(cb_param);
 				goto sendtask_done;
 			}
 			cmd_idx += ret;
