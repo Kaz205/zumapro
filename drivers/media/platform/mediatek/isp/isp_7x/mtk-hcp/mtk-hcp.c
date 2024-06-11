@@ -74,7 +74,7 @@ static void hcp_ipi_handler(void *data, unsigned int len, void *priv)
 	struct share_buf *scp_msg = (struct share_buf *)data;
 	struct hcp_desc *desc = &hcp_dev->hcp_desc_table[scp_msg->id];
 
-	if (scp_msg->id >= HCP_INIT_ID && scp_msg->id < HCP_MAX_ID && desc->handler) {
+	if (scp_msg->id < HCP_MAX_ID && desc->handler) {
 		desc->handler(scp_msg->share_data, scp_msg->len,
 			      hcp_dev->hcp_desc_table[scp_msg->id].priv);
 	}
@@ -238,7 +238,7 @@ void *mtk_hcp_get_reserve_mem_virt(struct platform_device *pdev, unsigned int id
 	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
 	void *buffer;
 
-	if ((id < 0) || (id >= NUMS_MEM_ID)) {
+	if (id >= NUMS_MEM_ID) {
 		pr_info("[HCP] no reserve memory for %d", id);
 		return 0;
 	} else {
