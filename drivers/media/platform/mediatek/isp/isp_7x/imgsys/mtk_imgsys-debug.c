@@ -249,7 +249,11 @@ void imgsys_main_init(struct mtk_imgsys_dev *imgsys_dev)
 		return;
 	}
 
-	of_address_to_resource(imgsys_dev->dev->of_node, REG_MAP_E_ADL_A, &adl);
+	if (of_address_to_resource(imgsys_dev->dev->of_node, REG_MAP_E_ADL_A, &adl)) {
+		dev_info(imgsys_dev->dev, "%s: of_address_to_resource fail\n", __func__);
+		return;
+	}
+
 	if (adl.start) {
 		adla_reg_base = of_iomap(imgsys_dev->dev->of_node, REG_MAP_E_ADL_A);
 		if (!adla_reg_base) {
