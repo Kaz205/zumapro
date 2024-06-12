@@ -49,6 +49,8 @@ struct mtk_mmsys_driver_data {
 
 	int max_width;
 	int min_width, min_height;
+
+	const char *secure_heap;
 };
 
 struct mtk_drm_private {
