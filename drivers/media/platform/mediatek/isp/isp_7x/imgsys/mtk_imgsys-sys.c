@@ -368,7 +368,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 
 	if (swfrm_info->user_info[0].ndd_fp[0] != '\0') {
 		swfrm_info->ndd_user_complete =
-			kzalloc(sizeof(swfrm_info->ndd_user_complete), GFP_KERNEL);
+			kzalloc(sizeof(*swfrm_info->ndd_user_complete), GFP_KERNEL);
 		init_completion(swfrm_info->ndd_user_complete);
 		imgsys_ndd_swfrm_list_add(imgsys_dev, swfrm_info);
 	}
