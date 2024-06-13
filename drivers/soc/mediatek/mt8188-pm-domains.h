@@ -165,6 +165,8 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.ctl_offs = 0x35C,
 		.pwr_sta_offs = 0x16C,
 		.pwr_sta2nd_offs = 0x170,
+		.ext_buck_iso_offs = 0x3EC,
+		.ext_buck_iso_mask = BIT(10),
 		.bp_infracfg = {
 			BUS_PROT_WR(MT8188_TOP_AXI_PROT_EN_2_ADSP_AO_STEP1,
 				    MT8188_TOP_AXI_PROT_EN_2_SET,
@@ -175,7 +177,7 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 				    MT8188_TOP_AXI_PROT_EN_2_CLR,
 				    MT8188_TOP_AXI_PROT_EN_2_STA),
 		},
-		.caps = MTK_SCPD_ALWAYS_ON,
+		.caps = MTK_SCPD_ALWAYS_ON | MTK_SCPD_EXT_BUCK_ISO,
 	},
 	[MT8188_POWER_DOMAIN_ADSP_INFRA] = {
 		.name = "adsp_infra",
@@ -479,6 +481,8 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.ctl_offs = 0x3A4,
 		.pwr_sta_offs = 0x16C,
 		.pwr_sta2nd_offs = 0x170,
+		.ext_buck_iso_offs = 0x3EC,
+		.ext_buck_iso_mask = BIT(12),
 		.bp_infracfg = {
 			BUS_PROT_WR(MT8188_TOP_AXI_PROT_EN_MM_IMG_VCORE_STEP1,
 				    MT8188_TOP_AXI_PROT_EN_MM_SET,
@@ -493,7 +497,8 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 				    MT8188_TOP_AXI_PROT_EN_MM_2_CLR,
 				    MT8188_TOP_AXI_PROT_EN_MM_2_STA),
 		},
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_DOMAIN_SUPPLY,
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_DOMAIN_SUPPLY |
+			MTK_SCPD_EXT_BUCK_ISO,
 	},
 	[MT8188_POWER_DOMAIN_IMG_MAIN] = {
 		.name = "img_main",
@@ -523,7 +528,29 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.pwr_sta2nd_offs = 0x170,
 		.sram_pdn_bits = BIT(8),
 		.sram_pdn_ack_bits = BIT(12),
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
+		.bp_smi = {
+			BUS_PROT_WR(MT8188_SMI_COMMON_SMI_CLAMP_DIP_TO_VDO0,
+				MT8188_SMI_COMMON_CLAMP_EN_SET,
+				MT8188_SMI_COMMON_CLAMP_EN_CLR,
+				MT8188_SMI_COMMON_CLAMP_EN_STA),
+			BUS_PROT_WR(MT8188_SMI_COMMON_SMI_CLAMP_DIP_TO_VPP1,
+				MT8188_SMI_COMMON_CLAMP_EN_SET,
+				MT8188_SMI_COMMON_CLAMP_EN_CLR,
+				MT8188_SMI_COMMON_CLAMP_EN_STA),
+		},
+		.reset_smi = {
+				SMI_RESET_WR(MT8188_SMI_LARB10_RESET,
+					MT8188_SMI_LARB10_RESET_ADDR),
+				SMI_RESET_WR(MT8188_SMI_LARB11A_RESET,
+					MT8188_SMI_LARB11A_RESET_ADDR),
+				SMI_RESET_WR(MT8188_SMI_LARB11C_RESET,
+					MT8188_SMI_LARB11C_RESET_ADDR),
+				SMI_RESET_WR(MT8188_SMI_LARB11B_RESET,
+					MT8188_SMI_LARB11B_RESET_ADDR),
+				SMI_RESET_WR(MT8188_SMI_LARB15_RESET,
+					MT8188_SMI_LARB15_RESET_ADDR),
+		},
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_CLAMP_PROTECTION,
 	},
 	[MT8188_POWER_DOMAIN_IPE] = {
 		.name = "ipe",
@@ -533,7 +560,17 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.pwr_sta2nd_offs = 0x170,
 		.sram_pdn_bits = BIT(8),
 		.sram_pdn_ack_bits = BIT(12),
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
+		.bp_smi = {
+			BUS_PROT_WR(MT8188_SMI_COMMON_SMI_CLAMP_IPE_TO_VPP1,
+				MT8188_SMI_COMMON_CLAMP_EN_SET,
+				MT8188_SMI_COMMON_CLAMP_EN_CLR,
+				MT8188_SMI_COMMON_CLAMP_EN_STA),
+		},
+		.reset_smi = {
+			SMI_RESET_WR(MT8188_SMI_LARB12_RESET,
+				MT8188_SMI_LARB12_RESET_ADDR),
+		},
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_CLAMP_PROTECTION,
 	},
 	[MT8188_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam_vcore",
@@ -541,6 +578,8 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.ctl_offs = 0x3A0,
 		.pwr_sta_offs = 0x16C,
 		.pwr_sta2nd_offs = 0x170,
+		.ext_buck_iso_offs = 0x3EC,
+		.ext_buck_iso_mask = BIT(11),
 		.bp_infracfg = {
 			BUS_PROT_WR(MT8188_TOP_AXI_PROT_EN_MM_CAM_VCORE_STEP1,
 				    MT8188_TOP_AXI_PROT_EN_MM_SET,
@@ -563,7 +602,8 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 				    MT8188_TOP_AXI_PROT_EN_MM_2_CLR,
 				    MT8188_TOP_AXI_PROT_EN_MM_2_STA),
 		},
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_DOMAIN_SUPPLY,
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_DOMAIN_SUPPLY |
+			MTK_SCPD_EXT_BUCK_ISO,
 	},
 	[MT8188_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam_main",
@@ -601,7 +641,19 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.pwr_sta2nd_offs = 0x170,
 		.sram_pdn_bits = BIT(8),
 		.sram_pdn_ack_bits = BIT(12),
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
+		.bp_smi = {
+			BUS_PROT_WR(MT8188_SMI_COMMON_SMI_CLAMP_CAM_SUBA_TO_VPP0,
+				    MT8188_SMI_COMMON_CLAMP_EN_SET,
+				    MT8188_SMI_COMMON_CLAMP_EN_CLR,
+				    MT8188_SMI_COMMON_CLAMP_EN_STA),
+		},
+		.reset_smi = {
+			SMI_RESET_WR(MT8188_SMI_LARB16A_RESET,
+				    MT8188_SMI_LARB16A_RESET_ADDR),
+			SMI_RESET_WR(MT8188_SMI_LARB17A_RESET,
+				    MT8188_SMI_LARB17A_RESET_ADDR),
+		},
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_CLAMP_PROTECTION,
 	},
 	[MT8188_POWER_DOMAIN_CAM_SUBB] = {
 		.name = "cam_subb",
@@ -611,7 +663,19 @@ static const struct scpsys_domain_data scpsys_domain_data_mt8188[] = {
 		.pwr_sta2nd_offs = 0x170,
 		.sram_pdn_bits = BIT(8),
 		.sram_pdn_ack_bits = BIT(12),
-		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
+		.bp_smi = {
+			BUS_PROT_WR(MT8188_SMI_COMMON_SMI_CLAMP_CAM_SUBB_TO_VDO0,
+				    MT8188_SMI_COMMON_CLAMP_EN_SET,
+				    MT8188_SMI_COMMON_CLAMP_EN_CLR,
+				    MT8188_SMI_COMMON_CLAMP_EN_STA),
+		},
+		.reset_smi = {
+			SMI_RESET_WR(MT8188_SMI_LARB16B_RESET,
+				    MT8188_SMI_LARB16B_RESET_ADDR),
+			SMI_RESET_WR(MT8188_SMI_LARB17B_RESET,
+				    MT8188_SMI_LARB17B_RESET_ADDR),
+		},
+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF | MTK_SCPD_CLAMP_PROTECTION,
 	},
 };
 

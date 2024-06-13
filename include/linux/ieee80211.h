@@ -4771,7 +4771,7 @@ static inline bool ieee80211_mle_basic_sta_prof_size_ok(const u8 *data,
 		info_len += 1;
 
 	if (control & IEEE80211_MLE_STA_CONTROL_COMPLETE_PROFILE &&
-	    control & IEEE80211_MLE_STA_CONTROL_NSTR_BITMAP_SIZE) {
+	    control & IEEE80211_MLE_STA_CONTROL_NSTR_LINK_PAIR_PRESENT) {
 		if (control & IEEE80211_MLE_STA_CONTROL_NSTR_BITMAP_SIZE)
 			info_len += 2;
 		else
@@ -4779,7 +4779,7 @@ static inline bool ieee80211_mle_basic_sta_prof_size_ok(const u8 *data,
 	}
 
 	return prof->sta_info_len >= info_len &&
-	       fixed + prof->sta_info_len <= len;
+	       fixed + prof->sta_info_len - 1 <= len;
 }
 
 #define for_each_mle_subelement(_elem, _data, _len)			\

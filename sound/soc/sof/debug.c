@@ -330,13 +330,50 @@ EXPORT_SYMBOL_GPL(snd_sof_dbg_memory_info_init);
 
 int snd_sof_dbg_init(struct snd_sof_dev *sdev)
 {
+	struct snd_sof_pdata *plat_data = sdev->pdata;
 	struct snd_sof_dsp_ops *ops = sof_ops(sdev);
 	const struct snd_sof_debugfs_map *map;
+	struct dentry *fw_profile;
 	int i;
 	int err;
 
 	/* use "sof" as top level debugFS dir */
 	sdev->debugfs_root = debugfs_create_dir("sof", NULL);
+
+	/* expose firmware/topology prefix/names for test purposes */
+	fw_profile = debugfs_create_dir("fw_profile", sdev->debugfs_root);
+
+	debugfs_create_str("fw_path", 0444, fw_profile,
+			   (char **)&plat_data->fw_filename_prefix);
+	/* library path is not valid for IPC3 */
+	if (plat_data->ipc_type != SOF_IPC_TYPE_3) {
+		/*
+		 * fw_lib_prefix can be NULL if the vendor/platform does not
+		 * support loadable libraries
+		 */
+		if (plat_data->fw_lib_prefix) {
+			debugfs_create_str("fw_lib_path", 0444, fw_profile,
+					   (char **)&plat_data->fw_lib_prefix);
+		} else {
+			static char *fw_lib_path;
+
+			fw_lib_path = devm_kasprintf(sdev->dev, GFP_KERNEL,
+						     "Not supported");
+			if (!fw_lib_path)
+				return -ENOMEM;
+
+			debugfs_create_str("fw_lib_path", 0444, fw_profile,
+					   (char **)&fw_lib_path);
+		}
+	}
+	debugfs_create_str("tplg_path", 0444, fw_profile,
+			   (char **)&plat_data->tplg_filename_prefix);
+	debugfs_create_str("fw_name", 0444, fw_profile,
+			   (char **)&plat_data->fw_filename);
+	debugfs_create_str("tplg_name", 0444, fw_profile,
+			   (char **)&plat_data->tplg_filename);
+	debugfs_create_u32("ipc_type", 0444, fw_profile,
+			   (u32 *)&plat_data->ipc_type);
 
 	/* init dfsentry list */
 	INIT_LIST_HEAD(&sdev->dfsentry_list);

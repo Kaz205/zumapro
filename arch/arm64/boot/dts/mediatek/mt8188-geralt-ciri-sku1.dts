@@ -7,6 +7,7 @@
  */
 /dts-v1/;
 #include "mt8188-geralt-ciri.dtsi"
+#include "mt8188-ciri-camera-v4l2.dtsi"
 
 /delete-node/ &rt5682s;
 
@@ -32,10 +33,8 @@
 		reg = <0x19>;
 		interrupt-parent = <&pio>;
 		interrupts = <108 IRQ_TYPE_LEVEL_LOW>;
-		everest,mic1-src = [22];
-		everest,mic2-src = [44];
 		everest,jack-pol = [0e];
-		everest,interrupt-clk = [45];
+		everest,interrupt-clk = [00];
 		status = "okay";
 	};
 };
@@ -75,5 +74,7 @@
 };
 
 &touchscreen {
-		himax,pid = <0x1003>;
+	himax,pid = <0x1003>;
+	himax,firmware-name = "himax_i2chid_1003.bin";
+	firmware-name = "himax_i2chid_1003.bin";
 };

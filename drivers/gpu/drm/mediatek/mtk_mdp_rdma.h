@@ -15,6 +15,7 @@ struct mtk_mdp_rdma_cfg {
 	unsigned int	y_top;
 	int		fmt;
 	int		color_encoding;
+	bool		is_secure;
 };
 
 #endif // __MTK_MDP_RDMA_H__

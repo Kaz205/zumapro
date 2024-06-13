@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config VIDEO_MTK_ISP_71_CAMSYS
+	tristate "Mediatek ISP 7.1 camsys driver"
+	depends on ARCH_MEDIATEK
+	select V4L2_FWNODE
+	select VIDEO_V4L2_SUBDEV_API
+	select VIDEOBUF2_DMA_CONTIG
+	select RPMSG_MTK_CCD
+	select MTKCCD_REMOTEPROC
+	select MTK_SCP
+
+	default n
+	help
+		Camsys driver controls 3A (auto-focus, exposure,
+		and white balance) with tuning feature and outputs
+		the captured image buffers in Mediatek's ISP7 system.
+
+		Choose y if you want to use Mediatek SoCs to create image
+		captured application such as video recording and still image
+		capturing.
+
+config VIDEO_MTK_ISP_71_IMGSYS
+	tristate "Mediatek ISP70 image processing system function"
+	depends on MTK_CMDQ
+	depends on REMOTEPROC
+	select VIDEO_V4L2_SUBDEV_API
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEOBUF2_CORE
+	select VIDEOBUF2_V4L2
+	select VIDEOBUF2_MEMOPS
+	select MEDIA_CONTROLLER
+
+	default n
+	help
+	    Support the basic Image processing system driver.
+
+	    IMGSYS driver provides image format conversion, resizing,
+	    and rotation function through the low power hardware.
+	    IMGSYS also supports multiple output feature. It can
+	    generate two or more output image with different effect
+	    based on a single input image at the same time.

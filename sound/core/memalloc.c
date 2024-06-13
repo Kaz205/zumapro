@@ -21,7 +21,6 @@
 
 #define DEFAULT_GFP \
 	(GFP_KERNEL | \
-	 __GFP_COMP |    /* compound page lets parts be mapped */ \
 	 __GFP_RETRY_MAYFAIL | /* don't trigger OOM-killer */ \
 	 __GFP_NOWARN)   /* no stack trace print - this call is non-critical */
 
@@ -541,18 +540,13 @@ static void *snd_dma_noncontig_alloc(struct snd_dma_buffer *dmab, size_t size)
 {
 	struct sg_table *sgt;
 	void *p;
-	gfp_t gfp_flags = DEFAULT_GFP;
 
 #ifdef CONFIG_SND_DMA_SGBUF
 	if (cpu_feature_enabled(X86_FEATURE_XENPV))
 		return snd_dma_sg_fallback_alloc(dmab, size);
-
-	/* Non-IOMMU case: prevent allocator from searching forever */
-	if (!get_dma_ops(dmab->dev.dev))
-		gfp_flags |= __GFP_NORETRY;
 #endif
 	sgt = dma_alloc_noncontiguous(dmab->dev.dev, size, dmab->dev.dir,
-				      gfp_flags, 0);
+				      DEFAULT_GFP, 0);
 #ifdef CONFIG_SND_DMA_SGBUF
 	if (!sgt && !get_dma_ops(dmab->dev.dev))
 		return snd_dma_sg_fallback_alloc(dmab, size);

@@ -78,7 +78,21 @@
 		kaslr-seed = <0 0>;
 	};
 
-	dmic_codec: dmic-codec {
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 547 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		mtk_svp_heap {
+			compatible = "mediatek,secure_heap";
+			memory-region = <&secure_cma_reserved>;
+		};
+	};
+
+        dmic_codec: dmic-codec {
 		compatible = "dmic-codec";
 		num-channels = <2>;
 		wakeup-delay-ms = <50>;
@@ -152,10 +166,37 @@
 		vin-supply = <&pp3300_mipi>;
 	};
 
+	/*
+	 * The reserved memory space address and size MUST be in line with the
+	 * EMI PMU configuration in the firmware.
+	 */
 	reserved_memory: reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		scp_mem_reserved: scp_mem_region {
+			compatible = "shared-dma-pool";
+			reg = <0 0x50000000 0 0x800000>;
+			no-map;
+		};
+
+		apu_reserve_memory: apu-reserve-memory {
+			compatible = "shared-dma-pool";
+			reg = <0 0x55000000 0 0x1400000>;
+		};
+
+		adsp_mem_reserved: adsp_mem_region {
+			compatible = "mediatek,adsp-reserved-memory";
+			reg = <0 0x60000000 0 0xF00000>;
+			no-map;
+		};
+
+		afe_dma_mem_reserved: snd_dma_mem_region {
+			compatible = "shared-dma-pool";
+			reg = <0 0x60F00000 0 0x100000>;
+			no-map;
+		};
 
 		adsp_dma_mem_reserved: adsp_dma_mem_region {
 			compatible = "shared-dma-pool";
@@ -163,28 +204,22 @@
 			no-map;
 		};
 
-		adsp_mem_reserved: adsp_mem_region {
-			compatible = "mediatek,adsp-reserved-memory";
-			no-map;
-			reg = <0 0x60000000 0 0xA00000>;
-		};
-
-		scp_mem_reserved: scp_mem_region {
-			compatible = "shared-dma-pool";
-			reg = <0 0x50000000 0 0x2900000>;
-			no-map;
-		};
-
-		afe_dma_mem_reserved: snd_dma_mem_region {
-			compatible = "shared-dma-pool";
-			no-map;
-			reg = <0 0x60F00000 0 0x100000>;
-		};
-
 		scp_dual_mem_reserved: scp-dual-mem-region {
 			compatible = "shared-dma-pool";
-			reg = <0 0x70000000 0 0xd000000>;
+			reg = <0 0x70000000 0 0x0A000000>;
 			no-map;
+		};
+
+		scp_isp_cma_reserved: scp-isp-cma-region {
+			compatible = "shared-dma-pool";
+			reg = <0 0x7A000000 0 0x05000000>;
+			reusable;
+		};
+
+		secure_cma_reserved: secure_cma_region {
+			compatible = "mediatek,dynamic-restricted-region";
+			reg = <0 0x7F000000 0 0x100000>;
+			reusable;
 		};
 	};
 
@@ -210,6 +245,23 @@
 	memory-region = <&afe_dma_mem_reserved>;
 	mediatek,etdm-out1-cowork-source = <0>; /* in1 */
 	mediatek,etdm-in2-cowork-source = <3>; /* out2 */
+	status = "okay";
+};
+
+&apu_top {
+	domain-supply = <&mt6359_vmodem_buck_reg>;
+};
+
+&apuspm {
+	vsram-supply = <&mt6359_vsram_md_ldo_reg>;
+	status = "okay";
+};
+
+&apusys_hw_logger {
+	status = "okay";
+};
+
+&apusys_rv {
 	status = "okay";
 };
 
@@ -391,7 +443,7 @@
 		status = "okay";
 	};
 
-	max98390_rr: max98390@38 {
+	max98390_38: max98390@38 {
 		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x38>;
@@ -402,7 +454,7 @@
 		status = "okay";
 	};
 
-	max98390_rl: max98390@39 {
+	max98390_39: max98390@39 {
 		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x39>;
@@ -410,7 +462,7 @@
 		status = "okay";
 	};
 
-	max98390_fr: max98390@3A {
+	max98390_3a: max98390@3a {
 		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x3A>;
@@ -418,7 +470,7 @@
 		status = "okay";
 	};
 
-	max98390_fl: max98390@3B {
+	max98390_3b: max98390@3b {
 		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x3B>;
@@ -489,8 +541,8 @@
 	clock-frequency = <400000>;
 	status = "okay";
 
-	touchpad@56 {
-		status = "okay";
+	touchpad: touchpad@56 {
+		status = "disabled";
 		compatible = "hid-over-i2c";
 		reg = <0x56>;
 		interrupt-parent = <&pio>;
@@ -518,6 +570,14 @@
 
 &img_vcore {
 	domain-supply = <&mt6359_vproc1_buck_reg>;
+};
+
+&iommu_apu0 {
+	status = "okay";
+};
+
+&iommu_apu1 {
+	status = "okay";
 };
 
 &mfg0 {
@@ -593,6 +653,11 @@
 	/delete-property/ regulator-always-on;
 };
 
+&mt6359_vmodem_buck_reg {
+	regulator-min-microvolt = <775000>;
+	regulator-max-microvolt = <775000>;
+};
+
 &mt6359_vpu_buck_reg {
 	regulator-always-on;
 };
@@ -601,12 +666,25 @@
 	regulator-always-on;
 };
 
+&mt6359_vsram_md_ldo_reg {
+	regulator-min-microvolt = <800000>;
+	regulator-max-microvolt = <800000>;
+};
+
 &mt6359_vufs_ldo_reg {
 	regulator-always-on;
 };
 
 &mt6359_vpa_buck_reg {
 	regulator-max-microvolt = <3100000>;
+};
+
+&mtk_apu_mem_code {
+	status = "okay";
+};
+
+&mtk_apu_mem_data {
+	status = "okay";
 };
 
 &nor_flash {
@@ -1245,21 +1323,22 @@
 	interrupts = <222 IRQ_TYPE_LEVEL_HIGH>;
 };
 
-&scp {
+&scp_cluster {
+	status = "okay";
+};
+
+&scp_c0 {
 	firmware-name = "mediatek/mt8188/scp.img";
 	pinctrl-names = "default";
 	pinctrl-0 = <&scp_pins>;
 	memory-region = <&scp_mem_reserved>;
 	status = "okay";
-
-	mediatek,scp-core = <&scp_dual 0>;
 };
 
-&scp_dual {
-	status = "okay";
-	memory-region = <&scp_dual_mem_reserved>;
-	mediatek,scp-core = <&scp 1>;
+&scp_c1 {
 	firmware-name = "mediatek/mt8188/scp-dual.img";
+	memory-region = <&scp_dual_mem_reserved>, <&scp_isp_cma_reserved>;
+	status = "okay";
 };
 
 &sound {
@@ -1317,10 +1396,10 @@
 		dai-format = "dsp_b";
 		mediatek,clk-provider = "cpu";
 		codec {
-			sound-dai = <&max98390_rr>,
-				    <&max98390_rl>,
-				    <&max98390_fr>,
-				    <&max98390_fl>;
+			sound-dai = <&max98390_38>,
+				    <&max98390_39>,
+				    <&max98390_3a>,
+				    <&max98390_3b>;
 		};
 	};
 
@@ -1358,6 +1437,12 @@
 			google,remote-bus = <1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+		};
+
+		cbas {
+			compatible = "google,cros-cbas";
+			disable-whisker-input;
+			hid-i2c-tp = <&touchpad>;
 		};
 	};
 };

@@ -1332,6 +1332,14 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_YVYU:		descr = "YVYU 4:2:2"; break;
 	case V4L2_PIX_FMT_UYVY:		descr = "UYVY 4:2:2"; break;
 	case V4L2_PIX_FMT_VYUY:		descr = "VYUY 4:2:2"; break;
+	case V4L2_PIX_FMT_YUYV10:	descr = "YUYV 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_YVYU10:	descr = "YVYU 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_UYVY10:	descr = "UYVY 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_VYUY10:	descr = "VYUY 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_YUYV12:	descr = "YUYV 4:2:2 12 bits"; break;
+	case V4L2_PIX_FMT_YVYU12:	descr = "YVYU 4:2:2 12 bits"; break;
+	case V4L2_PIX_FMT_UYVY12:	descr = "UYVY 4:2:2 12 bits"; break;
+	case V4L2_PIX_FMT_VYUY12:	descr = "VYUY 4:2:2 12 bits"; break;
 	case V4L2_PIX_FMT_YUV422P:	descr = "Planar YUV 4:2:2"; break;
 	case V4L2_PIX_FMT_YUV411P:	descr = "Planar YUV 4:1:1"; break;
 	case V4L2_PIX_FMT_Y41P:		descr = "YUV 4:1:1 (Packed)"; break;
@@ -1361,6 +1369,14 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_NV12_16L16:	descr = "Y/UV 4:2:0 (16x16 Linear)"; break;
 	case V4L2_PIX_FMT_NV12_32L32:   descr = "Y/UV 4:2:0 (32x32 Linear)"; break;
 	case V4L2_PIX_FMT_P010_4L4:	descr = "10-bit Y/UV 4:2:0 (4x4 Linear)"; break;
+	case V4L2_PIX_FMT_NV12_10:	descr = "Y/CbCr 4:2:0 10 bits"; break;
+	case V4L2_PIX_FMT_NV21_10:	descr = "Y/CrCb 4:2:0 10 bits"; break;
+	case V4L2_PIX_FMT_NV16_10:	descr = "Y/CbCr 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_NV61_10:	descr = "Y/CrCb 4:2:2 10 bits"; break;
+	case V4L2_PIX_FMT_NV12_12:	descr = "Y/CbCr 4:2:0 12 bits"; break;
+	case V4L2_PIX_FMT_NV21_12:	descr = "Y/CrCb 4:2:0 12 bits"; break;
+	case V4L2_PIX_FMT_NV16_12:	descr = "Y/CbCr 4:2:2 12 bits"; break;
+	case V4L2_PIX_FMT_NV61_12:	descr = "Y/CrCb 4:2:2 12 bits"; break;
 	case V4L2_PIX_FMT_NV12M:	descr = "Y/UV 4:2:0 (N-C)"; break;
 	case V4L2_PIX_FMT_NV21M:	descr = "Y/VU 4:2:0 (N-C)"; break;
 	case V4L2_PIX_FMT_NV16M:	descr = "Y/UV 4:2:2 (N-C)"; break;
@@ -1510,6 +1526,8 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 		case V4L2_PIX_FMT_AV1_FRAME:	descr = "AV1 Frame"; break;
 		case V4L2_PIX_FMT_MT2110T:	descr = "Mediatek 10bit Tile Mode"; break;
 		case V4L2_PIX_FMT_MT2110R:	descr = "Mediatek 10bit Raster Mode"; break;
+		case V4L2_PIX_FMT_MS21:         descr = "Mediatek One Plane Format"; break;
+		case V4L2_PIX_FMT_MS2110T:	descr = "Mediatek 10bit One Plane Raster Mode"; break;
 		default:
 			if (fmt->description[0])
 				return;

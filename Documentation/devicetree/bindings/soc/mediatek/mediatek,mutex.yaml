@@ -52,13 +52,6 @@ properties:
     items:
       - description: MUTEX Clock
 
-  mediatek,gce-events:
-    description:
-      The event id which is mapping to the specific hardware event signal
-      to gce. The event id is defined in the gce header
-      include/dt-bindings/gce/<chip>-gce.h of each chips.
-    $ref: /schemas/types.yaml#/definitions/uint32-array
-
   mediatek,gce-client-reg:
     $ref: /schemas/types.yaml#/definitions/phandle-array
     items:
@@ -71,6 +64,9 @@ properties:
       4 arguments defined in this property. Each GCE subsys id is mapping to
       a client defined in the header include/dt-bindings/gce/<chip>-gce.h.
 
+allOf:
+  - $ref: /schemas/mailbox/mediatek,gce-props.yaml#
+
 required:
   - compatible
   - reg
@@ -78,7 +74,7 @@ required:
   - power-domains
   - clocks
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |

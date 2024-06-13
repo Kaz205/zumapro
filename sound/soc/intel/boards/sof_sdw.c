@@ -243,6 +243,17 @@ static const struct dmi_system_id sof_sdw_quirk_table[] = {
 					SOF_SDW_PCH_DMIC |
 					RT711_JD2_100K),
 	},
+	{
+		/* NUC15 LAPRC710 skews */
+		.callback = sof_sdw_quirk_cb,
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "Intel Corporation"),
+			DMI_MATCH(DMI_BOARD_NAME, "LAPRC710"),
+		},
+		.driver_data = (void *)(SOF_SDW_TGL_HDMI |
+					SOF_SDW_PCH_DMIC |
+					RT711_JD2_100K),
+	},
 	/* TigerLake-SDCA devices */
 	{
 		.callback = sof_sdw_quirk_cb,
@@ -525,12 +536,12 @@ int sdw_startup(struct snd_pcm_substream *substream)
 
 int sdw_prepare(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct sdw_stream_runtime *sdw_stream;
 	struct snd_soc_dai *dai;
 
 	/* Find stream from first CPU DAI */
-	dai = asoc_rtd_to_cpu(rtd, 0);
+	dai = snd_soc_rtd_to_cpu(rtd, 0);
 
 	sdw_stream = snd_soc_dai_get_stream(dai, substream->stream);
 	if (IS_ERR(sdw_stream)) {
@@ -543,13 +554,13 @@ int sdw_prepare(struct snd_pcm_substream *substream)
 
 int sdw_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct sdw_stream_runtime *sdw_stream;
 	struct snd_soc_dai *dai;
 	int ret;
 
 	/* Find stream from first CPU DAI */
-	dai = asoc_rtd_to_cpu(rtd, 0);
+	dai = snd_soc_rtd_to_cpu(rtd, 0);
 
 	sdw_stream = snd_soc_dai_get_stream(dai, substream->stream);
 	if (IS_ERR(sdw_stream)) {
@@ -583,7 +594,7 @@ int sdw_trigger(struct snd_pcm_substream *substream, int cmd)
 int sdw_hw_params(struct snd_pcm_substream *substream,
 		  struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	int ch = params_channels(params);
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_dai *cpu_dai;
@@ -631,12 +642,12 @@ int sdw_hw_params(struct snd_pcm_substream *substream,
 
 int sdw_hw_free(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct sdw_stream_runtime *sdw_stream;
 	struct snd_soc_dai *dai;
 
 	/* Find stream from first CPU DAI */
-	dai = asoc_rtd_to_cpu(rtd, 0);
+	dai = snd_soc_rtd_to_cpu(rtd, 0);
 
 	sdw_stream = snd_soc_dai_get_stream(dai, substream->stream);
 	if (IS_ERR(sdw_stream)) {
@@ -1551,8 +1562,6 @@ static int create_sdw_dailink(struct snd_soc_card *card, int *link_index,
 	return 0;
 }
 
-#define IDISP_CODEC_MASK	0x4
-
 static int sof_card_dai_links_create(struct snd_soc_card *card)
 {
 	struct device *dev = card->dev;
@@ -1602,7 +1611,7 @@ static int sof_card_dai_links_create(struct snd_soc_card *card)
 	}
 
 	if (mach_params->codec_mask & IDISP_CODEC_MASK) {
-		ctx->idisp_codec = true;
+		ctx->hdmi.idisp_codec = true;
 
 		if (sof_sdw_quirk & SOF_SDW_TGL_HDMI)
 			hdmi_num = SOF_TGL_HDMI_COUNT;
@@ -1812,7 +1821,7 @@ HDMI:
 		if (!name)
 			return -ENOMEM;
 
-		if (ctx->idisp_codec) {
+		if (ctx->hdmi.idisp_codec) {
 			idisp_components[i].name = "ehdaudio0D2";
 			idisp_components[i].dai_name = devm_kasprintf(dev,
 								      GFP_KERNEL,
@@ -1821,7 +1830,7 @@ HDMI:
 			if (!idisp_components[i].dai_name)
 				return -ENOMEM;
 		} else {
-			idisp_components[i] = asoc_dummy_dlc;
+			idisp_components[i] = snd_soc_dummy_dlc;
 		}
 
 		cpu_name = devm_kasprintf(dev, GFP_KERNEL,
@@ -1834,7 +1843,7 @@ HDMI:
 			      1, 0, // HDMI only supports playback
 			      cpus + cpu_id, 1,
 			      idisp_components + i, 1,
-			      sof_sdw_hdmi_init, NULL);
+			      i == 0 ? sof_sdw_hdmi_init : NULL, NULL);
 		INC_ID(be_id, cpu_id, link_index);
 	}
 
@@ -1852,7 +1861,7 @@ HDMI:
 
 		cpus[cpu_id].dai_name = cpu_name;
 		init_dai_link(dev, dai_links + link_index, be_id, name, 1, 1,
-			      cpus + cpu_id, 1, &asoc_dummy_dlc, 1, NULL, NULL);
+			      cpus + cpu_id, 1, &snd_soc_dummy_dlc, 1, NULL, NULL);
 	}
 
 	card->dai_link = dai_links;
@@ -1879,7 +1888,7 @@ static int sof_sdw_card_late_probe(struct snd_soc_card *card)
 		}
 	}
 
-	if (ctx->idisp_codec)
+	if (ctx->hdmi.idisp_codec)
 		ret = sof_sdw_hdmi_card_late_probe(card);
 
 	return ret;
@@ -1957,8 +1966,6 @@ static int mc_probe(struct platform_device *pdev)
 	ctx = devm_kzalloc(card->dev, sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
-
-	INIT_LIST_HEAD(&ctx->hdmi_pcm_list);
 
 	snd_soc_card_set_drvdata(card, ctx);
 
