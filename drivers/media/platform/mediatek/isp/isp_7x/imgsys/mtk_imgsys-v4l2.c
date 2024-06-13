@@ -247,51 +247,57 @@ static int mtk_imgsys_vb2_buf_out_validate(struct vb2_buffer *vb)
 
 static int mtk_imgsys_vb2_meta_buf_init(struct vb2_buffer *vb)
 {
-	struct vb2_v4l2_buffer *b = to_vb2_v4l2_buffer(vb);
 	struct mtk_imgsys_dev_buffer *dev_buf =
 					mtk_imgsys_vb2_buf_to_dev_buf(vb);
 	struct mtk_imgsys_pipe *pipe = vb2_get_drv_priv(vb->vb2_queue);
 	struct mtk_imgsys_video_device *node =
 					mtk_imgsys_vbq_to_node(vb->vb2_queue);
-	phys_addr_t buf_paddr;
 
-	if (b->vb2_buf.memory == VB2_MEMORY_DMABUF) {
-		dev_buf->scp_daddr[0] = vb2_dma_contig_plane_dma_addr(vb, 0);
-		buf_paddr = dev_buf->scp_daddr[0];
-		dev_buf->isp_daddr[0] =
-			dma_map_resource(pipe->imgsys_dev->dev,
-					 buf_paddr,
-					 vb->planes[0].length,
-					 DMA_BIDIRECTIONAL,
-					 DMA_ATTR_SKIP_CPU_SYNC);
-		if (dma_mapping_error(pipe->imgsys_dev->dev,
-				      dev_buf->isp_daddr[0])) {
-			dev_err(pipe->imgsys_dev->dev,
-				"%s:%s: failed to map buffer: s_daddr(%pad)\n",
-				pipe->desc->name, node->desc->name,
-				&dev_buf->scp_daddr[0]);
-			return -EINVAL;
-		}
-	} else if (b->vb2_buf.memory == VB2_MEMORY_MMAP) {
-		dev_buf->va_daddr[0] = (u64)vb2_plane_vaddr(vb, 0);
+	/*
+	 * The meta buffers are allocated from the SCP reserved memory.
+	 * Setup the mapping to imgsys device here.
+	 */
+	dev_buf->scp_daddr[0] = vb2_dma_contig_plane_dma_addr(vb, 0);
+	dev_buf->isp_daddr[0] =
+		dma_map_resource(pipe->imgsys_dev->dev,
+				 dev_buf->scp_daddr[0],
+				 vb->planes[0].length,
+				 DMA_BIDIRECTIONAL,
+				 DMA_ATTR_SKIP_CPU_SYNC);
+	if (dma_mapping_error(pipe->imgsys_dev->dev,
+				dev_buf->isp_daddr[0])) {
+		dev_err(pipe->imgsys_dev->dev,
+			"%s:%s: failed to map buffer: s_daddr(%pad)\n",
+			pipe->desc->name, node->desc->name,
+			&dev_buf->scp_daddr[0]);
+		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int mtk_imgsys_vb2_video_buf_init(struct vb2_buffer *vb)
+{
+	struct mtk_imgsys_dev_buffer *dev_buf =
+					mtk_imgsys_vb2_buf_to_dev_buf(vb);
+	unsigned int plane;
+
+	for (plane = 0; plane < vb->num_planes; ++plane)
+		dev_buf->isp_daddr[plane] = vb2_dma_contig_plane_dma_addr(vb, plane);
 
 	return 0;
 }
 
 static void mtk_imgsys_vb2_queue_meta_buf_cleanup(struct vb2_buffer *vb)
 {
-	struct vb2_v4l2_buffer *b = to_vb2_v4l2_buffer(vb);
 	struct mtk_imgsys_dev_buffer *dev_buf =
 					mtk_imgsys_vb2_buf_to_dev_buf(vb);
 	struct mtk_imgsys_pipe *pipe = vb2_get_drv_priv(vb->vb2_queue);
 
-	if (b->vb2_buf.memory == VB2_MEMORY_DMABUF) {
-		dma_unmap_resource(pipe->imgsys_dev->dev,
-				   dev_buf->isp_daddr[0],
-				   vb->planes[0].length, DMA_BIDIRECTIONAL,
-				   DMA_ATTR_SKIP_CPU_SYNC);
-	}
+	dma_unmap_resource(pipe->imgsys_dev->dev,
+			   dev_buf->isp_daddr[0],
+			   vb->planes[0].length, DMA_BIDIRECTIONAL,
+			   DMA_ATTR_SKIP_CPU_SYNC);
 }
 
 static void mtk_imgsys_vb2_buf_queue(struct vb2_buffer *vb)
@@ -491,6 +497,7 @@ static const struct vb2_ops mtk_imgsys_vb2_meta_ops = {
 static const struct vb2_ops mtk_imgsys_vb2_video_ops = {
 	.buf_queue = mtk_imgsys_vb2_buf_queue,
 	.queue_setup = mtk_imgsys_vb2_video_queue_setup,
+	.buf_init = mtk_imgsys_vb2_video_buf_init,
 	.buf_prepare  = mtk_imgsys_vb2_video_buf_prepare,
 	.buf_out_validate = mtk_imgsys_vb2_buf_out_validate,
 	.start_streaming = mtk_imgsys_vb2_start_streaming,

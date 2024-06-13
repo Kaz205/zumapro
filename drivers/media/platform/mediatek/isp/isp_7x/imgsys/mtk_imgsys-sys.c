@@ -616,11 +616,9 @@ static void imgsys_fill_img_buf(struct mtk_imgsys_dev_buffer *dev_buf,
 	buf_info->resizeratio = dev_buf->resize_ratio;
 
 	for (i = 0; i < buf_info->buf.num_planes; i++) {
-		buf_info->buf.planes[i].m.dma_buf.fd = dev_buf->vbb.planes[i].m.fd;
 		buf_info->buf.planes[i].m.dma_buf.offset = dev_buf->vbb.planes[i].data_offset;
-		buf_info->buf.planes[i].reserved[0] =
-			vb2_dma_contig_plane_dma_addr(&dev_buf->vbb.vb2_buf, i);
-		buf_info->buf.planes[i].reserved[1] = dev_buf->vbb.vb2_buf.planes[i].dbuf->size;
+		buf_info->buf.planes[i].reserved[0] = dev_buf->isp_daddr[i];
+		buf_info->buf.planes[i].reserved[1] = dev_buf->vbb.vb2_buf.planes[i].length;
 		buf_info->fmt.fmt.pix_mp.plane_fmt[i].sizeimage =
 			dev_buf->vbb.vb2_buf.planes[i].min_length;
 		buf_info->fmt.fmt.pix_mp.plane_fmt[i].bytesperline =
@@ -639,7 +637,6 @@ static void imgsys_fill_meta_buf(struct mtk_imgsys_dev_buffer *dev_buf,
 	desc_norm->fparams_tnum = 1;
 
 	buf_info->buf.num_planes = 1;
-	buf_info->buf.planes[0].m.dma_buf.fd = dev_buf->vbb.planes[0].m.fd;
 
 	buf_info->fmt.fmt.pix_mp.width = dev_buf->fmt.fmt.meta.buffersize;
 	buf_info->fmt.fmt.pix_mp.height = 1;
@@ -647,7 +644,7 @@ static void imgsys_fill_meta_buf(struct mtk_imgsys_dev_buffer *dev_buf,
 	buf_info->fmt.fmt.pix_mp.plane_fmt[0].sizeimage = dev_buf->fmt.fmt.meta.buffersize;
 	buf_info->fmt.fmt.pix_mp.plane_fmt[0].bytesperline = dev_buf->fmt.fmt.meta.buffersize;
 	buf_info->buf.planes[0].reserved[0] = dev_buf->isp_daddr[0];
-	buf_info->buf.planes[0].reserved[1] = dev_buf->vbb.vb2_buf.planes[0].dbuf->size;
+	buf_info->buf.planes[0].reserved[1] = dev_buf->vbb.vb2_buf.planes[0].length;
 	buf_info->buf.planes[0].m.dma_buf.phyaddr = dev_buf->scp_daddr[0];
 }
 
