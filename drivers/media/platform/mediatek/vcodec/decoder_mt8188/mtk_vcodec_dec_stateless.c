@@ -418,18 +418,21 @@ static int mtk_vdec_flush_decoder(struct mtk_vcodec_dec_ctx *ctx)
 	return vdec_if_decode(ctx, NULL, NULL, &res_chg);
 }
 
-static int mtk_vcodec_get_pic_info(struct mtk_vcodec_dec_ctx *ctx)
+static void mtk_vcodec_get_pic_info(struct mtk_vcodec_dec_ctx *ctx)
 {
-	struct mtk_q_data *q_data;
-	int ret = 0;
-
-	q_data = &ctx->q_data[MTK_Q_DATA_DST];
+	struct mtk_q_data *q_data = &ctx->q_data[MTK_Q_DATA_DST];
+	int ret;
 
 	ctx->capture_fourcc = q_data->fmt->fourcc;
+
+	/*
+	 * If user space won't set format of output queue, the callback function get_param
+	 * will be NULL, leading to get pic info fail. Using the default pic info to initialize
+	 * when get pic info fail.
+	 */
 	ret = vdec_if_get_param(ctx, GET_PARAM_PIC_INFO, &ctx->picinfo);
 	if (ret) {
 		mtk_v4l2_vdec_err(ctx, "[%d]Error!! Get GET_PARAM_PICTURE_INFO Fail", ctx->id);
-		return ret;
 	}
 
 	ctx->last_decoded_picinfo = ctx->picinfo;
@@ -446,8 +449,6 @@ static int mtk_vcodec_get_pic_info(struct mtk_vcodec_dec_ctx *ctx)
 			  ctx->id, ctx->picinfo.buf_w, ctx->picinfo.buf_h,
 			  ctx->picinfo.pic_w, ctx->picinfo.pic_h,
 			  q_data->sizeimage[0], q_data->sizeimage[1]);
-
-	return ret;
 }
 
 static int mtk_dma_contig_get_secure_handle(struct mtk_vcodec_dec_ctx *ctx, int fd)
@@ -609,7 +610,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 			break;
 		}
 	}
-	ret = mtk_vcodec_get_pic_info(ctx);
+	mtk_vcodec_get_pic_info(ctx);
 
 	return ret;
 }
