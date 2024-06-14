@@ -285,7 +285,7 @@
 				min-residency-us = <1000>;
 			};
 
-			mcusys_off: mcusys_off {
+			mcusys_off: mcusys-off {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010024>;
 				local-timer-stop;
@@ -294,7 +294,7 @@
 				min-residency-us = <13200>;
 			};
 
-			system_mem: system_mem {
+			system_mem: system-mem {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010030>;
 				local-timer-stop;
@@ -303,7 +303,7 @@
 				min-residency-us = <13200>;
 			};
 
-			system_pll: system_pll {
+			system_pll: system-pll {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010040>;
 				local-timer-stop;
@@ -312,7 +312,7 @@
 				min-residency-us = <13200>;
 			};
 
-			system_bus: system_bus {
+			system_bus: system-bus {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010050>;
 				local-timer-stop;
@@ -382,7 +382,7 @@
 		clock-output-names = "clk32k";
 	};
 
-	gpu_opp_table: opp_table0 {
+	gpu_opp_table: opp-table0 {
 		compatible = "operating-points-v2", "operating-points-v2-mali";
 		opp-shared;
 
@@ -746,7 +746,7 @@
 					type = "passive";
 				};
 
-				soc_max_crit: soc_max_crit@0 {
+				soc_max_crit: soc-max-crit@0 {
 					temperature = <115000>;
 					hysteresis = <2000>;
 					type = "critical";
@@ -1013,7 +1013,7 @@
 							};
 						};
 
-						cam_vcore: cam_vcore@MT8188_POWER_DOMAIN_CAM_VCORE {
+						cam_vcore: cam-vcore@MT8188_POWER_DOMAIN_CAM_VCORE {
 							reg = <MT8188_POWER_DOMAIN_CAM_VCORE>;
 							clocks = <&topckgen CLK_TOP_CAM>,
 								 <&topckgen CLK_TOP_CCU>,
@@ -1079,7 +1079,7 @@
 							#size-cells = <0>;
 							#power-domain-cells = <1>;
 
-							hdmi_tx@MT8188_POWER_DOMAIN_HDMI_TX {
+							hdmi-tx@MT8188_POWER_DOMAIN_HDMI_TX {
 								reg = <MT8188_POWER_DOMAIN_HDMI_TX>;
 								clocks = <&topckgen CLK_TOP_HDMI_APB>,
 									 <&topckgen CLK_TOP_HDCP_24M>;
@@ -1088,13 +1088,13 @@
 								#power-domain-cells = <0>;
 							};
 
-							dp_tx@MT8188_POWER_DOMAIN_DP_TX {
+							dp-tx@MT8188_POWER_DOMAIN_DP_TX {
 								reg = <MT8188_POWER_DOMAIN_DP_TX>;
 								mediatek,infracfg = <&infracfg_ao>;
 								#power-domain-cells = <0>;
 							};
 
-							edp_tx@MT8188_POWER_DOMAIN_EDP_TX {
+							edp-tx@MT8188_POWER_DOMAIN_EDP_TX {
 								reg = <MT8188_POWER_DOMAIN_EDP_TX>;
 								mediatek,infracfg = <&infracfg_ao>;
 								#power-domain-cells = <0>;
@@ -1121,7 +1121,7 @@
 							#power-domain-cells = <0>;
 						};
 
-						img_vcore: img_vcore@MT8188_POWER_DOMAIN_IMG_VCORE {
+						img_vcore: img-vcore@MT8188_POWER_DOMAIN_IMG_VCORE {
 							reg = <MT8188_POWER_DOMAIN_IMG_VCORE>;
 							clocks = <&topckgen CLK_TOP_IMG>,
 								 <&topckgen CLK_TOP_CFGREG_CLOCK_ISP_AXI_GALS>;
@@ -1180,7 +1180,7 @@
 					};
 				};
 
-				pextp_mac_p0@MT8188_POWER_DOMAIN_PEXTP_MAC_P0 {
+				pextp-mac-p0@MT8188_POWER_DOMAIN_PEXTP_MAC_P0 {
 					reg = <MT8188_POWER_DOMAIN_PEXTP_MAC_P0>;
 					mediatek,infracfg = <&infracfg_ao>;
 					clocks = <&pericfg_ao CLK_PERI_AO_PCIE_P0_FMEM>;
@@ -1188,7 +1188,7 @@
 					#power-domain-cells = <0>;
 				};
 
-				csirx_top@MT8188_POWER_DOMAIN_CSIRX_TOP {
+				csirx-top@MT8188_POWER_DOMAIN_CSIRX_TOP {
 					reg = <MT8188_POWER_DOMAIN_CSIRX_TOP>;
 					clocks = <&topckgen CLK_TOP_SENINF>,
 						 <&topckgen CLK_TOP_SENINF1>;
@@ -1196,19 +1196,19 @@
 					#power-domain-cells = <0>;
 				};
 
-				pextp_phy_top@MT8188_POWER_DOMAIN_PEXTP_PHY_TOP {
+				pextp-phy-top@MT8188_POWER_DOMAIN_PEXTP_PHY_TOP {
 					reg = <MT8188_POWER_DOMAIN_PEXTP_PHY_TOP>;
 					#power-domain-cells = <0>;
 				};
 
-				adsp_ao@MT8188_POWER_DOMAIN_ADSP_AO {
+				adsp-ao@MT8188_POWER_DOMAIN_ADSP_AO {
 					reg = <MT8188_POWER_DOMAIN_ADSP_AO>;
 					mediatek,infracfg = <&infracfg_ao>;
 					#address-cells = <1>;
 					#size-cells = <0>;
 					#power-domain-cells = <1>;
 
-					adsp_infra@MT8188_POWER_DOMAIN_ADSP_INFRA {
+					adsp-infra@MT8188_POWER_DOMAIN_ADSP_INFRA {
 						reg = <MT8188_POWER_DOMAIN_ADSP_INFRA>;
 						clocks = <&topckgen CLK_TOP_AUDIO_LOCAL_BUS>,
 							 <&topckgen CLK_TOP_ADSP>;
@@ -1218,7 +1218,7 @@
 						#size-cells = <0>;
 						#power-domain-cells = <1>;
 
-						audio_asrc@MT8188_POWER_DOMAIN_AUDIO_ASRC {
+						audio-asrc@MT8188_POWER_DOMAIN_AUDIO_ASRC {
 							reg = <MT8188_POWER_DOMAIN_AUDIO_ASRC>;
 							clocks = <&topckgen CLK_TOP_ASM_H>;
 							clock-names = "audio_asrc0";
@@ -1546,7 +1546,7 @@
 			nvmem-cell-names = "lvts_calib_data1";
 		};
 
-		disp_pwm0: disp_pwm0@1100e000 {
+		disp_pwm0: disp-pwm0@1100e000 {
 			compatible = "mediatek,mt8188-disp-pwm",
 				     "mediatek,mt8183-disp-pwm";
 			reg = <0 0x1100e000 0 0x1000>;
@@ -1559,7 +1559,7 @@
 			status = "disabled";
 		};
 
-		disp_pwm1: disp_pwm1@1100f000 {
+		disp_pwm1: disp-pwm1@1100f000 {
 			compatible = "mediatek,mt8188-disp-pwm",
 				     "mediatek,mt8183-disp-pwm";
 			reg = <0 0x1100f000 0 0x1000>;
@@ -1854,7 +1854,7 @@
 			};
 		};
 
-		mipi_tx_config0: mipi_dphy0@11c80000 {
+		mipi_tx_config0: mipi-dphy0@11c80000 {
 			compatible = "mediatek,mt8188-mipi-tx",
 				     "mediatek,mt8183-mipi-tx";
 			reg = <0 0x11c80000 0 0x1000>;
@@ -1997,7 +1997,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			dp_calibration: dp_data {
+			dp_calibration: dp-data {
 				reg = <0x1a0 0x10>;
 			};
 
@@ -2017,11 +2017,11 @@
 				reg = <0x184 0x4>;
 			};
 
-			csi_efuse0: csi_data0 {
+			csi_efuse0: csi-data0 {
 				reg = <0x18c 0x4>;
 			};
 
-			csi_efuse1: csi_data1 {
+			csi_efuse1: csi-data1 {
 				reg = <0x190 0x4>;
 			};
 
@@ -2029,15 +2029,15 @@
 				reg = <0x534 0x68>;
 			};
 
-			gpu_segment_table0: gpu_efuse0 {
+			gpu_segment_table0: gpu-efuse0 {
 				reg = <0x40 0x4>;
 			};
 
-			gpu_segment_table1: gpu_efuse1 {
+			gpu_segment_table1: gpu-efuse1 {
 				reg = <0x4c 0x4>;
 			};
 
-			gpu_segment_table2: gpu_efuse2 {
+			gpu_segment_table2: gpu-efuse2 {
 				reg = <0x4c 0x4>;
 			};
 
@@ -2368,7 +2368,7 @@
 				 <&vpp_iommu M4U_PORT_L11B_DBGO_T1_C>;
 		};
 
-		hcp_l15 {
+		hcp-l15 {
 			compatible = "mediatek,imgsys-larb";
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -2394,7 +2394,7 @@
 				 <&vpp_iommu M4U_PORT_L15_TNCO_D1_N>;
 		};
 
-		imgsys_fw: imgsys_fw@15000000 {
+		imgsys_fw: imgsys-fw@15000000 {
 			compatible = "mediatek,imgsys";
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -3305,7 +3305,7 @@
 				"l12_common_1";
 		};
 
-		imgsys_l10 {
+		imgsys-l10 {
 			compatible = "mediatek,imgsys-larb";
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -3332,7 +3332,7 @@
 				 <&vdo_iommu M4U_PORT_L10_DBGO_D1>;
 		};
 
-		imgsys_l11A {
+		imgsys-l11A {
 			compatible = "mediatek,imgsys-larb";
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -3369,7 +3369,7 @@
 				 <&vdo_iommu M4U_PORT_L11A_DBGO_T1_C>;
 		};
 
-		imgsys_l11C {
+		imgsys-l11C {
 			compatible = "mediatek,imgsys-larb";
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -3406,7 +3406,7 @@
 				 <&vdo_iommu M4U_PORT_L11C_DBGO_T1_C>;
 		};
 
-		ipesys_me: ipesys_me@15320000 {
+		ipesys_me: ipesys-me@15320000 {
 			compatible = "mediatek,ipesys-me";
 			reg = <0 0x15320000 0 0x10000>;	/* IPESYS_ME */
 			mediatek,larb = <&larb12>;

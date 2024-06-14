@@ -149,7 +149,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	touchscreen: hid_hx_common_spi@0 {
+	touchscreen: hid-hx-common-spi@0 {
 		compatible = "himax,hx83102j";
 		pinctrl-names = "default";
 		pinctrl-0 = <&touchscreen_pins &touch_reset>;
@@ -363,7 +363,7 @@
 		"SPMI_SCL",
 		"SPMI_SDA";
 
-	aud_etdm_hp_on: aud_etdm_hp_on {
+	aud_etdm_hp_on: aud-etdm-hp-on {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO110__FUNC_I0_I2SIN_D0>,
 				 <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>,
@@ -373,7 +373,7 @@
 		};
 	};
 
-	aud_etdm_hp_off: aud_etdm_hp_off {
+	aud_etdm_hp_off: aud-etdm-hp-off {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO110__FUNC_B_GPIO110>,
 				 <PINMUX_GPIO114__FUNC_B_GPIO114>,
