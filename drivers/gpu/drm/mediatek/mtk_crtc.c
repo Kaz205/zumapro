@@ -1102,7 +1102,7 @@ static void mtk_crtc_atomic_flush(struct drm_crtc *crtc,
 	mtk_crtc_update_config(mtk_crtc, !!mtk_crtc->event);
 }
 
-static const struct drm_crtc_funcs mtk_crtc_funcs = {
+static struct drm_crtc_funcs mtk_crtc_funcs = {
 	.set_config		= drm_atomic_helper_set_config,
 	.page_flip		= drm_atomic_helper_page_flip,
 	.destroy		= mtk_crtc_destroy,
@@ -1111,8 +1111,6 @@ static const struct drm_crtc_funcs mtk_crtc_funcs = {
 	.atomic_destroy_state	= mtk_crtc_destroy_state,
 	.enable_vblank		= mtk_crtc_enable_vblank,
 	.disable_vblank		= mtk_crtc_disable_vblank,
-	.set_crc_source		= mtk_crtc_set_crc_source,
-	.verify_crc_source	= mtk_crtc_verify_crc_source,
 };
 
 static const struct drm_crtc_helper_funcs mtk_crtc_helper_funcs = {
@@ -1130,6 +1128,7 @@ static int mtk_crtc_init(struct drm_device *drm, struct mtk_crtc *mtk_crtc,
 {
 	struct drm_plane *primary = NULL;
 	struct drm_plane *cursor = NULL;
+	struct mtk_ddp_comp *comp = mtk_crtc->crc_provider;
 	int i, ret;
 
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
@@ -1137,6 +1136,11 @@ static int mtk_crtc_init(struct drm_device *drm, struct mtk_crtc *mtk_crtc,
 			primary = &mtk_crtc->planes[i];
 		else if (mtk_crtc->planes[i].type == DRM_PLANE_TYPE_CURSOR)
 			cursor = &mtk_crtc->planes[i];
+	}
+
+	if (comp && comp->funcs->crc_cnt(comp->dev)) {
+		mtk_crtc_funcs.set_crc_source = mtk_crtc_set_crc_source;
+		mtk_crtc_funcs.verify_crc_source = mtk_crtc_verify_crc_source;
 	}
 
 	ret = drm_crtc_init_with_planes(drm, &mtk_crtc->base, primary, cursor,
