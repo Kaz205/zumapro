@@ -38,8 +38,13 @@ static int mdw_mem_pool_chunk_add(struct mdw_mem_pool *pool, uint32_t size)
 	}
 
 	memset(buf_name, 0, sizeof(buf_name));
-	snprintf(buf_name, sizeof(buf_name)-1, "APU_CMDBUF_POOL:%u/%u",
+	ret = snprintf(buf_name, sizeof(buf_name)-1, "APU_CMDBUF_POOL:%u/%u",
 		task_pid_nr(current), task_tgid_nr(current));
+	if (ret <= 0) {
+		pr_err("[error] %s: set buffer name fail\n", __func__);
+		ret = -EINVAL;
+		goto err_map;
+	}
 	if (mdw_mem_set_name(m, buf_name)) {
 		pr_err("[error] %s: s(0x%llx) m(0x%llx) set name fail, size: %d\n",
 				__func__, (uint64_t)pool->mpriv, (uint64_t)m, size);
@@ -118,8 +123,8 @@ int mdw_mem_pool_create(struct mdw_fpriv *mpriv, struct mdw_mem_pool *pool,
 	INIT_LIST_HEAD(&pool->m_list);
 	pool->gp = gen_pool_create(PAGE_SHIFT, -1 /* nid */);
 
-	if (IS_ERR(pool->gp)) {
-		ret = PTR_ERR(pool->gp);
+	if (!pool->gp) {
+		ret = -ENOMEM;
 		dev_err(mpriv->mdev->dev, "[error] mem_pool(0x%llx) gen_pool init fail: %d\n",
 				(uint64_t) mpriv, ret);
 		goto out;
@@ -341,4 +346,3 @@ int mdw_mem_pool_invalidate(struct mdw_mem *m)
 
 	return -EINVAL;
 }
-

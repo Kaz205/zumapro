@@ -106,7 +106,7 @@ static int mtk_apu_top_power_off(struct generic_pm_domain *genpd)
 {
 	struct mtk_apu_domain *pd = to_mtk_apu_domain(genpd);
 	struct apusys *apusys = pd->apusys;
-	int ret, tmp;
+	int ret = 0, tmp;
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
