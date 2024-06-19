@@ -31,7 +31,7 @@ const struct mtk_hw_config mt8192_hw_config = {
 	.reg_mfg_debug_top = 0x178,
 	.top_tsvalueb_en = 0x3,
 	.bus_idle_bit = 0x4,
-	.vgpu_min_microvolt = 562500,
+	.vgpu_min_microvolt = 606250,
 	.vgpu_max_microvolt = 800000,
 	.vsram_gpu_min_microvolt = 750000,
 	.vsram_gpu_max_microvolt = 800000,
@@ -39,7 +39,7 @@ const struct mtk_hw_config mt8192_hw_config = {
 	.bias_max_microvolt = 250000,
 	.supply_tolerance_microvolt = 125,
 	.gpu_freq_min_khz = 358000,
-	.gpu_freq_max_khz = 950000,
+	.gpu_freq_max_khz = 866000,
 	.auto_suspend_delay_ms = 50,
 };
 

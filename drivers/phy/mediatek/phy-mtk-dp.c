@@ -78,6 +78,9 @@
 #define DRIVING_PARAM_8_DEFAULT	(XTP_LN_TX_LCTXCP1_SW2_PRE1_DEFAULT | \
 				 XTP_LN_TX_LCTXCP1_SW3_PRE0_DEFAULT)
 
+#define MTK_DP_PHY_DIG_DA_REG_14		(PHY_OFFSET + 0xd8)
+#define RG_XTP_glb_txpll_ssc_delta1_hbr         0x01fe02b0
+
 struct mtk_dp_phy {
 	struct regmap *regs;
 };
@@ -137,6 +140,8 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 	regmap_update_bits(dp_phy->regs, MTK_DP_PHY_DIG_PLL_CTL_1,
 			   TPLL_SSC_EN, opts->dp.ssc ? TPLL_SSC_EN : 0);
 
+	regmap_write(dp_phy->regs, MTK_DP_PHY_DIG_DA_REG_14,
+			   RG_XTP_glb_txpll_ssc_delta1_hbr);
 	return 0;
 }
 

@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (c) 2023 MediaTek Inc.
+
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/media/mediatek-aie.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: The AIE Unit of Mediatek Camera System
+
+maintainers:
+  -  MTK ISD <copy.chou@mediatek.com>
+
+description:
+  MediaTek AIE is the ISP unit in MediaTek SoC.
+
+properties:
+  compatible:
+    const: mt8188-aie
+
+  "#address-cells":
+    const: 2
+
+  "#size-cells":
+    const: 2
+
+  power-domains:
+    maxItems: 1
+
+  iommus:
+    description:
+      Points to the respective IOMMU block with master port as argument, see
+      Documentation/devicetree/bindings/iommu/mediatek,iommu.yaml for details.
+      Ports are according to the HW.
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - dma-ranges
+  - iommus
+  - power-domains
+  - clocks
+  - clock-names
+
+additionalProperties: false
+
+examples:
+  - |
+aie@15310000:
+  compatible: ["mediatek,mt8188-aie", "mediatek,aie-hw3.1", "mediatek,aie-hw3.0"]
+  reg: [0, 0x15310000, 0, 0x1000]
+  interrupts: [GIC_SPI, 787, IRQ_TYPE_LEVEL_HIGH, 0]
+  mediatek,larb: ["&larb12"]
+  dma-ranges: [0x2, 0x0, 0x0, 0x40000000, 0x1, 0x0]
+  iommus:
+    - "&vpp_iommu M4U_PORT_L12_FDVT_RDA_0"
+    - "&vpp_iommu M4U_PORT_L12_FDVT_RDB_0"
+    - "&vpp_iommu M4U_PORT_L12_FDVT_WRA_0"
+    - "&vpp_iommu M4U_PORT_L12_FDVT_WRB_0"
+  power-domains: ["&spm MT8188_POWER_DOMAIN_IPE"]
+  clocks:
+    - "&imgsys CLK_IMGSYS_MAIN_IPE"
+    - "&ipesys CLK_IPE_FDVT"
+    - "&ipesys CLK_IPE_SMI_LARB12"
+    - "&ipesys CLK_IPESYS_TOP"
+  clock-names:
+    - "IMG_IPE"
+    - "IPE_FDVT"
+    - "IPE_SMI_LARB12"
+    - "IPE_TOP"
+  operating-points-v2: ["&opp_table_ipe"]
+  dvfsrc-vcore-supply: ["&vmm_proxy_label"]
+
+...

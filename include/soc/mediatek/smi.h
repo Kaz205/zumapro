@@ -14,6 +14,7 @@
 enum iommu_atf_cmd {
 	IOMMU_ATF_CMD_CONFIG_SMI_LARB,		/* For mm master to en/disable iommu */
 	IOMMU_ATF_CMD_CONFIG_INFRA_IOMMU,	/* For infra master to enable iommu */
+	IOMMU_ATF_CMD_GET_SECURE_IOMMU_STATUS,	/* Get secure iommu translation fault status */
 	IOMMU_ATF_CMD_MAX,
 };
 
@@ -26,5 +27,7 @@ struct mtk_smi_larb_iommu {
 };
 
 #endif
+
+void mtk_smi_larb_clamp(struct device *larbdev, bool on);
 
 #endif

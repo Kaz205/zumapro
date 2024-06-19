@@ -14,7 +14,7 @@
 static int int340x_thermal_get_zone_temp(struct thermal_zone_device *zone,
 					 int *temp)
 {
-	struct int34x_thermal_zone *d = thermal_zone_device_priv(zone);
+	struct int34x_thermal_zone *d = zone->devdata;
 	unsigned long long tmp;
 	acpi_status status;
 
@@ -43,7 +43,7 @@ static int int340x_thermal_get_zone_temp(struct thermal_zone_device *zone,
 static int int340x_thermal_get_trip_temp(struct thermal_zone_device *zone,
 					 int trip, int *temp)
 {
-	struct int34x_thermal_zone *d = thermal_zone_device_priv(zone);
+	struct int34x_thermal_zone *d = zone->devdata;
 	int i, ret = 0;
 
 	if (d->override_ops && d->override_ops->get_trip_temp)
@@ -80,7 +80,7 @@ static int int340x_thermal_get_trip_type(struct thermal_zone_device *zone,
 					 int trip,
 					 enum thermal_trip_type *type)
 {
-	struct int34x_thermal_zone *d = thermal_zone_device_priv(zone);
+	struct int34x_thermal_zone *d = zone->devdata;
 	int i, ret = 0;
 
 	if (d->override_ops && d->override_ops->get_trip_type)
@@ -116,7 +116,7 @@ static int int340x_thermal_get_trip_type(struct thermal_zone_device *zone,
 static int int340x_thermal_set_trip_temp(struct thermal_zone_device *zone,
 				      int trip, int temp)
 {
-	struct int34x_thermal_zone *d = thermal_zone_device_priv(zone);
+	struct int34x_thermal_zone *d = zone->devdata;
 	acpi_status status;
 	char name[10];
 
@@ -138,7 +138,7 @@ static int int340x_thermal_set_trip_temp(struct thermal_zone_device *zone,
 static int int340x_thermal_get_trip_hyst(struct thermal_zone_device *zone,
 		int trip, int *temp)
 {
-	struct int34x_thermal_zone *d = thermal_zone_device_priv(zone);
+	struct int34x_thermal_zone *d = zone->devdata;
 	acpi_status status;
 	unsigned long long hyst;
 

@@ -356,9 +356,6 @@ intel_crt_mode_valid(struct drm_connector *connector,
 	if (status != MODE_OK)
 		return status;
 
-	if (mode->flags & DRM_MODE_FLAG_DBLSCAN)
-		return MODE_NO_DBLESCAN;
-
 	if (mode->clock < 25000)
 		return MODE_CLOCK_LOW;
 
@@ -941,6 +938,9 @@ static int intel_crt_get_modes(struct drm_connector *connector)
 	intel_wakeref_t wakeref;
 	struct i2c_adapter *i2c;
 	int ret;
+
+	if (!intel_display_driver_check_access(dev_priv))
+		return drm_edid_connector_add_modes(connector);
 
 	wakeref = intel_display_power_get(dev_priv,
 					  intel_encoder->power_domain);

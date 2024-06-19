@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (c) 2023 MediaTek Inc.
+
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/media/mediatek,seninf-core.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: The seninf-core top unit of Mediatek ISP system
+
+maintainers:
+  - MTK ISD <MTK_ISD_SW2@mediatek.com>
+
+description:
+  MediaTek seninf-core is the ISP sensor interface unit in MediaTek SoC.
+  The sensor interface serves as the MIPI-CSI2 top RX controller.
+
+properties:
+  compatible:
+    const: mediatek,seninf-core
+
+  "#address-cells":
+    const: 2
+
+  "#size-cells":
+    const: 2
+
+  ranges: true
+
+  power-domains:
+    maxItems: 4
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - ranges
+  - interrupts
+  - power-domains
+  - clocks
+  - clock-names
+
+additionalProperties: false
+
+examples:
+  - |
+    seninf_top: seninf_top@16010000 {
+      compatible = "mediatek,seninf-core";
+      reg = <0 0x16010000 0 0x8000>,
+            <0 0x11ed0000 0 0xc000>;
+      reg-names = "base", "ana-rx";
+      mtk_csi_phy_ver = "mtk_csi_phy_2_0";
+      interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
+      power-domains = <&spm MT8188_POWER_DOMAIN_CSIRX_TOP>,
+                      <&spm MT8188_POWER_DOMAIN_CAM_VCORE>,
+                      <&spm MT8188_POWER_DOMAIN_CAM_MAIN>;
+      clocks = <&camsys CLK_CAM_MAIN_SENINF>,
+              <&topckgen CLK_TOP_SENINF>,
+              <&topckgen CLK_TOP_SENINF1>,
+              <&topckgen CLK_TOP_CAMTM>;
+      clock-names = "clk_cam_seninf",
+                    "clk_top_seninf",
+                    "clk_top_seninf1",
+                    "clk_top_camtm";
+    };
+
+...

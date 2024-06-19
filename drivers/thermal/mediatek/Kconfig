@@ -1,37 +1,61 @@
 config MTK_THERMAL
-	tristate "MediaTek thermal drivers"
+	tristate "Mediatek thermal drivers"
 	depends on THERMAL_OF
 	help
-	  This is the option for MediaTek thermal software solutions.
-	  Please enable corresponding options to get temperature
-	  information from thermal sensors or turn on throttle
-	  mechaisms for thermal mitigation.
+	  This is the option for Mediatek thermal software
+	  solutions. Please enable corresponding options to
+	  get temperature information from thermal sensors or
+	  turn on throttle mechaisms for thermal mitigation.
 
 if MTK_THERMAL
 
 config MTK_SOC_THERMAL
-	tristate "AUXADC temperature sensor driver for MediaTek SoCs"
+	bool "Temperature sensor driver for mediatek SoCs"
 	depends on HAS_IOMEM
+	depends on NVMEM
+	depends on RESET_CONTROLLER
+	depends on CPU_FREQ
 	help
 	  Enable this option if you want to get SoC temperature
-	  information for MediaTek platforms.
-	  This driver configures thermal controllers to collect
-	  temperature via AUXADC interface.
+	  information for Mediatek platforms. This driver
+	  configures thermal controllers to collect temperature
+	  via AUXADC interface.
 
-config MTK_LVTS_THERMAL
-        tristate "LVTS Thermal Driver for MediaTek SoCs"
-        depends on HAS_IOMEM
-        help
-          Enable this option if you want to get SoC temperature
-          information for supported MediaTek platforms.
-          This driver configures LVTS (Low Voltage Thermal Sensor)
-          thermal controllers to collect temperatures via ASIF
-          (Analog Serial Interface).
+config MTK_SOC_THERMAL_LVTS
+	tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
+	depends on HAS_IOMEM
+	depends on NVMEM
+	help
+		Enable this option if you want to get SoC temperature
+		information for MediaTek platforms. This driver
+		configures LVTS thermal controllers to collect temperatures
+		via Analog Serial Interface(ASIF).
 
-config MTK_LVTS_THERMAL_DEBUGFS
-       bool "LVTS thermal debugfs"
-       depends on MTK_LVTS_THERMAL && DEBUG_FS
-       help
-         Enable this option to debug the internals of the device driver.
+endif
+
+if MTK_SOC_THERMAL_LVTS
+
+config LVTS_MT8188
+	tristate "LVTS driver for MediaTek MT8188 SoC"
+	depends on HAS_IOMEM
+	depends on NVMEM
+	depends on MTK_SOC_THERMAL_LVTS
+	help
+		Enable this option if you want to get SoC temperature
+		information for MT8188. This driver
+		configures LVTS thermal controllers to collect temperatures
+		via ASIF.
+
+config LVTS_MT8192
+	tristate "LVTS driver for MediaTek MT8192 SoC"
+	depends on HAS_IOMEM
+	depends on NVMEM
+	depends on RESET_TI_SYSCON
+	depends on MTK_SOC_THERMAL_LVTS
+	help
+		Enable this option if you want to get SoC temperature
+		information for MT8192. This driver
+		configures LVTS thermal controllers to collect temperatures
+		via ASIF.
 
 endif

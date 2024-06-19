@@ -9,7 +9,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/kthread.h>
 #include <linux/init_task.h>
-#include <linux/version.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -249,16 +248,9 @@ static struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
 	}
 
 	/* check and remap if possibe */
-	ret = ipu_psys_mapbuf_locked(fd, fh, kpgbuf);
-	if (ret) {
-		dev_err(&psys->adev->dev, "%s remap failed\n", __func__);
-		mutex_unlock(&fh->mutex);
-		goto error;
-	}
-
-	kpgbuf = ipu_psys_lookup_kbuffer(fh, fd);
+	kpgbuf = ipu_psys_mapbuf_locked(fd, fh);
 	if (!kpgbuf || !kpgbuf->sgt) {
-		WARN(1, "kbuf not found or unmapped.\n");
+		dev_err(&psys->adev->dev, "%s remap failed\n", __func__);
 		mutex_unlock(&fh->mutex);
 		goto error;
 	}
@@ -347,17 +339,10 @@ static struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
 			goto error;
 		}
 
-		ret = ipu_psys_mapbuf_locked(fd, fh, kpgbuf);
-		if (ret) {
+		kpgbuf = ipu_psys_mapbuf_locked(fd, fh);
+		if (!kpgbuf || !kpgbuf->sgt) {
 			dev_err(&psys->adev->dev, "%s remap failed\n",
 				__func__);
-			mutex_unlock(&fh->mutex);
-			goto error;
-		}
-
-		kpgbuf = ipu_psys_lookup_kbuffer(fh, fd);
-		if (!kpgbuf || !kpgbuf->sgt) {
-			WARN(1, "kbuf not found or unmapped.\n");
 			mutex_unlock(&fh->mutex);
 			goto error;
 		}

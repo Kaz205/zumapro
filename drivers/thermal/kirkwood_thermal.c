@@ -27,7 +27,7 @@ static int kirkwood_get_temp(struct thermal_zone_device *thermal,
 			  int *temp)
 {
 	unsigned long reg;
-	struct kirkwood_thermal_priv *priv = thermal_zone_device_priv(thermal);
+	struct kirkwood_thermal_priv *priv = thermal->devdata;
 
 	reg = readl_relaxed(priv->sensor);
 

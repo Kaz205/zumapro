@@ -258,6 +258,8 @@ static inline void sg_unmark_end(struct scatterlist *sg)
 
 #define SG_DMA_BUS_ADDRESS (1 << 0)
 
+#define SG_DMA_RESTRICTED	BIT(1)
+
 /**
  * sg_dma_is_bus address - Return whether a given segment was marked
  *			   as a bus address
@@ -287,6 +289,15 @@ static inline void sg_dma_mark_bus_address(struct scatterlist *sg)
 	sg->dma_flags |= SG_DMA_BUS_ADDRESS;
 }
 
+static inline bool sg_dma_is_restricted(struct scatterlist *sg)
+{
+	return sg->dma_flags & SG_DMA_RESTRICTED;
+}
+static inline void sg_dma_mark_restricted(struct scatterlist *sg)
+{
+	sg->dma_flags |= SG_DMA_RESTRICTED;
+}
+
 /**
  * sg_unmark_bus_address - Unmark the scatterlist entry as a bus address
  * @sg:		 SG entry
@@ -309,6 +320,13 @@ static inline void sg_dma_mark_bus_address(struct scatterlist *sg)
 {
 }
 static inline void sg_dma_unmark_bus_address(struct scatterlist *sg)
+{
+}
+static inline bool sg_dma_is_restricted(struct scatterlist *sg)
+{
+	return false;
+}
+static inline void sg_dma_mark_restricted(struct scatterlist *sg)
 {
 }
 
