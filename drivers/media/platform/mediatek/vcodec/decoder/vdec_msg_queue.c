@@ -29,9 +29,9 @@
 static int vde_msg_queue_get_trans_size(int width, int height)
 {
 	if (width > 1920 || height > 1088)
-		return 30 * SZ_1M;
+		return 8 * SZ_1M;
 	else
-		return 6 * SZ_1M;
+		return 5 * SZ_1M;
 }
 
 void vdec_msg_queue_init_ctx(struct vdec_msg_queue_ctx *ctx, int hardware_index)

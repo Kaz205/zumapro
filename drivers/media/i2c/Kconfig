@@ -54,6 +54,26 @@ config VIDEO_AR0521
 	  To compile this driver as a module, choose M here: the
 	  module will be called ar0521.
 
+config VIDEO_GC05A2
+	tristate "GalaxyCore gc05a2 sensor support"
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the GalaxyCore gc05a2
+	  camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called gc05a2.
+
+config VIDEO_GC08A3
+	tristate "GalaxyCore gc08a3 sensor support"
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the GalaxyCore gc08a3
+	  camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called gc08a3.
+
 config VIDEO_HI556
 	tristate "Hynix Hi-556 sensor support"
 	depends on I2C && VIDEO_DEV
@@ -863,6 +883,19 @@ config VIDEO_DW9807_VCM
 	  This is a driver for the DW9807 camera lens voice coil.
 	  DW9807 is a 10 bit DAC with 100mA output current sink
 	  capability. This is designed for linear control of
+	  voice coil motors, controlled via I2C serial interface.
+
+config VIDEO_GT97XX
+	tristate "GT97xx lens voice coil support"
+	depends on I2C && VIDEO_DEV
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	select V4L2_CCI_I2C
+	help
+	  This is a driver for the GT97xx camera lens voice coil.
+	  GT97xx is a 10 bit DAC with 100mA output current sink
+	  capability. It is designed for linear control of
 	  voice coil motors, controlled via I2C serial interface.
 
 endmenu

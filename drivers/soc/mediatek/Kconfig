@@ -5,6 +5,8 @@
 menu "MediaTek SoC drivers"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 
+source "drivers/soc/mediatek/apusys/Kconfig"
+
 config MTK_CMDQ
 	tristate "MediaTek CMDQ Support"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
@@ -94,6 +96,7 @@ config MTK_SOCINFO
 	tristate "MediaTek SoC Information"
 	default y
 	depends on NVMEM_MTK_EFUSE
+	select SOC_BUS
 	help
 	  The MediaTek SoC Information (mtk-socinfo) driver provides
 	  information about the SoC to the userspace including the

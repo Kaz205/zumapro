@@ -85,6 +85,7 @@ struct at24_data {
 
 	struct nvmem_device *nvmem;
 	struct regulator *vcc_reg;
+	struct regulator *dovdd_reg;
 	void (*read_post)(unsigned int off, char *buf, size_t count);
 
 	/*
@@ -431,12 +432,9 @@ static int at24_read(void *priv, unsigned int off, void *val, size_t count)
 	if (off + count > at24->byte_len)
 		return -EINVAL;
 
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret)
 		return ret;
-	}
-
 	/*
 	 * Read data from chip, protecting against concurrent updates
 	 * from this host, but not from other I2C masters.
@@ -478,12 +476,9 @@ static int at24_write(void *priv, unsigned int off, void *val, size_t count)
 	if (off + count > at24->byte_len)
 		return -EINVAL;
 
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret)
 		return ret;
-	}
-
 	/*
 	 * Write data to chip, protecting against concurrent updates
 	 * from this host, but not from other I2C masters.
@@ -579,6 +574,31 @@ static unsigned int at24_get_offset_adj(u8 flags, unsigned int byte_len)
 	} else {
 		return 0;
 	}
+}
+
+static void at24_probe_temp_sensor(struct i2c_client *client)
+{
+	struct at24_data *at24 = i2c_get_clientdata(client);
+	struct i2c_board_info info = { .type = "jc42" };
+	int ret;
+	u8 val;
+
+	/*
+	 * Byte 2 has value 11 for DDR3, earlier versions don't
+	 * support the thermal sensor present flag
+	 */
+	ret = at24_read(at24, 2, &val, 1);
+	if (ret || val != 11)
+		return;
+
+	/* Byte 32, bit 7 is set if temp sensor is present */
+	ret = at24_read(at24, 32, &val, 1);
+	if (ret || !(val & BIT(7)))
+		return;
+
+	info.addr = 0x18 | (client->addr & 7);
+
+	i2c_new_client_device(client->adapter, &info);
 }
 
 static int at24_probe(struct i2c_client *client)
@@ -695,6 +715,14 @@ static int at24_probe(struct i2c_client *client)
 	if (IS_ERR(at24->vcc_reg))
 		return PTR_ERR(at24->vcc_reg);
 
+	at24->dovdd_reg = devm_regulator_get_optional(dev, "dovdd");
+	if (IS_ERR(at24->dovdd_reg)) {
+		if (PTR_ERR(at24->dovdd_reg) == -ENODEV)
+			at24->dovdd_reg = NULL;
+		else
+			return PTR_ERR(at24->dovdd_reg);
+	}
+
 	writable = !(flags & AT24_FLAG_READONLY);
 	if (writable) {
 		at24->write_max = min_t(unsigned int,
@@ -752,17 +780,17 @@ static int at24_probe(struct i2c_client *client)
 			return err;
 		}
 
+		if (at24->dovdd_reg != NULL) {
+			err = regulator_enable(at24->dovdd_reg);
+			if (err) {
+				dev_err(dev, "Failed to enable dovdd regulator\n");
+				return err;
+			}
+		}
+
 		pm_runtime_set_active(dev);
 	}
 	pm_runtime_enable(dev);
-
-	at24->nvmem = devm_nvmem_register(dev, &nvmem_config);
-	if (IS_ERR(at24->nvmem)) {
-		pm_runtime_disable(dev);
-		if (!pm_runtime_status_suspended(dev))
-			regulator_disable(at24->vcc_reg);
-		return PTR_ERR(at24->nvmem);
-	}
 
 	/*
 	 * Perform a one-byte test read to verify that the chip is functional,
@@ -778,6 +806,22 @@ static int at24_probe(struct i2c_client *client)
 			return -ENODEV;
 		}
 	}
+
+	at24->nvmem = devm_nvmem_register(dev, &nvmem_config);
+	if (IS_ERR(at24->nvmem)) {
+		pm_runtime_disable(dev);
+		if (!pm_runtime_status_suspended(dev)) {
+			regulator_disable(at24->vcc_reg);
+			if (at24->dovdd_reg != NULL)
+				regulator_disable(at24->dovdd_reg);
+		}
+		return dev_err_probe(dev, PTR_ERR(at24->nvmem),
+				     "failed to register nvmem\n");
+	}
+
+	/* If this a SPD EEPROM, probe for DDR3 thermal sensor */
+	if (cdata == &at24_data_spd)
+		at24_probe_temp_sensor(client);
 
 	pm_runtime_idle(dev);
 
@@ -797,8 +841,11 @@ static void at24_remove(struct i2c_client *client)
 
 	pm_runtime_disable(&client->dev);
 	if (acpi_dev_state_d0(&client->dev)) {
-		if (!pm_runtime_status_suspended(&client->dev))
+		if (!pm_runtime_status_suspended(&client->dev)) {
 			regulator_disable(at24->vcc_reg);
+			if (at24->dovdd_reg != NULL)
+				regulator_disable(at24->dovdd_reg);
+		}
 		pm_runtime_set_suspended(&client->dev);
 	}
 }
@@ -808,13 +855,23 @@ static int __maybe_unused at24_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct at24_data *at24 = i2c_get_clientdata(client);
 
+	if (at24->dovdd_reg != NULL)
+		regulator_disable(at24->dovdd_reg);
+
 	return regulator_disable(at24->vcc_reg);
 }
 
 static int __maybe_unused at24_resume(struct device *dev)
 {
+	int err;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct at24_data *at24 = i2c_get_clientdata(client);
+
+	if (at24->dovdd_reg != NULL) {
+		err = regulator_enable(at24->dovdd_reg);
+		if (err)
+			return err;
+	}
 
 	return regulator_enable(at24->vcc_reg);
 }

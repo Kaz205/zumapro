@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config MTK_APUSYS_SUPPORT
+	tristate "MediaTek APUSYS driver"
+	select REGMAP
+	select MAILBOX
+	select MTK_APU_MBOX
+	select MTK_SCP
+	help
+	  Enable Mediatek APUSYS feature for centralize control.
+	  Middleware and APU scheduler will control memory,
+	  QoS, and normal/deadline command queue in central layer.
+	  Support multiple, multicore APU command scheduling and
+	  execution in low level driver.
+
+config MTK_APUSYS_PM
+	tristate "MediaTek APUSYS Power Driver"
+	select PM_GENERIC_DOMAINS
+	depends on PM
+	help
+	  Enable Mediatek APU_TOP mtcmos control.
+	  Support APU_TOP generic power domain multi-user use.
+	  APU RPC HW for power on/off flow control and
+	  execution in low level driver.

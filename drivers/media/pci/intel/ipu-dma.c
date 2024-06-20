@@ -11,7 +11,6 @@
 #include <linux/iova.h>
 #include <linux/module.h>
 #include <linux/scatterlist.h>
-#include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/dma-map-ops.h>
 
@@ -303,7 +302,6 @@ static int ipu_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 	struct ipu_mmu *mmu = to_ipu_bus_device(dev)->mmu;
 	struct vm_info *info;
 	size_t count = PAGE_ALIGN(size) >> PAGE_SHIFT;
-	size_t i;
 
 	info = get_vm_info(mmu, iova);
 	if (!info)
@@ -318,11 +316,7 @@ static int ipu_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 	if (size > info->size)
 		return -EFAULT;
 
-	for (i = 0; i < count; i++)
-		vm_insert_page(vma, vma->vm_start + (i << PAGE_SHIFT),
-			       info->pages[i]);
-
-	return 0;
+	return vm_insert_pages(vma, vma->vm_start, info->pages, &count);
 }
 
 static void ipu_dma_unmap_sg(struct device *dev,
@@ -396,7 +390,7 @@ static int ipu_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 	struct scatterlist *sg;
 	struct iova *iova;
 	size_t npages = 0;
-	u32 iova_addr;
+	unsigned long iova_addr;
 	int i, count;
 
 	dev_dbg(dev, "pci_dma_map_sg trying to map %d ents\n", nents);
@@ -424,7 +418,7 @@ static int ipu_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 		int rval;
 
 		dev_dbg(dev, "mapping entry %d: iova 0x%lx phy %pad size %d\n",
-			i, (unsigned long)iova_addr << PAGE_SHIFT,
+			i, iova_addr << PAGE_SHIFT,
 			&sg_dma_address(sg), sg_dma_len(sg));
 
 		dev_dbg(dev, "mapping entry %d: sg->length = %d\n", i,

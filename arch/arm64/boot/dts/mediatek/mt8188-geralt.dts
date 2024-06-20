@@ -4,6 +4,7 @@
  */
 /dts-v1/;
 #include "mt8188-geralt.dtsi"
+#include "mt8188_geralt_camera_v4l2.dtsi"
 
 / {
 	model = "Google Geralt board";

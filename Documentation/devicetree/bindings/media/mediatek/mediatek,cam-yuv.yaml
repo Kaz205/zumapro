@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (c) 2023 MediaTek Inc.
+
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/media/mediatek,cam-yuv.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: The cam-yuv unit of Mediatek ISP system
+
+maintainers:
+  - MTK ISD <MTK_ISD_SW2@mediatek.com>
+
+description:
+  MediaTek cam-yuv is the ISP Pass1 unit in MediaTek SoC.
+
+properties:
+  compatible:
+    const: mediatek,cam-yuv
+
+  "#address-cells":
+    maxItems: 2
+
+  "#size-cells":
+    maxItems: 2
+
+  ranges: true
+
+  power-domains:
+    maxItems: 1
+
+  iommus:
+    description:
+      Points to the respective IOMMU block with master port as argument, see
+      Documentation/devicetree/bindings/iommu/mediatek,iommu.yaml for details.
+      Ports are according to the HW.
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - ranges
+  - interrupts
+  - power-domains
+  - clocks
+  - clock-names
+  - iommus
+
+additionalProperties: false
+
+examples:
+  - |
+    cam_yuv_b@16090000 {
+      compatible = "mediatek,cam-yuv";
+      reg = <0 0x16090000 0 0x8000>;
+      reg-names = "base";
+      mediatek,cam-id = <1>;
+      mediatek,larbs = <&larb17b>;
+      interrupts = <GIC_SPI 303 IRQ_TYPE_LEVEL_HIGH 0>;
+      dma-ranges = <0x2 0x0 0x0 0x40000000 0x1 0x0>;
+      power-domains = <&spm MT8188_POWER_DOMAIN_CAM_SUBB>;
+      clocks = <&camsys CLK_CAM_MAIN_CAM2MM0_GALS>,
+          <&camsys CLK_CAM_MAIN_CAM2MM1_GALS>,
+          <&camsys CLK_CAM_MAIN_CAM2SYS_GALS>,
+          <&camsys_yuvb CLK_CAM_YUVB_LARBX>,
+          <&camsys_yuvb CLK_CAM_YUVB_CAM>,
+          <&camsys_yuvb CLK_CAM_YUVB_CAMTG>;
+      clock-names = "camsys_cam2mm0_cgpdn",
+          "camsys_cam2mm1_cgpdn",
+          "camsys_cam2sys_cgpdn",
+          "camsys_yuvb_larbx_cgpdn",
+          "camsys_yuvb_cam_cgpdn",
+          "camsys_yuvb_camtg_cgpdn";
+      assigned-clocks = <&topckgen CLK_TOP_CAM>;
+      assigned-clock-parents = <&topckgen CLK_TOP_UNIVPLL_D5>;
+      iommus = <&vdo_iommu M4U_PORT_L17B_YUVO_R1>,
+           <&vdo_iommu M4U_PORT_L17B_YUVO_R3>,
+           <&vdo_iommu M4U_PORT_L17B_YUVCO_R1>,
+           <&vdo_iommu M4U_PORT_L17B_YUVO_R2>,
+           <&vdo_iommu M4U_PORT_L17B_RZH1N2TO_R1>,
+           <&vdo_iommu M4U_PORT_L17B_DRZS4NO_R1>,
+           <&vdo_iommu M4U_PORT_L17B_TNCSO_R1>;
+    };
+
+...

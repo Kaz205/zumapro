@@ -392,6 +392,18 @@ static int __add_cma_heap(struct cma *cma, void *data)
 	return 0;
 }
 
+/* add device CMA heap to dmabuf heaps */
+int dma_heap_add_cma(struct device *dev)
+{
+	struct cma *cma = dev_get_cma_area(dev);
+
+	if (!cma)
+		return -ENOMEM;
+
+	return __add_cma_heap(cma, NULL);
+}
+EXPORT_SYMBOL_GPL(dma_heap_add_cma);
+
 static int add_default_cma_heap(void)
 {
 	struct cma *default_cma = dev_get_cma_area(NULL);

@@ -142,6 +142,18 @@ properties:
       compatible:
         const: google,cros-cbas
 
+      disable-whisker-input:
+        description:
+          If present, disables the Whisker tablet mode switch device.
+        type: boolean
+
+      hid-i2c-tp:
+        $ref: /schemas/types.yaml#/definitions/phandle-array
+        maxItems: 1
+        description:
+          phandle to a hid-i2c trackpad node that need to be dynamically
+          added/removed when base state change to simulate hotplugging.
+
     required:
       - compatible
 

@@ -36,7 +36,13 @@ def is_chromium_only(files):
     for file in files:
         file = os.path.relpath(file, repo_path)
         if not file.startswith(
-            ("chromeos/", "OWNERS", "PRESUBMIT.cfg", "unblocked_terms.txt")
+            (
+                "chromeos/",
+                "OWNERS",
+                "PRESUBMIT.cfg",
+                "security/chromiumos/"
+                "unblocked_terms.txt"
+            )
         ):
             return False
 
@@ -58,6 +64,7 @@ def check_tech_debt(commit):
             "TEST-ONLY:",
             "BACKPORT:",
             "Revert",
+            "Reapply",
             "Reland",
         )
     ) and not commit_message.startswith("BACKPORT: FROMLIST"):

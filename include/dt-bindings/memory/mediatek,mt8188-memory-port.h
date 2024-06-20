@@ -41,6 +41,10 @@
 #define SMI_L27_ID		24
 #define SMI_L28_ID		25
 
+/* Fake LARB ID for APU */
+#define APU_L0_ID		0
+#define APU_L1_ID		1
+
 /*
  * MM IOMMU supports 16GB dma address. We separate it to four ranges:
  * 0 ~ 4G; 4G ~ 8G; 8G ~ 12G; 12G ~ 16G, we could adjust these masters
@@ -482,6 +486,24 @@
 
 /* LARB 28 -- AXI-CCU */
 #define M4U_PORT_L28_CCU_AXI_0			MTK_M4U_ID(SMI_L28_ID, 0)
+
+/*
+ * modules	dma-address-region
+ * APU SECURE	2M ~ 514M
+ * APU CODE	1G ~ 4G
+ * APU VLM	1.75G ~ 2G
+ * APU VPU	4G ~ 16G
+ */
+/* APU 0 */
+#define M4U_PORT_L0_APU_CODE			MTK_M4U_ID(APU_L0_ID, 0)
+#define M4U_PORT_L0_APU_DATA			MTK_M4U_ID(APU_L0_ID, 1)
+#define M4U_PORT_L0_APU_SECURE			MTK_M4U_ID(APU_L0_ID, 2)
+#define M4U_PORT_L0_APU_VLM			MTK_M4U_ID(APU_L0_ID, 3)
+/* APU 1 */
+#define M4U_PORT_L1_APU_CODE			MTK_M4U_ID(APU_L1_ID, 0)
+#define M4U_PORT_L1_APU_DATA			MTK_M4U_ID(APU_L1_ID, 1)
+#define M4U_PORT_L1_APU_SECURE			MTK_M4U_ID(APU_L1_ID, 2)
+#define M4U_PORT_L1_APU_VLM			MTK_M4U_ID(APU_L1_ID, 3)
 
 /* infra/peri */
 #define IFR_IOMMU_PORT_PCIE_0			MTK_IFAIOMMU_PERI_ID(0)
