@@ -371,6 +371,7 @@ struct iwl_mvm_vif_link_info {
  * @IWL_MVM_ESR_EXIT_BANDWIDTH: Bandwidths of primary and secondry links
  *	preventing the enablement of EMLSR
  * @IWL_MVM_ESR_EXIT_CSA: CSA happened, so exit EMLSR
+ * @IWL_MVM_ESR_EXIT_RFI: EMLSR not allowed due to RFI
  */
 enum iwl_mvm_esr_state {
 	IWL_MVM_ESR_BLOCKED_PREVENTION	= 0x1,
@@ -383,6 +384,7 @@ enum iwl_mvm_esr_state {
 	IWL_MVM_ESR_EXIT_COEX		= 0x40000,
 	IWL_MVM_ESR_EXIT_BANDWIDTH	= 0x80000,
 	IWL_MVM_ESR_EXIT_CSA		= 0x100000,
+	IWL_MVM_ESR_EXIT_RFI		= 0x200000,
 };
 
 #define IWL_MVM_BLOCK_ESR_REASONS 0xffff
@@ -925,6 +927,35 @@ struct iwl_time_sync_data {
 	bool active;
 };
 
+/**
+ * struct iwl_mvm_acs_survey_channel - per-channel survey information
+ *
+ * Stripped down version of &struct survey_info.
+ *
+ * @time: time in ms the radio was on the channel
+ * @time_busy: time in ms the channel was sensed busy
+ * @time_tx: time in ms spent transmitting data
+ * @time_rx: time in ms spent receiving data
+ * @noise: channel noise in dBm
+ */
+struct iwl_mvm_acs_survey_channel {
+	u32 time;
+	u32 time_busy;
+	u32 time_tx;
+	u32 time_rx;
+	s8 noise;
+};
+
+struct iwl_mvm_acs_survey {
+	struct iwl_mvm_acs_survey_channel *bands[NUM_NL80211_BANDS];
+
+	/* Overall number of channels */
+	int n_channels;
+
+	/* Storage space for per-channel information follows */
+	struct iwl_mvm_acs_survey_channel channels[] __counted_by(n_channels);
+};
+
 struct iwl_mvm {
 	/* for logger access */
 	struct device *dev;
@@ -943,6 +974,8 @@ struct iwl_mvm {
 
 	/* For async rx handlers that require the wiphy lock */
 	struct wiphy_work async_handlers_wiphy_wk;
+
+	struct wiphy_work trig_link_selection_wk;
 
 	struct work_struct roc_done_wk;
 
@@ -1329,6 +1362,8 @@ struct iwl_mvm {
 
 	struct iwl_time_sync_data time_sync;
 
+	struct iwl_mvm_acs_survey *acs_survey;
+
 	/* Firmware RFI state &enum iwl_rfi_support_reason */
 	u32 fw_rfi_state;
 	bool pldr_sync;
@@ -1337,6 +1372,7 @@ struct iwl_mvm {
 	bool statistics_clear;
 	struct iwl_rfi_config_cmd *iwl_prev_rfi_config_cmd;
 	bool bios_enable_rfi;
+	void *iwl_rfi_subset_table;
 };
 
 /* Extract MVM priv from op_mode and _hw */
@@ -1978,7 +2014,8 @@ void iwl_mvm_set_fw_protection_flags(struct iwl_mvm *mvm,
 				     u32 tgg_flag);
 void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			       struct ieee80211_bss_conf *link_conf,
-			       struct iwl_ac_qos *ac, __le32 *qos_flags);
+			       struct iwl_ac_qos *ac, __le32 *qos_flags,
+			       int version);
 bool iwl_mvm_set_fw_mu_edca_params(struct iwl_mvm *mvm,
 				   const struct iwl_mvm_vif_link_info *link_info,
 				   struct iwl_he_backoff_conf *trig_based_txf);
@@ -2158,6 +2195,8 @@ int iwl_mvm_max_scan_ie_len(struct iwl_mvm *mvm);
 void iwl_mvm_report_scan_aborted(struct iwl_mvm *mvm);
 void iwl_mvm_scan_timeout_wk(struct work_struct *work);
 int iwl_mvm_int_mlo_scan(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+void iwl_mvm_rx_channel_survey_notif(struct iwl_mvm *mvm,
+				     struct iwl_rx_cmd_buffer *rxb);
 
 /* Scheduled scan */
 void iwl_mvm_rx_lmac_scan_complete_notif(struct iwl_mvm *mvm,
@@ -2612,6 +2651,10 @@ int iwl_rfi_send_config_cmd(struct iwl_mvm *mvm,
 			    struct iwl_rfi_ddr_lut_entry *rfi_table,
 			    bool is_set_master_cmd, bool force_send_table);
 void *iwl_rfi_get_freq_table(struct iwl_mvm *mvm);
+u32
+iwl_mvm_rfi_esr_state_link_pair(struct ieee80211_vif *vif,
+				const struct iwl_mvm_link_sel_data *a,
+				const struct iwl_mvm_link_sel_data *b);
 void iwl_rfi_support_notif_handler(struct iwl_mvm *mvm,
 				   struct iwl_rx_cmd_buffer *rxb);
 
@@ -2633,6 +2676,23 @@ static inline u8 iwl_mvm_phy_band_from_nl80211(enum nl80211_band band)
 	default:
 		WARN_ONCE(1, "Unsupported band (%u)\n", band);
 		return PHY_BAND_5;
+	}
+}
+
+static inline u8 iwl_mvm_nl80211_band_from_phy(u8 phy_band)
+{
+	switch (phy_band) {
+	case PHY_BAND_24:
+		return NL80211_BAND_2GHZ;
+	case PHY_BAND_5:
+		return NL80211_BAND_5GHZ;
+#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
+	case PHY_BAND_6:
+		return NL80211_BAND_6GHZ;
+#endif
+	default:
+		WARN_ONCE(1, "Unsupported phy band (%u)\n", phy_band);
+		return NL80211_BAND_5GHZ;
 	}
 }
 
