@@ -479,7 +479,8 @@ void iwl_mvm_set_fw_protection_flags(struct iwl_mvm *mvm,
 
 void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			       struct ieee80211_bss_conf *link_conf,
-			       struct iwl_ac_qos *ac, __le32 *qos_flags)
+			       struct iwl_ac_qos *ac, __le32 *qos_flags,
+			       int version)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm_vif_link_info *mvm_link =
@@ -500,7 +501,10 @@ void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		ac[ucode_ac].edca_txop =
 			cpu_to_le16(mvm_link->queue_params[i].txop * 32);
 		ac[ucode_ac].aifsn = mvm_link->queue_params[i].aifs;
-		ac[ucode_ac].fifos_mask = BIT(txf);
+
+		/* FIFOs mask is reserved in version 3 */
+		if (version < 3)
+			ac[ucode_ac].fifos_mask = BIT(txf);
 	}
 
 	if (link_conf->qos)
@@ -576,7 +580,7 @@ static void iwl_mvm_mac_ctxt_cmd_common(struct iwl_mvm *mvm,
 	cmd->filter_flags = 0;
 
 	iwl_mvm_set_fw_qos_params(mvm, vif, &vif->bss_conf, cmd->ac,
-				  &cmd->qos_flags);
+				  &cmd->qos_flags, 2);
 
 	/* The fw does not distinguish between ht and fat */
 	ht_flag = MAC_PROT_FLG_HT_PROT | MAC_PROT_FLG_FAT_PROT;
@@ -1175,6 +1179,13 @@ static int iwl_mvm_mac_ctxt_send_beacon_v9(struct iwl_mvm *mvm,
 		cpu_to_le32(iwl_mvm_find_ie_offset(beacon->data,
 						   WLAN_EID_EXT_CHANSWITCH_ANN,
 						   beacon->len));
+
+	if (vif->type == NL80211_IFTYPE_AP &&
+	    iwl_fw_lookup_cmd_ver(mvm->fw, BEACON_TEMPLATE_CMD, 0) >= 14)
+		beacon_cmd.btwt_offset =
+			cpu_to_le32(iwl_mvm_find_ie_offset(beacon->data,
+							   WLAN_EID_S1G_TWT,
+							   beacon->len));
 
 	return iwl_mvm_mac_ctxt_send_beacon_cmd(mvm, beacon, &beacon_cmd,
 						sizeof(beacon_cmd));

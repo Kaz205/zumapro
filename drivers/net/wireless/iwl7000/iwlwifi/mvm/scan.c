@@ -1305,7 +1305,7 @@ static void iwl_mvm_scan_umac_dwell(struct iwl_mvm *mvm,
 		if (IWL_MVM_ADWELL_MAX_BUDGET)
 			cmd->v7.adwell_max_budget =
 				cpu_to_le16(IWL_MVM_ADWELL_MAX_BUDGET);
-		else if (params->ssids && params->ssids[0].ssid_len)
+		else if (params->n_ssids && params->ssids[0].ssid_len)
 			cmd->v7.adwell_max_budget =
 				cpu_to_le16(IWL_SCAN_ADWELL_MAX_BUDGET_DIRECTED_SCAN);
 		else
@@ -1410,7 +1410,7 @@ iwl_mvm_scan_umac_dwell_v11(struct iwl_mvm *mvm,
 	if (IWL_MVM_ADWELL_MAX_BUDGET)
 		general_params->adwell_max_budget =
 			cpu_to_le16(IWL_MVM_ADWELL_MAX_BUDGET);
-	else if (params->ssids && params->ssids[0].ssid_len)
+	else if (params->n_ssids && params->ssids[0].ssid_len)
 		general_params->adwell_max_budget =
 			cpu_to_le16(IWL_SCAN_ADWELL_MAX_BUDGET_DIRECTED_SCAN);
 	else
@@ -1732,7 +1732,10 @@ iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
 				break;
 		}
 
-		if (k == idex_b && idex_b < SCAN_BSSID_MAX_SIZE) {
+		if (k == idex_b && idex_b < SCAN_BSSID_MAX_SIZE &&
+		    !WARN_ONCE(!is_valid_ether_addr(scan_6ghz_params[j].bssid),
+			       "scan: invalid BSSID at index %u, index_b=%u\n",
+			       j, idex_b)) {
 			memcpy(&pp->bssid_array[idex_b++],
 			       scan_6ghz_params[j].bssid, ETH_ALEN);
 		}
@@ -2163,7 +2166,8 @@ static u16 iwl_mvm_scan_umac_flags_v2(struct iwl_mvm *mvm,
 
 static u8 iwl_mvm_scan_umac_flags2(struct iwl_mvm *mvm,
 				   struct iwl_mvm_scan_params *params,
-				   struct ieee80211_vif *vif, int type)
+				   struct ieee80211_vif *vif, int type,
+				   u16 gen_flags)
 {
 	u8 flags = 0;
 
@@ -2182,6 +2186,9 @@ static u8 iwl_mvm_scan_umac_flags2(struct iwl_mvm *mvm,
 	    fw_has_capa(&mvm->fw->ucode_capa,
 			IWL_UCODE_TLV_CAPA_SCAN_DONT_TOGGLE_ANT))
 		flags |= IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_DONT_TOGGLE_ANT;
+
+	if (gen_flags & IWL_UMAC_SCAN_GEN_FLAGS_V2_FORCE_PASSIVE)
+		flags |= IWL_UMAC_SCAN_GEN_FLAGS2_COLLECT_CHANNEL_STATS;
 
 	return flags;
 }
@@ -2320,8 +2327,6 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	iwl_mvm_scan_umac_dwell(mvm, cmd, params);
 
-	mvm->scan_uid_status[uid] = type;
-
 	cmd->uid = cpu_to_le32(uid);
 	gen_flags = iwl_mvm_scan_umac_flags(mvm, params, vif);
 	cmd->general_flags = cpu_to_le16(gen_flags);
@@ -2362,10 +2367,8 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	ret = iwl_mvm_fill_scan_sched_params(params, tail_v2->schedule,
 					     &tail_v2->delay);
-	if (ret) {
-		mvm->scan_uid_status[uid] = 0;
+	if (ret)
 		return ret;
-	}
 
 	if (iwl_mvm_is_scan_ext_chan_supported(mvm)) {
 		tail_v2->preq = params->preq;
@@ -2520,8 +2523,6 @@ static int iwl_mvm_scan_umac_v12(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	int ret;
 	u16 gen_flags;
 
-	mvm->scan_uid_status[uid] = type;
-
 	cmd->ooc_priority = cpu_to_le32(iwl_mvm_scan_umac_ooc_priority(type));
 	cmd->uid = cpu_to_le32(uid);
 
@@ -2557,15 +2558,14 @@ static int iwl_mvm_scan_umac_v14_and_above(struct iwl_mvm *mvm,
 	u8 gen_flags2;
 	u32 bitmap_ssid = 0;
 
-	mvm->scan_uid_status[uid] = type;
-
 	cmd->ooc_priority = cpu_to_le32(iwl_mvm_scan_umac_ooc_priority(type));
 	cmd->uid = cpu_to_le32(uid);
 
 	gen_flags = iwl_mvm_scan_umac_flags_v2(mvm, params, vif, type);
 
 	if (version >= 15)
-		gen_flags2 = iwl_mvm_scan_umac_flags2(mvm, params, vif, type);
+		gen_flags2 = iwl_mvm_scan_umac_flags2(mvm, params, vif, type,
+						      gen_flags);
 	else
 		gen_flags2 = 0;
 
@@ -2603,10 +2603,8 @@ static int iwl_mvm_scan_umac_v14_and_above(struct iwl_mvm *mvm,
 							 params->n_channels,
 							 pb, cp, vif->type,
 							 version);
-	if (!cp->count) {
-		mvm->scan_uid_status[uid] = 0;
+	if (!cp->count)
 		return -EINVAL;
-	}
 
 	if (!params->n_ssids ||
 	    (params->n_ssids == 1 && !params->ssids[0].ssid_len))
@@ -2989,11 +2987,13 @@ static int _iwl_mvm_single_scan_start(struct iwl_mvm *mvm,
 		 */
 		IWL_ERR(mvm, "Scan failed! ret %d\n", ret);
 		iwl_mvm_resume_tcm(mvm);
-		mvm->scan_uid_status[uid] = 0;
 		return ret;
 	}
 
-	IWL_DEBUG_SCAN(mvm, "Scan request was sent successfully\n");
+	IWL_DEBUG_SCAN(mvm, "Scan request send success: type=%u, uid=%u\n",
+		       type, uid);
+
+	mvm->scan_uid_status[uid] = type;
 	mvm->scan_status |= type;
 
 	if (type == IWL_MVM_SCAN_REGULAR) {
@@ -3131,7 +3131,9 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 	ret = iwl_mvm_send_cmd(mvm, &hcmd);
 	if (!ret) {
 		IWL_DEBUG_SCAN(mvm,
-			       "Sched scan request was sent successfully\n");
+			       "Sched scan request send success: type=%u, uid=%u\n",
+			       type, uid);
+		mvm->scan_uid_status[uid] = type;
 		mvm->scan_status |= type;
 	} else {
 		/* If the scan failed, it usually means that the FW was unable
@@ -3139,28 +3141,10 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 		 * should try to send the command again with different params.
 		 */
 		IWL_ERR(mvm, "Sched scan failed! ret %d\n", ret);
-		mvm->scan_uid_status[uid] = 0;
 		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_DISABLED;
 	}
 
 	return ret;
-}
-
-static void iwl_mvm_find_link_selection_vif(void *_data, u8 *mac,
-					    struct ieee80211_vif *vif)
-{
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-
-	if (ieee80211_vif_is_mld(vif) && mvmvif->authorized)
-		iwl_mvm_select_links(mvmvif->mvm, vif);
-}
-
-static void iwl_mvm_post_scan_link_selection(struct iwl_mvm *mvm)
-{
-	ieee80211_iterate_active_interfaces(mvm->hw,
-					    IEEE80211_IFACE_ITER_NORMAL,
-					    iwl_mvm_find_link_selection_vif,
-					    NULL);
 }
 
 void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
@@ -3171,6 +3155,21 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 	u32 uid = __le32_to_cpu(notif->uid);
 	bool aborted = (notif->status == IWL_SCAN_OFFLOAD_ABORTED);
 	bool select_links = false;
+
+	IWL_DEBUG_SCAN(mvm,
+		       "Scan completed: uid=%u type=%u, status=%s, EBS=%s\n",
+		       uid, mvm->scan_uid_status[uid],
+		       notif->status == IWL_SCAN_OFFLOAD_COMPLETED ?
+				"completed" : "aborted",
+		       iwl_mvm_ebs_status_str(notif->ebs_status));
+
+	IWL_DEBUG_SCAN(mvm, "Scan completed: scan_status=0x%x\n",
+		       mvm->scan_status);
+
+	IWL_DEBUG_SCAN(mvm,
+		       "Scan completed: line=%u, iter=%u, elapsed time=%u\n",
+		       notif->last_schedule, notif->last_iter,
+		       __le32_to_cpu(notif->time_from_last_iter));
 
 	if (WARN_ON(!(mvm->scan_uid_status[uid] & mvm->scan_status)))
 		return;
@@ -3210,16 +3209,9 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 	}
 
 	mvm->scan_status &= ~mvm->scan_uid_status[uid];
-	IWL_DEBUG_SCAN(mvm,
-		       "Scan completed, uid %u type %u, status %s, EBS status %s\n",
-		       uid, mvm->scan_uid_status[uid],
-		       notif->status == IWL_SCAN_OFFLOAD_COMPLETED ?
-				"completed" : "aborted",
-		       iwl_mvm_ebs_status_str(notif->ebs_status));
-	IWL_DEBUG_SCAN(mvm,
-		       "Last line %d, Last iteration %d, Time from last iteration %d\n",
-		       notif->last_schedule, notif->last_iter,
-		       __le32_to_cpu(notif->time_from_last_iter));
+
+	IWL_DEBUG_SCAN(mvm, "Scan completed: after update: scan_status=0x%x\n",
+		       mvm->scan_status);
 
 	if (notif->ebs_status != IWL_SCAN_EBS_SUCCESS &&
 	    notif->ebs_status != IWL_SCAN_EBS_INACTIVE)
@@ -3228,7 +3220,7 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 	mvm->scan_uid_status[uid] = 0;
 
 	if (select_links)
-		iwl_mvm_post_scan_link_selection(mvm);
+		wiphy_work_queue(mvm->hw->wiphy, &mvm->trig_link_selection_wk);
 }
 
 void iwl_mvm_rx_umac_scan_iter_complete_notif(struct iwl_mvm *mvm,
@@ -3453,6 +3445,10 @@ int iwl_mvm_scan_stop(struct iwl_mvm *mvm, int type, bool notify)
 {
 	int ret;
 
+	IWL_DEBUG_SCAN(mvm,
+		       "Request to stop scan: type=0x%x, status=0x%x\n",
+		       type, mvm->scan_status);
+
 	if (!(mvm->scan_status & type))
 		return 0;
 
@@ -3464,6 +3460,9 @@ int iwl_mvm_scan_stop(struct iwl_mvm *mvm, int type, bool notify)
 	ret = iwl_mvm_scan_stop_wait(mvm, type);
 	if (!ret)
 		mvm->scan_status |= type << IWL_MVM_SCAN_STOPPING_SHIFT;
+	else
+		IWL_DEBUG_SCAN(mvm, "Failed to stop scan\n");
+
 out:
 	/* Clear the scan status so the next scan requests will
 	 * succeed and mark the scan as stopping, so that the Rx
@@ -3569,4 +3568,195 @@ int iwl_mvm_int_mlo_scan(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		return -EINVAL;
 
 	return iwl_mvm_int_mlo_scan_start(mvm, vif, channels, n_channels);
+}
+
+static int iwl_mvm_chanidx_from_phy(struct iwl_mvm *mvm,
+				    enum nl80211_band band,
+				    u16 phy_chan_num)
+{
+	struct ieee80211_supported_band *sband = mvm->hw->wiphy->bands[band];
+	int chan_idx;
+
+	if (WARN_ON_ONCE(!sband))
+		return -EINVAL;
+
+	for (chan_idx = 0; chan_idx < sband->n_channels; chan_idx++) {
+		struct ieee80211_channel *channel = &sband->channels[chan_idx];
+
+		if (channel->hw_value == phy_chan_num)
+			return chan_idx;
+	}
+
+	return -EINVAL;
+}
+
+static u32 iwl_mvm_div_by_db(u32 value, u8 db)
+{
+	/*
+	 * 2^32 * 10**(i / 10) for i = [1, 10], skipping 0 and simply stopping
+	 * at 10 dB and looping instead of using a much larger table.
+	 *
+	 * Using 64 bit math is overkill, but means the helper does not require
+	 * a limit on the input range.
+	 */
+	static const u32 db_to_val[] = {
+		0xcb59185e, 0xa1866ba8, 0x804dce7a, 0x65ea59fe, 0x50f44d89,
+		0x404de61f, 0x331426af, 0x2892c18b, 0x203a7e5b, 0x1999999a,
+	};
+
+	while (value && db > 0) {
+		u8 change = min_t(u8, db, ARRAY_SIZE(db_to_val));
+
+		value = (((u64)value) * db_to_val[change - 1]) >> 32;
+
+		db -= change;
+	}
+
+	return value;
+}
+
+VISIBLE_IF_IWLWIFI_KUNIT s8
+iwl_mvm_average_dbm_values(const struct iwl_umac_scan_channel_survey_notif *notif)
+{
+	s8 average_magnitude;
+	u32 average_factor;
+	s8 sum_magnitude = -128;
+	u32 sum_factor = 0;
+	int i, count = 0;
+
+	/*
+	 * To properly average the decibel values (signal values given in dBm)
+	 * we need to do the math in linear space.  Doing a linear average of
+	 * dB (dBm) values is a bit annoying though due to the large range of
+	 * at least -10 to -110 dBm that will not fit into a 32 bit integer.
+	 *
+	 * A 64 bit integer should be sufficient, but then we still have the
+	 * problem that there are no directly usable utility functions
+	 * available.
+	 *
+	 * So, lets not deal with that and instead do much of the calculation
+	 * with a 16.16 fixed point integer along with a base in dBm. 16.16 bit
+	 * gives us plenty of head-room for adding up a few values and even
+	 * doing some math on it. And the tail should be accurate enough too
+	 * (1/2^16 is somewhere around -48 dB, so effectively zero).
+	 *
+	 * i.e. the real value of sum is:
+	 *      sum = sum_factor / 2^16 * 10^(sum_magnitude / 10) mW
+	 *
+	 * However, that does mean we need to be able to bring two values to
+	 * a common base, so we need a helper for that.
+	 *
+	 * Note that this function takes an input with unsigned negative dBm
+	 * values but returns a signed dBm (i.e. a negative value).
+	 */
+
+	for (i = 0; i < ARRAY_SIZE(notif->noise); i++) {
+		s8 val_magnitude;
+		u32 val_factor;
+
+		if (notif->noise[i] == 0xff)
+			continue;
+
+		val_factor = 0x10000;
+		val_magnitude = -notif->noise[i];
+
+		if (val_magnitude <= sum_magnitude) {
+			u8 div_db = sum_magnitude - val_magnitude;
+
+			val_factor = iwl_mvm_div_by_db(val_factor, div_db);
+			val_magnitude = sum_magnitude;
+		} else {
+			u8 div_db = val_magnitude - sum_magnitude;
+
+			sum_factor = iwl_mvm_div_by_db(sum_factor, div_db);
+			sum_magnitude = val_magnitude;
+		}
+
+		sum_factor += val_factor;
+		count++;
+	}
+
+	/* No valid noise measurement, return a very high noise level */
+	if (count == 0)
+		return 0;
+
+	average_magnitude = sum_magnitude;
+	average_factor = sum_factor / count;
+
+	/*
+	 * average_factor will be a number smaller than 1.0 (0x10000) at this
+	 * point. What we need to do now is to adjust average_magnitude so that
+	 * average_factor is between -0.5 dB and 0.5 dB.
+	 *
+	 * Just do -1 dB steps and find the point where
+	 *   -0.5 dB * -i dB = 0x10000 * 10^(-0.5/10) / i dB
+	 *                   = div_by_db(0xe429, i)
+	 * is smaller than average_factor.
+	 */
+	for (i = 0; average_factor < iwl_mvm_div_by_db(0xe429, i); i++) {
+		/* nothing */
+	}
+
+	return average_magnitude - i;
+}
+EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mvm_average_dbm_values);
+
+void iwl_mvm_rx_channel_survey_notif(struct iwl_mvm *mvm,
+				     struct iwl_rx_cmd_buffer *rxb)
+{
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	const struct iwl_umac_scan_channel_survey_notif *notif =
+		(void *)pkt->data;
+	struct iwl_mvm_acs_survey_channel *info;
+	enum nl80211_band band;
+	int chan_idx;
+
+	lockdep_assert_held(&mvm->mutex);
+
+	if (!mvm->acs_survey) {
+		size_t n_channels = 0;
+
+		for (band = 0; band < NUM_NL80211_BANDS; band++) {
+			if (!mvm->hw->wiphy->bands[band])
+				continue;
+
+			n_channels += mvm->hw->wiphy->bands[band]->n_channels;
+		}
+
+		mvm->acs_survey = kzalloc(struct_size(mvm->acs_survey,
+						      channels, n_channels),
+					  GFP_KERNEL);
+
+		if (!mvm->acs_survey)
+			return;
+
+		mvm->acs_survey->n_channels = n_channels;
+		n_channels = 0;
+		for (band = 0; band < NUM_NL80211_BANDS; band++) {
+			if (!mvm->hw->wiphy->bands[band])
+				continue;
+
+			mvm->acs_survey->bands[band] =
+				&mvm->acs_survey->channels[n_channels];
+			n_channels += mvm->hw->wiphy->bands[band]->n_channels;
+		}
+	}
+
+	band = iwl_mvm_nl80211_band_from_phy(le32_to_cpu(notif->band));
+	chan_idx = iwl_mvm_chanidx_from_phy(mvm, band,
+					    le32_to_cpu(notif->channel));
+	if (WARN_ON_ONCE(chan_idx < 0))
+		return;
+
+	IWL_DEBUG_SCAN(mvm, "channel survey received for freq %d\n",
+		       mvm->hw->wiphy->bands[band]->channels[chan_idx].center_freq);
+
+	info = &mvm->acs_survey->bands[band][chan_idx];
+
+	/* Times are all in ms */
+	info->time = le32_to_cpu(notif->active_time);
+	info->time_busy = le32_to_cpu(notif->busy_time);
+	info->time_rx = le32_to_cpu(notif->rx_time);
+	info->time_tx = le32_to_cpu(notif->tx_time);
+	info->noise = iwl_mvm_average_dbm_values(notif);
 }

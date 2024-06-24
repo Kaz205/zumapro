@@ -33,7 +33,7 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 	/* Allocate resources for the MAC context, and add it to the fw  */
 	ret = iwl_mvm_mac_ctxt_init(mvm, vif);
 	if (ret)
-		return ret;
+		goto out_unlock;
 
 	rcu_assign_pointer(mvm->vif_id_to_mac[mvmvif->id], vif);
 
@@ -95,6 +95,9 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 		mvm->csme_vif = vif;
 	}
 
+	if (vif->p2p || iwl_fw_lookup_cmd_ver(mvm->fw, PHY_CONTEXT_CMD, 1) < 5)
+		vif->driver_flags |= IEEE80211_VIF_IGNORE_OFDMA_WIDER_BW;
+
 	goto out_unlock;
 
  out_free_bf:
@@ -127,7 +130,7 @@ static void iwl_mvm_mld_mac_remove_interface(struct ieee80211_hw *hw,
 		if (wdev && WARN_ON(wdev_running(wdev)))
 			iwl_mvm_stop_nan(hw, vif);
 
-		goto out;
+		return;
 	}
 
 	if (!(vif->type == NL80211_IFTYPE_AP ||
@@ -208,7 +211,6 @@ static void iwl_mvm_mld_mac_remove_interface(struct ieee80211_hw *hw,
 	iwl_mvm_tdls_peer_cache_clear(mvm, vif);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
-out:
 	mutex_unlock(&mvm->mutex);
 }
 

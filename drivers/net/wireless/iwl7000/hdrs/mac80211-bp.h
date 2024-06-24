@@ -52,7 +52,7 @@ csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
 	return s->counter_offsets_presp;
 }
 
-#if CFG80211_VERSION <= KERNEL_VERSION(6,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(6,9,0)
 bool
 ieee80211_uhb_power_type_valid(struct ieee80211_mgmt *mgmt, size_t len,
 			       struct ieee80211_channel *channel);
