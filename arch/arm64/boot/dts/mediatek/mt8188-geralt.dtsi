@@ -218,7 +218,7 @@
 
 		secure_cma_reserved: secure_cma_region {
 			compatible = "mediatek,dynamic-restricted-region";
-			reg = <0 0x7F000000 0 0x100000>;
+			reg = <0 0x7F000000 0 0x400000>;
 			reusable;
 		};
 	};
