@@ -602,7 +602,7 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 		ctx->picinfo.pic_w = pix_mp->width;
 		ctx->picinfo.pic_h = pix_mp->height;
 
-		if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+		if (ctx->state != MTK_STATE_FREE)
 			ret = mtk_vcodec_dec_init_pic_info(ctx, f->type);
 	}
 
@@ -808,10 +808,12 @@ int vb2ops_vdec_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers,
 					  ctx->is_secure_playback);
 		}
 
-		ret = mtk_vcodec_dec_init_pic_info(ctx, vq->type);
-		if (ret) {
-			mtk_v4l2_vdec_err(ctx, "Failed to init picture information");
-			return ret;
+		if (ctx->state == MTK_STATE_FREE) {
+			ret = mtk_vcodec_dec_init_pic_info(ctx, vq->type);
+			if (ret) {
+				mtk_v4l2_vdec_err(ctx, "Failed to init picture information");
+				return ret;
+			}
 		}
 	}
 
