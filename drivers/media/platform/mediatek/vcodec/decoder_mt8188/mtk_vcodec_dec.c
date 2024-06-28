@@ -262,9 +262,11 @@ static int mtk_vcodec_dec_init_pic_info(struct mtk_vcodec_dec_ctx *ctx, enum v4l
 	 * v4l2-compliance will fail
 	 */
 	ret = vdec_if_get_param(ctx, GET_PARAM_PIC_INFO, &ctx->picinfo);
-	if (ret)
-		mtk_v4l2_vdec_err(ctx, "[%d]Error!! Get GET_PARAM_PICTURE_INFO Fail",
+	if (ret) {
+		mtk_v4l2_vdec_dbg(0, ctx,
+				  "[%d] Getting GET_PARAM_PICTURE_INFO failed.",
 				  ctx->id);
+	}
 
 	q_data = mtk_vdec_get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	if (q_data->fmt->num_planes == 1) {
