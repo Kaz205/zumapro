@@ -642,30 +642,6 @@ static int cmdq_sec_append_metadata(struct cmdq_pkt *pkt,
 	return 0;
 }
 
-int cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, enum cmdq_sec_scenario scenario)
-{
-	struct cmdq_sec_data *sec_data;
-	int ret;
-
-	if (!pkt) {
-		pr_err("invalid pkt:%p", pkt);
-		return -EINVAL;
-	}
-
-	ret = cmdq_sec_pkt_alloc_sec_data(pkt);
-	if (ret < 0)
-		return ret;
-
-	pr_debug("[%s %d] pkt:%p sec_data:%p scen:%u",
-		 __func__, __LINE__, pkt, pkt->sec_data, scenario);
-
-	sec_data = (struct cmdq_sec_data *)pkt->sec_data;
-	sec_data->scenario = scenario;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(cmdq_sec_pkt_set_data);
-
 int cmdq_sec_pkt_write(struct cmdq_pkt *pkt, u8 subsys, u16 offset,
 		       enum cmdq_iwc_addr_metadata_type type,
 		       u32 base, u32 base_offset)

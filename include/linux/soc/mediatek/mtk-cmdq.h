@@ -410,15 +410,6 @@ int cmdq_sec_pkt_alloc_sec_data(struct cmdq_pkt *pkt);
 int cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt);
 
 /**
- * cmdq_sec_pkt_set_data() - set secure configuration to sec_data in CDMQ packet.
- * @pkt:	the CMDQ packet.
- * @scenario:		the scenario to CMDQ TA.
- *
- * Return: 0 for success; else the error code is returned
- */
-int cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, enum cmdq_sec_scenario scenario);
-
-/**
  * cmdq_sec_pkt_write() - append write secure buffer related instructions.
  * @pkt:	  the CMDQ packet.
  * @subsys:	the CMDQ sub system code.
@@ -551,11 +542,6 @@ static inline int cmdq_sec_pkt_alloc_sec_data(struct cmdq_pkt *pkt)
 }
 
 static inline int cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
-{
-	return -EINVAL;
-}
-
-static inline int cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, enum cmdq_sec_scenario scenario)
 {
 	return -EINVAL;
 }
