@@ -11,7 +11,7 @@
 #define GC08A3_GT9769  0
 
 &seninf_top {
-		seninf_csi_port_1: csi_receiver@1 {
+		seninf_csi_port_1: csi-receiver@1 {
 			compatible = "mediatek,seninf";
 			hs_trail_parameter = <0x28>;
 			csi-port = "1";
@@ -26,7 +26,7 @@
 				};
 			};
 		};
-		seninf_csi_port_0: csi_receiver@0 {
+		seninf_csi_port_0: csi-receiver@0 {
 			compatible = "mediatek,seninf";
 			csi-port = "0";
 			port {
@@ -44,22 +44,22 @@
 
 &pio {
 	camera_pins_cam1: cam1@1 {
-		pins_cmd_dat {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO23__FUNC_O_CMMCLK1>;
 			drive-strength = <MTK_DRIVE_2mA>;
 		};
-		pins_dvdd_en {
+		pins-dvdd-en {
 			pinmux = <PINMUX_GPIO140__FUNC_B_GPIO140>;
 			output-high;
 		};
 	};
 
 	camera_pins_cam0: cam0@0 {
-		pins_cmd_dat {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO22__FUNC_O_CMMCLK0>;
 			drive-strength = <MTK_DRIVE_2mA>;
 		};
-		pins_dvdd_en {
+		pins-dvdd-en {
 			pinmux = <PINMUX_GPIO142__FUNC_B_GPIO142>;
 			output-high;
 		};
@@ -86,7 +86,7 @@
 	};
 #endif
 
-	camera_main_sensor@20 {
+	camera-main-sensor@20 {
 		compatible = "hynix,hi1339";
 		reg = <0x20>;
 
@@ -127,7 +127,7 @@
 	};
 #endif
 
-	camera_main_sensor@31 {
+	camera-main-sensor@31 {
 		compatible = "galaxycore,gc08a3";
 		reg = <0x31>;
 
@@ -171,7 +171,7 @@
 	clock-frequency = <400000>;
 
     //================================================
-	camera_sub_sensor@31 {
+	camera-sub-sensor@31 {
 		compatible = "galaxycore,gc08a3";
 		reg = <0x31>;
 
@@ -198,7 +198,7 @@
     //================================================
 
     //================================================
-	camera_sub_sensor@37 {
+	camera-sub-sensor@37 {
 		compatible =  "galaxycore,gc05a2";
 		reg = <0x37>;
 
