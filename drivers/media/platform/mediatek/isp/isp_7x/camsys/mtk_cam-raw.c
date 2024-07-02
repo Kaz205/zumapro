@@ -2449,8 +2449,6 @@ static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 	unsigned int i;
 
 	pipe = container_of(sd, struct mtk_raw_pipeline, subdev);
-	if (!pipe)
-		return -1;
 	raw = pipe->raw;
 	if (!raw)
 		return -1;

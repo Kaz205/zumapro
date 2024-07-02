@@ -3305,7 +3305,7 @@ int mtk_cam_call_seninf_set_pixelmode(struct mtk_cam_ctx *ctx,
 int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx, struct mtk_cam_video_device *node)
 {
 	struct mtk_cam_device *cam = ctx->cam;
-	struct device *dev, *mem_dev;
+	struct device *dev;
 	struct mtk_raw_device *raw_dev;
 	int i, ret;
 	int tgo_pxl_mode;
@@ -3332,23 +3332,14 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx, struct mtk_cam_video_device *
 
 	if (ctx->used_raw_num) {
 		tgo_pxl_mode = ctx->pipe->res_config.tgo_pxl_mode;
-		if (is_yuv_node(node->desc.id))
-			mem_dev = cam->raw.yuvs[0];
-		else
-			mem_dev = cam->raw.devs[0];
-
-		if (ret) {
-			dev_info(dev, "failed to reserve DMA memory:%d\n", ret);
-			goto fail_img_buf_release;
-		}
 
 		ret = mtk_cam_dev_config(ctx);
 		if (ret)
-			goto fail_img_buf_release;
+			goto fail_pipe_off;
 		dev = mtk_cam_find_raw_dev(cam, ctx->used_raw_dev);
 		if (!dev) {
 			dev_info(cam->dev, "streamon raw device not found\n");
-			goto fail_img_buf_release;
+			goto fail_pipe_off;
 		}
 		raw_dev = dev_get_drvdata(dev);
 
@@ -3366,7 +3357,7 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx, struct mtk_cam_video_device *
 		if (ret) {
 			dev_info(cam->dev, "failed to stream on seninf %s:%d\n",
 				 ctx->seninf->name, ret);
-			goto fail_img_buf_release;
+			goto fail_pipe_off;
 		}
 	} else {
 		ctx->processing_buffer_list.cnt = 0;
@@ -3424,9 +3415,6 @@ fail_streaming_off:
 	spin_unlock(&ctx->streaming_lock);
 	if (!mtk_cam_is_m2m(ctx))
 		v4l2_subdev_call(ctx->seninf, video, s_stream, 0);
-fail_img_buf_release:
-	if (ctx->img_buf_pool.working_img_buf_size > 0)
-		mtk_cam_img_working_buf_pool_release(ctx, mem_dev);
 fail_pipe_off:
 	for (i = 0; i < MAX_PIPES_PER_STREAM && ctx->pipe_subdevs[i]; i++)
 		v4l2_subdev_call(ctx->pipe_subdevs[i], video, s_stream, 0);
