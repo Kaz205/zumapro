@@ -1638,11 +1638,16 @@ static int timer_setsensor(int fps_ratio)
 int mtk_camsys_ctrl_start(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_camsys_sensor_ctrl *camsys_sensor_ctrl = &ctx->sensor_ctrl;
-	struct v4l2_subdev_frame_interval fi;
+	struct v4l2_subdev_frame_interval fi = {
+		.pad = 0,
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int fps_factor = 1;
 
 	if (ctx->used_raw_num) {
-		fi.pad = 0;
 		v4l2_subdev_call(ctx->sensor, video, g_frame_interval, &fi);
 		fps_factor = (fi.interval.numerator > 0) ?
 				(fi.interval.denominator / fi.interval.numerator / 30) : 1;
@@ -1684,7 +1689,13 @@ int mtk_camsys_ctrl_start(struct mtk_cam_ctx *ctx)
 void mtk_camsys_ctrl_update(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_camsys_sensor_ctrl *camsys_sensor_ctrl = &ctx->sensor_ctrl;
-	struct v4l2_subdev_frame_interval fi;
+	struct v4l2_subdev_frame_interval fi = {
+		.pad = 0,
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int fps_factor = 1;
 
 	if (ctx->used_raw_num) {

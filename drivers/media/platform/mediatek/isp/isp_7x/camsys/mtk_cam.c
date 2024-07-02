@@ -3553,7 +3553,7 @@ static int config_bridge_pad_links(struct mtk_cam_device *cam,
 static int mtk_cam_create_links(struct mtk_cam_device *cam)
 {
 	struct v4l2_subdev *sd;
-	int ret;
+	int ret = 0;
 
 	v4l2_device_for_each_subdev(sd, &cam->v4l2_dev) {
 		if (sd->entity.function == MEDIA_ENT_F_VID_IF_BRIDGE)

@@ -574,7 +574,12 @@ static int mtk_cam_raw_try_ctrl(struct v4l2_ctrl *ctrl)
 	struct device *dev;
 	struct mtk_raw_pipeline *pipeline;
 	struct mtk_cam_resource *res_user;
-	struct mtk_cam_resource_config res_cfg;
+	struct mtk_cam_resource_config res_cfg = {
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int ret = 0;
 
 	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
