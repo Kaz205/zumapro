@@ -1348,9 +1348,9 @@ static int seninf_parse_endpoint(struct device *dev,
 		    remote_lanes <= vep->bus.mipi_csi2.num_data_lanes)
 			s_asd->lanes = remote_lanes;
 
+		fwnode_handle_put(remote_hnd);
 		dev_dbg(dev, "Got remote node lanes:%d\n", remote_lanes);
 	}
-	fwnode_handle_put(remote_hnd);
 
 	return 0;
 }

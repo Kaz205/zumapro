@@ -910,10 +910,11 @@ apply_cq:
 			buf->state.estate = E_BUF_STATE_CQ;
 			return;
 		}
-		/* req_stream_data of req_cq*/
-		req_stream_data = mtk_cam_ctrl_state_to_req_s_data(current_state);
+
 		/* Transit state from Sensor -> CQ */
 		if (ctx->sensor) {
+			/* req_stream_data of req_cq*/
+			req_stream_data = mtk_cam_ctrl_state_to_req_s_data(current_state);
 			state_transition(current_state,
 					 E_STATE_SENSOR, E_STATE_CQ);
 
