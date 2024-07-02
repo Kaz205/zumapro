@@ -3040,8 +3040,12 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 
 	is_first_ctx = !cam->composer_cnt;
 	if (is_first_ctx) {
-		cam->running_job_count = 0;
+		spin_lock(&cam->dma_processing_lock);
 		cam->dma_processing_count = 0;
+		spin_unlock(&cam->dma_processing_lock);
+		spin_lock(&cam->running_job_lock);
+		cam->running_job_count = 0;
+		spin_unlock(&cam->running_job_lock);
 
 		dev_info(cam->dev, "%s: power on camsys\n", __func__);
 		ret = pm_runtime_resume_and_get(cam->dev);
