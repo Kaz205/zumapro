@@ -993,8 +993,12 @@ static void mtk_camsys_raw_cq_done(struct mtk_raw_device *raw_dev,
 		}
 		spin_unlock(&ctx->cam->dma_processing_lock);
 		req_stream_data = mtk_cam_get_req_s_data(ctx, ctx->stream_id, 1);
-		if (req_stream_data->state.estate >= E_STATE_SENSOR ||
-		    !ctx->sensor) {
+		if (!req_stream_data) {
+			dev_err(raw_dev->dev, "Cannot find req stream data with stream_id:%d\n",
+				ctx->stream_id);
+			return;
+		}
+		if (req_stream_data->state.estate >= E_STATE_SENSOR || !ctx->sensor) {
 			mtk_cam_stream_on(raw_dev, ctx);
 		} else {
 			dev_dbg(raw_dev->dev,
@@ -1289,6 +1293,12 @@ static void mtk_camsys_m2m_frame_done(struct mtk_cam_ctx *ctx,
 	struct mtk_cam_request_stream_data *req_stream_data;
 
 	req_stream_data = mtk_cam_get_req_s_data(ctx, pipe_id, frame_seq_no);
+	if (!req_stream_data) {
+		dev_err(ctx->cam->dev,
+			"cannot find req stream data, pipe_id:%d frm_seq_no:%d\n",
+			pipe_id, frame_seq_no);
+		return;
+	}
 	if (atomic_read(&req_stream_data->frame_done_work.is_queued)) {
 		dev_info(ctx->cam->dev,
 			 "already queue done work %d\n", req_stream_data->frame_seq_no);

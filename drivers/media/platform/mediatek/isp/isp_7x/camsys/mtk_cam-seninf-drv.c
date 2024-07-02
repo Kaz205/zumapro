@@ -263,7 +263,7 @@ static int seninf_core_pm_runtime_put(struct seninf_core *core)
 	if (core->pm_domain_cnt == 1) {
 		pm_runtime_put_sync(core->dev);
 	} else {
-		if (!core->pm_domain_devs && core->pm_domain_cnt < 1)
+		if (!core->pm_domain_devs || core->pm_domain_cnt < 1)
 			return -EINVAL;
 
 		for (i = core->pm_domain_cnt - 1; i >= 0; i--) {
@@ -684,7 +684,9 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 		}
 
 		if (ctx->core->clk[CLK_TOP_CAMTM])
-			clk_prepare_enable(ctx->core->clk[CLK_TOP_CAMTM]);
+			ret = clk_prepare_enable(ctx->core->clk[CLK_TOP_CAMTM]);
+		if (ret)
+			return ret;
 
 		for (i = 0; i < vc_used; ++i) {
 			mux = mtk_cam_seninf_mux_get_pref(ctx,
@@ -1096,7 +1098,11 @@ static int seninf_link_setup(struct media_entity *entity,
 	struct seninf_ctx *ctx;
 
 	sd = media_entity_to_v4l2_subdev(entity);
+	if (!sd)
+		return -EINVAL;
 	ctx = v4l2_get_subdevdata(sd);
+	if (!ctx)
+		return -EINVAL;
 
 	if (local->flags & MEDIA_PAD_FL_SOURCE) {
 		if (flags & MEDIA_LNK_FL_ENABLED) {
@@ -1568,7 +1574,10 @@ static int runtime_resume(struct device *dev)
 
 		for (i = 0; i < CLK_TOP_SENINF_END; i++) {
 			if (core->clk[i])
-				clk_prepare_enable(core->clk[i]);
+				ret = clk_prepare_enable(core->clk[i]);
+			if (ret)
+				dev_dbg(dev, "%s: clk seninf%d is empty\n",
+					__func__, i);
 		}
 		mtk_cam_seninf_disable_all_mux(ctx);
 		mtk_cam_seninf_disable_all_cammux(ctx);

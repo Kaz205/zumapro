@@ -1037,11 +1037,10 @@ static void mtk_cam_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
 		const struct mtk_format_info *info;
 
 		info = mtk_format_info(pixelformat);
-		pixfmt->num_planes = info->mem_planes;
-
 		if (!info)
 			return;
 
+		pixfmt->num_planes = info->mem_planes;
 		if (info->mem_planes == 1) {
 			if (is_yuv_ufo(pixelformat)) {
 				/* UFO format width should align 64 pixel */
@@ -1104,11 +1103,10 @@ static void mtk_cam_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
 
 		pr_debug("pixelformat:0x%x sizeimage:%d\n", pixelformat, plane->sizeimage);
 		info = v4l2_format_info(pixelformat);
-		pixfmt->num_planes = info->mem_planes;
-
 		if (!info)
 			return;
 
+		pixfmt->num_planes = info->mem_planes;
 		if (info->mem_planes == 1) {
 			aligned_width = ALIGN(width, bus_size);
 			stride = aligned_width * info->bpp[0];

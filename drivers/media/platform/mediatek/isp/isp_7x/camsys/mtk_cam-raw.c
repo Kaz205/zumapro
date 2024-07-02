@@ -2970,6 +2970,13 @@ static int mtk_raw_set_src_pad_fmt(struct v4l2_subdev *sd,
 	if (ret)
 		return ret;
 
+	if (!source_fmt) {
+		dev_info(dev,
+			 "%s(%d): Set fmt pad:%d(%s), no s_fmt on source pad\n",
+			 __func__, fmt->which, fmt->pad, node->desc.name);
+		return -EINVAL;
+	}
+
 	dev_dbg(dev,
 		"%s(%d): s_fmt to pad:%d(%s), user(0x%x/%d/%d) driver(0x%x/%d/%d)\n",
 		__func__, fmt->which, fmt->pad, node->desc.name,
@@ -4824,6 +4831,9 @@ static int mtk_raw_pipeline_register(unsigned int id, struct device *dev,
 	return 0;
 
 fail_unregister_video:
+	if (!i)
+		return ret;
+
 	for (i = i - 1; i >= 0; i--)
 		mtk_cam_video_unregister(pipe->vdev_nodes + i);
 
