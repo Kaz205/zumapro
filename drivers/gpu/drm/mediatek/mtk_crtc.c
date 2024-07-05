@@ -202,6 +202,7 @@ void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
 	 * Secure path only support DL mode, so we just wait
 	 * the first path frame done here
 	 */
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->cmdq_event);
 	cmdq_pkt_wfe(cmdq_handle, mtk_crtc->cmdq_event, false);
 
 	ddp_first_comp = mtk_crtc->ddp_comp[0];
