@@ -599,6 +599,7 @@
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
 	supports-cqe;
+	mmc-hs400-enhanced-strobe;
 	cap-mmc-hw-reset;
 	no-sdio;
 	no-sd;
