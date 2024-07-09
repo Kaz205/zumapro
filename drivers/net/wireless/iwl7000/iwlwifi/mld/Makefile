@@ -2,7 +2,7 @@
 obj-$(CPTCFG_IWLMLD)   += iwlmld.o
 
 iwlmld-y += mld.o notif.o mac80211.o fw.o power.o iface.o link.o rx.o mcc.o session-protect.o phy.o
-iwlmld-y += scan.o
+iwlmld-y += scan.o sta.o
 iwlmld-$(CPTCFG_IWLWIFI_DEBUGFS) += debugfs.o
 iwlmld-$(CPTCFG_IWLWIFI_LEDS) += led.o
 
