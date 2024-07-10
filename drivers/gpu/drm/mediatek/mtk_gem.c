@@ -389,7 +389,7 @@ int mtk_gem_create_ioctl(struct drm_device *dev, void *data,
 	struct drm_mtk_gem_create *args = data;
 	int ret;
 
-	if (args->flags & DRM_MTK_GEM_CREATE_RESTRICTED)
+	if (args->flags & DRM_MTK_GEM_CREATE_FLAG_RESTRICTED)
 		mtk_gem = mtk_gem_create_from_heap(dev, "restricted_mtk_cma", args->size);
 	else
 		mtk_gem = mtk_gem_create(dev, args->size, false);
