@@ -183,6 +183,7 @@ extern "C"
 {
 #endif
 
+#if IS_ENABLED(CONFIG_TEE)
 /*
  *Description:
  *  A device connect and do some initializations.
@@ -409,6 +410,91 @@ int tee_hdcp2_compute_compare_v(struct mtk_hdcp_info *hdcp_info,
  */
 int tee_hdcp2_compute_compare_m(struct mtk_hdcp_info *hdcp_info,
 				u8 *crypto_param, u32 param_len, u8 *rx_m);
+#else
+static inline int tee_add_device(struct mtk_hdcp_info *hdcp_info, u32 version)
+{
+	return -ENODEV;
+}
+
+static inline void tee_remove_device(struct mtk_hdcp_info *hdcp_info)
+{
+}
+
+static inline int tee_clear_paring(struct mtk_hdcp_info *hdcp_info)
+{
+	return -ENODEV;
+}
+
+static inline int tee_calculate_lm(struct mtk_hdcp_info *hdcp_info, u8 *bksv)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp1x_compute_compare_v(struct mtk_hdcp_info *hdcp_info,
+					       u8 *crypto_param, u32 param_len, u8 *rx_v)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp1x_set_tx_an(struct mtk_hdcp_info *hdcp_info, u8 *an_code)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp1x_soft_rst(struct mtk_hdcp_info *hdcp_info)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp2_soft_rst(struct mtk_hdcp_info *hdcp_info)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp_enable_encrypt(struct mtk_hdcp_info *hdcp_info, bool enable, u8 version)
+{
+	return -ENODEV;
+}
+
+static inline int tee_ake_certificate(struct mtk_hdcp_info *hdcp_info,
+				      u8 *certificate, bool *stored, u8 *out_m, u8 *out_ekm)
+{
+	return -ENODEV;
+}
+
+static inline int tee_enc_rsaes_oaep(struct mtk_hdcp_info *hdcp_info, u8 *ekm)
+{
+	return -ENODEV;
+}
+
+static inline int tee_ake_h_prime(struct mtk_hdcp_info *hdcp_info,
+				  u8 *rtx, u8 *rrx, u8 *rx_caps, u8 *tx_caps, u8 *rx_h, u32 rx_h_len)
+{
+	return -ENODEV;
+}
+
+static inline int tee_ake_paring(struct mtk_hdcp_info *hdcp_info, u8 *rx_ekm)
+{
+	return -ENODEV;
+}
+
+static inline int tee_ske_enc_ks(struct mtk_hdcp_info *hdcp_info, u8 *riv, u8 *eks)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp2_compute_compare_v(struct mtk_hdcp_info *hdcp_info,
+					      u8 *crypto_param, u32 param_len, u8 *rx_v, u8 *tx_v)
+{
+	return -ENODEV;
+}
+
+static inline int tee_hdcp2_compute_compare_m(struct mtk_hdcp_info *hdcp_info,
+					      u8 *crypto_param, u32 param_len, u8 *rx_m)
+{
+	return -ENODEV;
+}
+#endif /* IS_ENABLED(CONFIG_TEE) */
 
 #ifdef __cplusplus
 }
