@@ -21,6 +21,7 @@ mtk-vcodec-dec-mt8188-y := vdec/vdec_h264_if.o \
 		mtk_vcodec_dec_stateful.o \
 		mtk_vcodec_dec_stateless.o \
 		mtk_vcodec_dec_pm.o \
-		mtk_vcodec_dec_optee.o \
+
+mtk-vcodec-dec-mt8188-$(CONFIG_TEE) += mtk_vcodec_dec_optee.o
 
 mtk-vcodec-dec-hw-mt8188-y := mtk_vcodec_dec_hw.o
