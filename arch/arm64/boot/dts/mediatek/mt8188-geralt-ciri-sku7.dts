@@ -30,11 +30,11 @@
 	clock-frequency = <400000>;
 	status = "okay";
 
-	tas2563: tas2563@4c {
+	tas2563: tas2563@4f {
 		#sound-dai-cells = <0>;
 		compatible = "ti,tas2563";
-		reg = <0x4c>, /* right-channel */
-			  <0x4f>; /* lift-channel */
+		reg = <0x4f>, /* left-channel */
+			  <0x4c>; /* right-channel */
 		reset-gpios = <&pio 118 GPIO_ACTIVE_HIGH>;
 		status = "okay";
      };
