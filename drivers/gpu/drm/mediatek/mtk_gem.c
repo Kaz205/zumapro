@@ -63,7 +63,9 @@ static struct mtk_gem_obj *mtk_gem_init(struct drm_device *dev,
 }
 
 struct mtk_gem_obj *mtk_gem_create(struct drm_device *dev,
-				   size_t size, bool alloc_kmap)
+				   size_t size,
+				   bool alloc_kmap,
+				   bool alloc_single_pages)
 {
 	struct mtk_drm_private *priv = dev->dev_private;
 	struct mtk_gem_obj *mtk_gem;
@@ -80,6 +82,9 @@ struct mtk_gem_obj *mtk_gem_create(struct drm_device *dev,
 
 	if (!alloc_kmap)
 		mtk_gem->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
+
+	if (alloc_single_pages)
+		mtk_gem->dma_attrs |= DMA_ATTR_ALLOC_SINGLE_PAGES;
 
 	mtk_gem->cookie = dma_alloc_attrs(priv->dma_dev, obj->size,
 					  &mtk_gem->dma_addr, GFP_KERNEL,
@@ -217,7 +222,7 @@ int mtk_gem_dumb_create(struct drm_file *file_priv, struct drm_device *dev,
 	args->size = args->pitch;
 	args->size *= args->height;
 
-	mtk_gem = mtk_gem_create(dev, args->size, false);
+	mtk_gem = mtk_gem_create(dev, args->size, false, false);
 	if (IS_ERR(mtk_gem))
 		return PTR_ERR(mtk_gem);
 
@@ -387,12 +392,13 @@ int mtk_gem_create_ioctl(struct drm_device *dev, void *data,
 {
 	struct mtk_gem_obj *mtk_gem;
 	struct drm_mtk_gem_create *args = data;
+	const bool alloc_single_pages = args->flags & DRM_MTK_GEM_CREATE_FLAG_ALLOC_SINGLE_PAGES;
 	int ret;
 
 	if (args->flags & DRM_MTK_GEM_CREATE_FLAG_RESTRICTED)
 		mtk_gem = mtk_gem_create_from_heap(dev, "restricted_mtk_cma", args->size);
 	else
-		mtk_gem = mtk_gem_create(dev, args->size, false);
+		mtk_gem = mtk_gem_create(dev, args->size, false, alloc_single_pages);
 
 	if (IS_ERR(mtk_gem))
 		return PTR_ERR(mtk_gem);
