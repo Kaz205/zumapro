@@ -301,6 +301,7 @@ static const struct mtk_mmsys_driver_data mt8188_vdosys0_driver_data = {
 	.max_width = 8191,
 	.min_width = 1,
 	.min_height = 1,
+	.has_secure = true,
 	.secure_heap = "restricted_mtk_cma",
 };
 
@@ -319,6 +320,7 @@ static const struct mtk_mmsys_driver_data mt8195_vdosys0_driver_data = {
 	.max_width = 8191,
 	.min_width = 1,
 	.min_height = 1,
+	.has_secure = true,
 	.secure_heap = "restricted_mtk_cma",
 };
 
@@ -330,6 +332,7 @@ static const struct mtk_mmsys_driver_data mt8195_vdosys1_driver_data = {
 	.max_width = 8191,
 	.min_width = 2, /* 2-pixel align when ethdr is bypassed */
 	.min_height = 1,
+	.has_secure = true,
 	.secure_heap = "restricted_mtk_cma",
 };
 

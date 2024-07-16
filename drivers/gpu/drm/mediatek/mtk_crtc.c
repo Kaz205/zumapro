@@ -1400,33 +1400,23 @@ int mtk_crtc_create(struct drm_device *drm_dev, const unsigned int *path,
 		init_waitqueue_head(&mtk_crtc->cb_blocking_queue);
 	}
 
-	mtk_crtc->sec_cmdq_client.client.dev = mtk_crtc->mmsys_dev;
-	mtk_crtc->sec_cmdq_client.client.tx_block = false;
-	mtk_crtc->sec_cmdq_client.client.knows_txdone = true;
-	mtk_crtc->sec_cmdq_client.client.rx_callback = ddp_cmdq_cb;
-	mtk_crtc->sec_cmdq_client.chan =
-			mbox_request_channel(&mtk_crtc->sec_cmdq_client.client, i + 1);
-	if (IS_ERR(mtk_crtc->sec_cmdq_client.chan)) {
-		dev_err(dev, "mtk_crtc %d failed to create sec mailbox client\n",
-			drm_crtc_index(&mtk_crtc->base));
-		mtk_crtc->sec_cmdq_client.chan = NULL;
-	}
-
-	if (mtk_crtc->sec_cmdq_client.chan) {
-		struct device_link *link;
-
-		/* add devlink to cmdq dev to make sure suspend/resume order is correct */
-		link = device_link_add(priv->dev, mtk_crtc->sec_cmdq_client.chan->mbox->dev,
-				       DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
-		if (!link) {
-			dev_err(priv->dev, "Unable to link dev=%s\n",
-				dev_name(mtk_crtc->sec_cmdq_client.chan->mbox->dev));
-			ret = -ENODEV;
-			goto cmdq_err;
+	if (priv->data->has_secure) {
+		mtk_crtc->sec_cmdq_client.client.dev = mtk_crtc->mmsys_dev;
+		mtk_crtc->sec_cmdq_client.client.tx_block = false;
+		mtk_crtc->sec_cmdq_client.client.knows_txdone = true;
+		mtk_crtc->sec_cmdq_client.client.rx_callback = ddp_cmdq_cb;
+		mtk_crtc->sec_cmdq_client.chan =
+				mbox_request_channel(&mtk_crtc->sec_cmdq_client.client, i + 1);
+		if (IS_ERR(mtk_crtc->sec_cmdq_client.chan)) {
+			dev_err(dev, "mtk_crtc %d failed to create sec mailbox client\n",
+				drm_crtc_index(&mtk_crtc->base));
+			mtk_crtc->sec_cmdq_client.chan = NULL;
 		}
 
-		/* for sending blocking cmd in crtc disable */
-		init_waitqueue_head(&mtk_crtc->sec_cb_blocking_queue);
+		if (mtk_crtc->sec_cmdq_client.chan) {
+			/* for sending blocking cmd in crtc disable */
+			init_waitqueue_head(&mtk_crtc->sec_cb_blocking_queue);
+		}
 	}
 
 cmdq_err:
