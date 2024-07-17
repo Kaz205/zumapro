@@ -152,11 +152,10 @@ static int mtk_drm_cmdq_pkt_create(struct cmdq_client *client, struct cmdq_pkt *
 
 static void mtk_drm_cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 {
-	if (!pkt || !pkt->cl)
-		return;
+	struct cmdq_client *client = (struct cmdq_client *)pkt->cl;
 
-	dma_unmap_single(((struct cmdq_client *)pkt->cl)->chan->mbox->dev,
-			 pkt->pa_base, pkt->buf_size, DMA_TO_DEVICE);
+	dma_unmap_single(client->chan->mbox->dev, pkt->pa_base, pkt->buf_size,
+			 DMA_TO_DEVICE);
 	kfree(pkt->va_base);
 	kfree(pkt->sec_data);
 }
