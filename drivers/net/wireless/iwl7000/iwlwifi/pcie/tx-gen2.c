@@ -61,8 +61,7 @@ static int iwl_txq_gen2_set_tb_with_wa(struct iwl_trans *trans,
 				       struct sk_buff *skb,
 				       struct iwl_tfh_tfd *tfd,
 				       dma_addr_t phys, void *virt,
-				       u16 len, struct iwl_cmd_meta *meta,
-				       bool unmap)
+				       u16 len, struct iwl_cmd_meta *meta)
 {
 	dma_addr_t oldphys = phys;
 	struct page *page;
@@ -106,27 +105,10 @@ static int iwl_txq_gen2_set_tb_with_wa(struct iwl_trans *trans,
 
 	memcpy(page_address(page), virt, len);
 
-	/*
-	 * This is a bit odd, but performance does not matter here, what
-	 * matters are the expectations of the calling code and TB cleanup
-	 * function.
-	 *
-	 * As such, if unmap is set, then create another mapping for the TB
-	 * entry as it will be unmapped later. On the other hand, if it is not
-	 * set, then the TB entry will not be unmapped and instead we simply
-	 * reference and sync the mapping that get_workaround_page() created.
-	 */
-	if (unmap) {
-		phys = dma_map_single(trans->dev, page_address(page), len,
-				      DMA_TO_DEVICE);
-		if (unlikely(dma_mapping_error(trans->dev, phys)))
-			return -ENOMEM;
-	} else {
-		phys = iwl_pcie_get_tso_page_phys(page_address(page));
-		dma_sync_single_for_device(trans->dev, phys, len,
-					   DMA_TO_DEVICE);
-	}
-
+	phys = dma_map_single(trans->dev, page_address(page), len,
+			      DMA_TO_DEVICE);
+	if (unlikely(dma_mapping_error(trans->dev, phys)))
+		return -ENOMEM;
 	ret = iwl_txq_gen2_set_tb(trans, tfd, phys, len);
 	if (ret < 0) {
 		/* unmap the new allocation as single */
@@ -134,7 +116,6 @@ static int iwl_txq_gen2_set_tb_with_wa(struct iwl_trans *trans,
 		meta = NULL;
 		goto unmap;
 	}
-
 	IWL_DEBUG_TX(trans,
 		     "TB bug workaround: copied %d bytes from 0x%llx to 0x%llx\n",
 		     len, (unsigned long long)oldphys,
@@ -142,9 +123,6 @@ static int iwl_txq_gen2_set_tb_with_wa(struct iwl_trans *trans,
 
 	ret = 0;
 unmap:
-	if (!unmap)
-		goto trace;
-
 	if (meta)
 		dma_unmap_page(trans->dev, oldphys, len, DMA_TO_DEVICE);
 	else
@@ -168,7 +146,6 @@ static int iwl_txq_gen2_build_amsdu(struct iwl_trans *trans,
 	struct ieee80211_hdr *hdr = (void *)skb->data;
 	unsigned int snap_ip_tcp_hdrlen, ip_hdrlen, total_len, hdr_room;
 	unsigned int mss = skb_shinfo(skb)->gso_size;
-	dma_addr_t start_hdr_phys;
 	u16 length, amsdu_pad;
 	u8 *start_hdr;
 	struct sg_table *sgt;
@@ -190,8 +167,6 @@ static int iwl_txq_gen2_build_amsdu(struct iwl_trans *trans,
 	sgt = iwl_pcie_prep_tso(trans, skb, out_meta, &start_hdr, hdr_room);
 	if (!sgt)
 		return -ENOMEM;
-
-	start_hdr_phys = iwl_pcie_get_tso_page_phys(start_hdr);
 
 	/*
 	 * Pull the ieee80211 header to be able to use TSO core,
@@ -239,8 +214,10 @@ static int iwl_txq_gen2_build_amsdu(struct iwl_trans *trans,
 		pos_hdr += snap_ip_tcp_hdrlen;
 
 		tb_len = pos_hdr - start_hdr;
-		tb_phys = iwl_pcie_get_tso_page_phys(start_hdr);
-
+		tb_phys = dma_map_single(trans->dev, start_hdr,
+					 tb_len, DMA_TO_DEVICE);
+		if (unlikely(dma_mapping_error(trans->dev, tb_phys)))
+			goto out_err;
 		/*
 		 * No need for _with_wa, this is from the TSO page and
 		 * we leave some space at the end of it so can't hit
@@ -260,14 +237,11 @@ static int iwl_txq_gen2_build_amsdu(struct iwl_trans *trans,
 			int ret;
 
 			tb_len = min_t(unsigned int, tso.size, data_left);
-			tb_phys = iwl_pcie_get_sgt_tb_phys(sgt, tso.data);
-			/* Not a real mapping error, use direct comparison */
-			if (unlikely(tb_phys == DMA_MAPPING_ERROR))
-				goto out_err;
-
+			tb_phys = dma_map_single(trans->dev, tso.data,
+						 tb_len, DMA_TO_DEVICE);
 			ret = iwl_txq_gen2_set_tb_with_wa(trans, skb, tfd,
 							  tb_phys, tso.data,
-							  tb_len, NULL, false);
+							  tb_len, NULL);
 			if (ret)
 				goto out_err;
 
@@ -275,9 +249,6 @@ static int iwl_txq_gen2_build_amsdu(struct iwl_trans *trans,
 			tso_build_data(skb, &tso, tb_len);
 		}
 	}
-
-	dma_sync_single_for_device(trans->dev, start_hdr_phys, hdr_room,
-				   DMA_TO_DEVICE);
 
 	/* re -add the WiFi header */
 	skb_push(skb, hdr_len);
@@ -368,7 +339,7 @@ static int iwl_txq_gen2_tx_add_frags(struct iwl_trans *trans,
 					   fragsz, DMA_TO_DEVICE);
 		ret = iwl_txq_gen2_set_tb_with_wa(trans, skb, tfd, tb_phys,
 						  skb_frag_address(frag),
-						  fragsz, out_meta, true);
+						  fragsz, out_meta);
 		if (ret)
 			return ret;
 	}
@@ -442,7 +413,7 @@ iwl_tfh_tfd *iwl_txq_gen2_build_tx(struct iwl_trans *trans,
 					 tb2_len, DMA_TO_DEVICE);
 		ret = iwl_txq_gen2_set_tb_with_wa(trans, skb, tfd, tb_phys,
 						  skb->data + hdr_len, tb2_len,
-						  NULL, true);
+						  NULL);
 		if (ret)
 			goto out_err;
 	}
@@ -457,8 +428,7 @@ iwl_tfh_tfd *iwl_txq_gen2_build_tx(struct iwl_trans *trans,
 					 skb_headlen(frag), DMA_TO_DEVICE);
 		ret = iwl_txq_gen2_set_tb_with_wa(trans, skb, tfd, tb_phys,
 						  frag->data,
-						  skb_headlen(frag), NULL,
-						  true);
+						  skb_headlen(frag), NULL);
 		if (ret)
 			goto out_err;
 		if (iwl_txq_gen2_tx_add_frags(trans, frag, tfd, out_meta))
@@ -652,10 +622,6 @@ void iwl_txq_gen2_tfd_unmap(struct iwl_trans *trans,
 		IWL_ERR(trans, "Too many chunks: %i\n", num_tbs);
 		return;
 	}
-
-	/* TB1 is mapped directly, the rest is the TSO page and SG list. */
-	if (meta->sg_offset)
-		num_tbs = 2;
 
 	/* first TB is never freed - it's the bidirectional DMA data */
 	for (i = 1; i < num_tbs; i++) {
