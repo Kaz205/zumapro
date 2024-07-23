@@ -187,9 +187,21 @@
 	};
 };
 
-&pio {
-	pinctrl-names = "default";
+&aud_etdm_hp_on {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>;
+	};
+};
 
+&aud_etdm_hp_off {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_B_GPIO114>;
+		bias-pull-down;
+		input-enable;
+	};
+};
+
+&pio {
 	gpio-line-names =
 		"GSC_AP_INT_ODL",
 		"AP_DISP_BKLTEN",
@@ -368,28 +380,6 @@
 		"",
 		"SPMI_SCL",
 		"SPMI_SDA";
-
-	aud_etdm_hp_on: aud-etdm-hp-on {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_I0_I2SIN_D0>,
-				 <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>,
-				 <PINMUX_GPIO115__FUNC_B0_I2SO2_BCK>,
-				 <PINMUX_GPIO116__FUNC_B0_I2SO2_WS>,
-				 <PINMUX_GPIO117__FUNC_O_I2SO2_D0>;
-		};
-	};
-
-	aud_etdm_hp_off: aud-etdm-hp-off {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_B_GPIO110>,
-				 <PINMUX_GPIO114__FUNC_B_GPIO114>,
-				 <PINMUX_GPIO115__FUNC_B_GPIO115>,
-				 <PINMUX_GPIO116__FUNC_B_GPIO116>,
-				 <PINMUX_GPIO117__FUNC_B_GPIO117>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
 
 	touch_reset: touch-reset {
 		pins-rst {
