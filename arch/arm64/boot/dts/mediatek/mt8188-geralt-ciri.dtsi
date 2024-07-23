@@ -14,6 +14,12 @@
 /delete-node/ &max98390_3a;
 /delete-node/ &max98390_3b;
 
+&aud_etdm_spk_on {
+	pins-cmd-dat {
+		drive-strength = <MTK_DRIVE_8mA>;
+	};
+};
+
 &disp_dsi0 {
 	panel: panel1@0 {
 		compatible = "boe,nv110wum-l60";
