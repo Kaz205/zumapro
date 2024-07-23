@@ -8,7 +8,7 @@
 /delete-node/ &dp_intf0;
 /delete-node/ &edp_tx;
 /delete-node/ &panel;
-/delete-node/ &backlight_lcd0;
+/delete-node/ &backlight_lcd1;
 /delete-node/ &pp3300_dx_edp;
 /delete-node/ &nau8825;
 /delete-node/ &max98390_3a;

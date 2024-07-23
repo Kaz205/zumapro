@@ -42,17 +42,6 @@
 
 	backlight_lcd0: backlight-lcd0 {
 		compatible = "pwm-backlight";
-		pwms = <&disp_pwm1 0 500000>;
-		power-supply = <&bl_pp5000>;
-		enable-gpios = <&pio 110 0>;
-		brightness-levels = <0 1023>;
-		num-interpolated-steps = <1023>;
-		default-brightness-level = <576>;
-		status = "disabled";
-	};
-
-	backlight_lcd1: backlight-lcd1 {
-		compatible = "pwm-backlight";
 		pwms = <&disp_pwm0 0 500000>;
 		power-supply = <&bl_pp5000>;
 		enable-gpios = <&pio 1 0>;
@@ -60,6 +49,17 @@
 		num-interpolated-steps = <1023>;
 		default-brightness-level = <576>;
 		status = "okay";
+	};
+
+	backlight_lcd1: backlight-lcd1 {
+		compatible = "pwm-backlight";
+		pwms = <&disp_pwm1 0 500000>;
+		power-supply = <&bl_pp5000>;
+		enable-gpios = <&pio 110 0>;
+		brightness-levels = <0 1023>;
+		num-interpolated-steps = <1023>;
+		default-brightness-level = <576>;
+		status = "disabled";
 	};
 
 	bl_pp5000: regulator2 {
@@ -118,7 +118,7 @@
 		status = "disabled";
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_pin_default>;
-		backlight = <&backlight_lcd0>;
+		backlight = <&backlight_lcd1>;
 		port {
 			panel_in: endpoint {
 				remote-endpoint = <&edp_out>;
@@ -287,7 +287,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_pins_default>;
 		pp1800-supply = <&mt6359_vm18_ldo_reg>;
-		backlight = <&backlight_lcd1>;
+		backlight = <&backlight_lcd0>;
 		rotation = <270>;
 		status = "okay";
 
