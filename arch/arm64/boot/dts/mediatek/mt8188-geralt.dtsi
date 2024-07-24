@@ -24,8 +24,8 @@
 	ppvar_mipi_disp_avdd: regulator-ppvar-mipi-disp-avdd {
 		compatible = "regulator-fixed";
 		regulator-name = "ppvar_mipi_disp_avdd";
-		gpio = <&pio 3 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+		gpio = <&pio 3 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&mipi_disp_avdd_en>;
 		vin-supply = <&pp5000_z1>;
@@ -34,8 +34,8 @@
 	ppvar_mipi_disp_avee: regulator-ppvar-mipi-disp-avee {
 		compatible = "regulator-fixed";
 		regulator-name = "ppvar_mipi_disp_avee";
-		gpio = <&pio 4 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+		gpio = <&pio 4 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&mipi_disp_avee_en>;
 		regulator-enable-ramp-delay = <10000>;
@@ -44,34 +44,33 @@
 
 	backlight_lcd0: backlight-lcd0 {
 		compatible = "pwm-backlight";
-		pwms = <&disp_pwm0 0 500000>;
-		power-supply = <&pp5000_bl>;
-		enable-gpios = <&pio 1 0>;
 		brightness-levels = <0 1023>;
-		num-interpolated-steps = <1023>;
 		default-brightness-level = <576>;
-		status = "okay";
+		enable-gpios = <&pio 1 0>;
+		num-interpolated-steps = <1023>;
+		power-supply = <&pp5000_bl>;
+		pwms = <&disp_pwm0 0 500000>;
 	};
 
 	backlight_lcd1: backlight-lcd1 {
 		compatible = "pwm-backlight";
-		pwms = <&disp_pwm1 0 500000>;
-		power-supply = <&pp5000_bl>;
-		enable-gpios = <&pio 110 0>;
 		brightness-levels = <0 1023>;
-		num-interpolated-steps = <1023>;
 		default-brightness-level = <576>;
+		enable-gpios = <&pio 110 0>;
+		num-interpolated-steps = <1023>;
+		power-supply = <&pp5000_bl>;
+		pwms = <&disp_pwm1 0 500000>;
 		status = "disabled";
 	};
 
 	pp5000_bl: regulator-pp5000-bl {
 		compatible = "regulator-fixed";
 		regulator-name = "pp5000_bl";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
+		enable-active-high;
 		regulator-always-on;
 		regulator-boot-on;
-		enable-active-high;
+		regulator-max-microvolt = <5000000>;
+		regulator-min-microvolt = <5000000>;
 	};
 
 	/* chosen */
@@ -107,10 +106,11 @@
 
 	edp_panel: panel {
 		compatible = "lg,lp120up1";
-		status = "disabled";
+		backlight = <&backlight_lcd1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&edp_bl_pwm>;
-		backlight = <&backlight_lcd1>;
+		status = "disabled";
+
 		port {
 			edp_panel_in: endpoint {
 				remote-endpoint = <&edp_out>;
@@ -198,10 +198,10 @@
 	pp3300_edp_disp: regulator-pp3300-edp-disp {
 		compatible = "regulator-fixed";
 		regulator-name = "pp3300_edp_disp";
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_disp_en>;
 		enable-active-high;
 		gpio = <&pio 27 GPIO_ACTIVE_HIGH>; /* EN_PP3300_EDP_DISP_X */
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_disp_en>;
 		regulator-boot-on;
 		vin-supply = <&pp3300_z1>;
 	};
@@ -209,10 +209,10 @@
 	pp3300_mipi_tchscr: regulator-pp3300-mipi-tchscr {
 		compatible = "regulator-fixed";
 		regulator-name = "pp3300_mipi_tchscr";
-		pinctrl-names = "default";
-		pinctrl-0 = <&mipi_tchscr_en>;
 		enable-active-high;
 		gpio = <&pio 144 GPIO_ACTIVE_HIGH>;  /* EN_PP3300_MIPI_TCHSCR_X */
+		pinctrl-names = "default";
+		pinctrl-0 = <&mipi_tchscr_en>;
 		regulator-boot-on;
 		vin-supply = <&pp3300_z1>;
 	};
@@ -284,8 +284,7 @@
 };
 
 &adsp {
-	memory-region = <&adsp_dma_mem_reserved>,
-		<&adsp_mem_reserved>;
+	memory-region = <&adsp_dma_mem_reserved>, <&adsp_mem_reserved>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&adsp_uart_pin>;
 	status = "okay";
@@ -331,13 +330,13 @@
 	dsi_panel: panel {
 		compatible = "boe,tv110c9m-ll3";
 		reg = <0>;
-		enable-gpios = <&pio 25 0>;
 		avdd-supply = <&ppvar_mipi_disp_avdd>;
 		avee-supply = <&ppvar_mipi_disp_avee>;
+		backlight = <&backlight_lcd0>;
+		enable-gpios = <&pio 25 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&disp_default>;
 		pp1800-supply = <&mt6359_vm18_ldo_reg>;
-		backlight = <&backlight_lcd0>;
 		rotation = <270>;
 		status = "okay";
 
@@ -370,8 +369,6 @@
 };
 
 &dp_intf0 {
-	status = "disabled";
-
 	port {
 		dp_intf0_out: endpoint {
 			remote-endpoint = <&edp_in>;
@@ -390,10 +387,9 @@
 };
 
 &dp_tx {
-	status = "okay";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp_tx_hpd>;
+	status = "okay";
 
 	ports {
 		#address-cells = <1>;
@@ -416,8 +412,6 @@
 };
 
 &edp_tx {
-	status = "disabled";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&edp_tx_hpd>;
 
@@ -446,15 +440,14 @@
 	supply-names = "mali","mali_sram";
 	mali-supply = <&mt6359_vproc2_buck_reg>;
 	mali_sram-supply = <&mt6359_vsram_others_ldo_reg>;
-	operating-points-v2 = <&gpu_opp_table>;
 	volt-bin-mapping = <3 4 5 6>;
 
 	power_model@0 {
 		compatible = "arm,mali-simple-power-model";
-		static-coefficient = <2427750>;
 		dynamic-coefficient = <4687>;
-		ts = <20000 2000 (-20) 2>;
+		static-coefficient = <2427750>;
 		thermal-zone = "soc_max";
+		ts = <20000 2000 (-20) 2>;
 	};
 
 	power_model@1 {
@@ -470,13 +463,13 @@
 	status = "okay";
 
 	nau8825: nau8825@1a {
-		#sound-dai-cells = <0>;
 		compatible = "nuvoton,nau8825";
 		reg = <0x1a>;
 		interrupt-parent = <&pio>;
 		interrupts = <108 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hp_int>;
+		#sound-dai-cells = <0>;
 
 		nuvoton,jkdet-enable;
 		nuvoton,jkdet-polarity = <1>;
@@ -490,42 +483,37 @@
 		nuvoton,jack-insert-debounce = <7>;
 		nuvoton,jack-eject-debounce = <7>;
 		nuvoton,adc-delay-ms = <300>;
-		status = "okay";
 	};
 
 	max98390_38: max98390@38 {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x38>;
 		sound-name-prefix = "Rear Right";
 		reset-gpios = <&pio 118 1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spkr_en>;
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_39: max98390@39 {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x39>;
 		sound-name-prefix = "Rear Left";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_3a: max98390@3a {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
-		reg = <0x3A>;
+		reg = <0x3a>;
 		sound-name-prefix = "Front Left";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_3b: max98390@3b {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
-		reg = <0x3B>;
+		reg = <0x3b>;
 		sound-name-prefix = "Front Right";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 };
 
@@ -552,17 +540,16 @@
 	status = "okay";
 
 	touchscreen@1 {
-		status = "okay";
 		compatible = "hid-over-i2c";
 		reg = <0x1>;
+		hid-descr-addr = <0x0001>;
 		interrupt-parent = <&pio>;
 		interrupts = <143 IRQ_TYPE_EDGE_FALLING>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tchscr_int>;
+		post-power-on-delay-ms = <500>;
 		vdd-supply = <&pp3300_mipi_tchscr>;
 		vddl-supply = <&mt6359_vm18_ldo_reg>;
-		post-power-on-delay-ms = <500>;
-		hid-descr-addr = <0x0001>;
 	};
 };
 
@@ -576,12 +563,12 @@
 		compatible = "semtech,sx9324";
 		reg = <0x28>;
 		#io-channel-cells = <1>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sar_int>;
 		interrupt-parent = <&pio>;
 		interrupts = <88 IRQ_TYPE_LEVEL_LOW>;
-		vdd-supply = <&mt6359_vio18_ldo_reg>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sar_int>;
 		svdd-supply = <&mt6359_vio18_ldo_reg>;
+		vdd-supply = <&mt6359_vio18_ldo_reg>;
 	};
 };
 
@@ -592,15 +579,15 @@
 	status = "okay";
 
 	touchpad: touchpad@56 {
-		status = "disabled";
 		compatible = "hid-over-i2c";
 		reg = <0x56>;
+		hid-descr-addr = <0x0001>;
 		interrupt-parent = <&pio>;
 		interrupts = <148 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hid_int>;
-		hid-descr-addr = <0x0001>;
 		wakeup-source;
+		status = "disabled";
 	};
 };
 
@@ -639,41 +626,41 @@
 };
 
 &mmc0 {
-	status = "okay";
+	bus-width = <8>;
+	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	hs400-ds-delay = <0x1481b>;
+	max-frequency = <200000000>;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	no-sd;
+	no-sdio;
+	non-removable;
 	pinctrl-names = "default", "state_uhs";
 	pinctrl-0 = <&mmc0_default>;
 	pinctrl-1 = <&mmc0_uhs>;
-	bus-width = <8>;
-	max-frequency = <200000000>;
-	cap-mmc-highspeed;
-	mmc-hs200-1_8v;
-	mmc-hs400-1_8v;
 	supports-cqe;
-	mmc-hs400-enhanced-strobe;
-	cap-mmc-hw-reset;
-	no-sdio;
-	no-sd;
-	hs400-ds-delay = <0x1481b>;
 	vmmc-supply = <&mt6359_vemc_1_ldo_reg>;
 	vqmmc-supply = <&mt6359_vufs_ldo_reg>;
-	non-removable;
+	status = "okay";
 };
 
 &mmc1 {
-	status = "okay";
+	bus-width = <4>;
+	cap-sd-highspeed;
+	cd-gpios = <&pio 107 GPIO_ACTIVE_LOW>;
+	max-frequency = <200000000>;
+	no-mmc;
+	no-sdio;
 	pinctrl-names = "default", "state_uhs";
 	pinctrl-0 = <&mmc1_default>;
 	pinctrl-1 = <&mmc1_uhs>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	cap-sd-highspeed;
-	sd-uhs-sdr50;
 	sd-uhs-sdr104;
-	no-mmc;
-	no-sdio;
-	cd-gpios = <&pio 107 GPIO_ACTIVE_LOW>;
+	sd-uhs-sdr50;
 	vmmc-supply = <&mt6359_vpa_buck_reg>;
 	vqmmc-supply = <&mt6359_vsim1_ldo_reg>;
+	status = "okay";
 };
 
 &mt6359codec {
@@ -691,9 +678,9 @@
 };
 
 &mt6359_vgpu11_sshub_buck_reg {
-	regulator-always-on;
 	regulator-min-microvolt = <550000>;
 	regulator-max-microvolt = <550000>;
+	regulator-always-on;
 };
 
 &mt6359_vio28_ldo_reg {
@@ -739,9 +726,9 @@
 };
 
 &nor_flash {
-	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&nor_default>;
+	status = "okay";
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -753,15 +740,16 @@
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie_default>;
-	pcie3v3-supply = <&pp3300_wlan>;
 	pcie1v8-supply = <&mt6359_vcn18_ldo_reg>;
+	pcie3v3-supply = <&pp3300_wlan>;
 	dsc-reset-gpios = <&pio 145 1>;
 	status = "okay";
 
 	pcie@0,0 {
+		reg = <0x0000 0 0 0 0>;
 		#address-cells = <3>;
 		#size-cells = <2>;
-		reg = <0x0000 0 0 0 0>;
+
 		wifi: pcie@1,0 {
 			reg = <0x0000 0 0 0 0>;
 			wakeup-source;
@@ -1389,9 +1377,9 @@
 
 &scp_c0 {
 	firmware-name = "mediatek/mt8188/scp.img";
+	memory-region = <&scp_mem_reserved>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&scp_default>;
-	memory-region = <&scp_mem_reserved>;
 	status = "okay";
 };
 
@@ -1404,10 +1392,6 @@
 &sound {
 	compatible = "mediatek,mt8188-nau8825";
 	model = "mt8188_m98390_8825";
-	mediatek,adsp = <&adsp>;
-	mediatek,dai-link = "DL10_FE", "ETDM1_IN_BE", "ETDM2_IN_BE",
-			"ETDM1_OUT_BE", "ETDM2_OUT_BE", "DPTX_BE", "UL_SRC_BE",
-			"AFE_SOF_DL2", "AFE_SOF_DL3", "AFE_SOF_UL4", "AFE_SOF_UL5";
 	pinctrl-names = "aud_etdm_hp_on",
 			"aud_etdm_hp_off",
 			"aud_etdm_spk_on",
@@ -1433,11 +1417,16 @@
 		"Right Spk", "Front Right BE_OUT",
 		"Rear Left Spk", "Rear Left BE_OUT",
 		"Rear Right Spk", "Rear Right BE_OUT";
+	mediatek,adsp = <&adsp>;
+	mediatek,dai-link = "DL10_FE", "ETDM1_IN_BE", "ETDM2_IN_BE",
+			"ETDM1_OUT_BE", "ETDM2_OUT_BE", "DPTX_BE", "UL_SRC_BE",
+			"AFE_SOF_DL2", "AFE_SOF_DL3", "AFE_SOF_UL4", "AFE_SOF_UL5";
 	status = "okay";
 
 	dai-link-0 {
 		link-name = "ETDM2_OUT_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&nau8825>;
 		};
@@ -1446,6 +1435,7 @@
 	dai-link-1 {
 		link-name = "ETDM2_IN_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&nau8825>;
 		};
@@ -1455,6 +1445,7 @@
 		link-name = "ETDM1_OUT_BE";
 		dai-format = "dsp_b";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&max98390_38>,
 				    <&max98390_39>,
@@ -1471,6 +1462,7 @@
 
 	dai-link-4 {
 		link-name = "DPTX_BE";
+
 		codec {
 			sound-dai = <&dp_tx>;
 		};
@@ -1486,11 +1478,11 @@
 	cros_ec: cros-ec@0 {
 		compatible = "google,cros-ec-spi";
 		reg = <0>;
-		spi-max-frequency = <3000000>;
 		interrupt-parent = <&pio>;
 		interrupts = <149 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&cros_ec_int>;
+		spi-max-frequency = <3000000>;
 
 		i2c_tunnel: i2c-tunnel {
 			compatible = "google,cros-ec-i2c-tunnel";
@@ -1558,13 +1550,13 @@
 };
 
 &xhci1 {
-	status = "okay";
 	vbus-supply = <&pp5000_usb_p1_vbus>;
+	status = "okay";
 };
 
 &xhci2 {
-	status = "okay";
 	usb2-lpm-disable;
+	status = "okay";
 };
 
 #include <arm/cros-ec-keyboard.dtsi>

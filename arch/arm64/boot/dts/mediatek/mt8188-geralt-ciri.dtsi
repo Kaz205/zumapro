@@ -5,14 +5,14 @@
 /dts-v1/;
 #include "mt8188-geralt.dtsi"
 
-/delete-node/ &dp_intf0;
-/delete-node/ &edp_tx;
-/delete-node/ &edp_panel;
 /delete-node/ &backlight_lcd1;
-/delete-node/ &pp3300_edp_disp;
-/delete-node/ &nau8825;
+/delete-node/ &dp_intf0;
+/delete-node/ &edp_panel;
+/delete-node/ &edp_tx;
 /delete-node/ &max98390_3a;
 /delete-node/ &max98390_3b;
+/delete-node/ &nau8825;
+/delete-node/ &pp3300_edp_disp;
 
 &aud_etdm_spk_on {
 	pins-bus {
@@ -55,8 +55,8 @@
 };
 
 &mipi_tx_config0 {
-	status = "okay";
 	drive-strength-microamp = <5200>;
+	status = "okay";
 };
 
 &mt6359_vm18_ldo_reg {
@@ -108,6 +108,7 @@
 	dai-link-0 {
 		link-name = "ETDM2_OUT_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&rt5682s>;
 		};
@@ -116,6 +117,7 @@
 	dai-link-1 {
 		link-name = "ETDM2_IN_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&rt5682s>;
 		};
@@ -125,6 +127,7 @@
 		link-name = "ETDM1_OUT_BE";
 		dai-format = "i2s";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&max98390_38>,
 				    <&max98390_39>;
@@ -139,31 +142,29 @@
 };
 
 &spi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dma-names = "tx", "rx";
+	num-cs = <1>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&spi1_default>;
 	pinctrl-1 = <&spi1_sleep>;
-	status = "okay";
-	dma-names = "tx","rx";
-	num-cs = <1>;
-	#address-cells = <1>;
-	#size-cells = <0>;
 
 	touchscreen: hid-hx-common-spi@0 {
 		compatible = "himax,hx83102j";
-		pinctrl-names = "default";
-		pinctrl-0 = <&tchscr_int &tchscr_rst>;
-		panel = <&dsi_panel>;
 		reg = <0>;
-		spi-max-frequency = <12500000>;
-		status = "okay";
-		reset-gpios = <&pio 5  GPIO_ACTIVE_LOW>;
-		himax_gpio_irq = <&pio 143  IRQ_TYPE_LEVEL_LOW>;
-		himax,pid = <0x1002>;
 		firmware-name = "himax_i2chid_1002.bin";
-
 		interrupt-parent = <&pio>;
 		interrupts = <143 IRQ_TYPE_LEVEL_LOW>;
 		irq_flag = <0x02>;
+		panel = <&dsi_panel>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tchscr_int &tchscr_rst>;
+		reset-gpios = <&pio 5 GPIO_ACTIVE_LOW>;
+		spi-max-frequency = <12500000>;
+		himax_gpio_irq = <&pio 143 IRQ_TYPE_LEVEL_LOW>;
+		himax,pid = <0x1002>;
+		status = "okay";
 	};
 };
 
