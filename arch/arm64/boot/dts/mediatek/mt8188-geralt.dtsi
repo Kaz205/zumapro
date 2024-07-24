@@ -21,23 +21,26 @@
 		mmc1 = &mmc1;
 	};
 
-	avdd_lcd: avdd-lcd {
+
+	ppvar_mipi_disp_avdd: regulator-ppvar-mipi-disp-avdd {
 		compatible = "regulator-fixed";
-		regulator-name = "avdd_lcd";
+		regulator-name = "ppvar_mipi_disp_avdd";
 		gpio = <&pio 3 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		pinctrl-names = "default";
 		pinctrl-0 = <&avdd_lcd_en>;
+		vin-supply = <&pp5000_z1>;
 	};
 
-	avee_lcd: avee-lcd {
+	ppvar_mipi_disp_avee: regulator-ppvar-mipi-disp-avee {
 		compatible = "regulator-fixed";
-		regulator-name = "avee_lcd";
+		regulator-name = "ppvar_mipi_disp_avee";
 		gpio = <&pio 4 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		pinctrl-names = "default";
 		pinctrl-0 = <&avee_lcd_en>;
 		regulator-enable-ramp-delay = <10000>;
+		vin-supply = <&pp5000_z1>;
 	};
 
 	backlight_lcd0: backlight-lcd0 {
@@ -96,16 +99,6 @@
 		compatible = "dmic-codec";
 		num-channels = <2>;
 		wakeup-delay-ms = <50>;
-	};
-
-	dx_pp3300: regulator3 {
-		compatible = "regulator-fixed";
-		regulator-name = "dx_pp3300";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-		regulator-boot-on;
-		enable-active-high;
 	};
 
 	memory {
@@ -192,33 +185,26 @@
 		vin-supply = <&ppvar_sys>;
 	};
 
-	pcie_3v3_en: pcie-3v3-en-regulator {
+	pp3300_wlan: regulator-pp3300-wlan {
 		compatible = "regulator-fixed";
-		regulator-name = "pcie_3v3_en";
-		regulator-always-on;
-		gpio = <&pio 12 0>;
+		regulator-name = "pp3300_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wlan_en>;
+		gpio = <&pio 12 GPIO_ACTIVE_HIGH>; /* EN_PP3300_WLAN_X */
 		enable-active-high;
+		regulator-always-on;
+		vin-supply = <&pp3300_z1>;
 	};
 
-	pp3300_dx_edp: pp3300-dx-edp-regulator {
+	pp3300_edp_disp: regulator-pp3300-edp-disp {
 		compatible = "regulator-fixed";
-		regulator-name = "pp3300_dx_edp";
+		regulator-name = "pp3300_edp_disp";
 		pinctrl-names = "default";
 		pinctrl-0 = <&en_pp3300_dxedp>;
 		enable-active-high;
+		gpio = <&pio 27 GPIO_ACTIVE_HIGH>; /* EN_PP3300_EDP_DISP_X */
 		regulator-boot-on;
-		gpio = <&pio 27 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&dx_pp3300>;
-	};
-
-	pp3300_mipi: regulator-pp3300-mipi {
-		compatible = "regulator-fixed";
-		regulator-name = "pp3300_mipi";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-		regulator-boot-on;
-		enable-active-high;
+		vin-supply = <&pp3300_z1>;
 	};
 
 	pp3300_mipi_tchscr: regulator-pp3300-mipi-tchscr {
@@ -227,9 +213,9 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&en_pp3300_mipi>;
 		enable-active-high;
+		gpio = <&pio 144 GPIO_ACTIVE_HIGH>;  /* EN_PP3300_MIPI_TCHSCR_X */
 		regulator-boot-on;
-		gpio = <&pio 144 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&pp3300_mipi>;
+		vin-supply = <&pp3300_z1>;
 	};
 
 	/*
@@ -292,10 +278,9 @@
 	usb_p1_vbus: regulator-usb-p1-vbus {
 		compatible = "regulator-fixed";
 		regulator-name = "vbus0";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
 		enable-active-high;
 		gpio = <&pio 150 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&pp5000_z1>;
 	};
 };
 
@@ -348,8 +333,8 @@
 		compatible = "boe,tv110c9m-ll3";
 		reg = <0>;
 		enable-gpios = <&pio 25 0>;
-		avdd-supply = <&avdd_lcd>;
-		avee-supply = <&avee_lcd>;
+		avdd-supply = <&ppvar_mipi_disp_avdd>;
+		avee-supply = <&ppvar_mipi_disp_avee>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_pins_default>;
 		pp1800-supply = <&mt6359_vm18_ldo_reg>;
@@ -769,7 +754,7 @@
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie_pins_default>;
-	pcie3v3-supply = <&pcie_3v3_en>;
+	pcie3v3-supply = <&pp3300_wlan>;
 	pcie1v8-supply = <&mt6359_vcn18_ldo_reg>;
 	dsc-reset-gpios = <&pio 145 1>;
 	status = "okay";
@@ -1381,6 +1366,13 @@
 			pinmux = <PINMUX_GPIO148__FUNC_B_GPIO148>;
 			input-enable;
 			bias-disable;
+		};
+	};
+
+	wlan_en: wlan-en-pins {
+		pins-en-pp3300-wlan {
+			pinmux = <PINMUX_GPIO12__FUNC_B_GPIO12>;
+			output-low;
 		};
 	};
 };
