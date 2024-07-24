@@ -7,7 +7,7 @@
 
 /delete-node/ &dp_intf0;
 /delete-node/ &edp_tx;
-/delete-node/ &panel;
+/delete-node/ &edp_panel;
 /delete-node/ &backlight_lcd1;
 /delete-node/ &pp3300_edp_disp;
 /delete-node/ &nau8825;
@@ -20,10 +20,8 @@
 	};
 };
 
-&disp_dsi0 {
-	panel: panel1@0 {
-		compatible = "boe,nv110wum-l60";
-	};
+&dsi_panel {
+	compatible = "boe,nv110wum-l60";
 };
 
 &disp_pwm1 {
@@ -154,7 +152,7 @@
 		compatible = "himax,hx83102j";
 		pinctrl-names = "default";
 		pinctrl-0 = <&tchscr_int &tchscr_rst>;
-		panel = <&panel>;
+		panel = <&dsi_panel>;
 		reg = <0>;
 		spi-max-frequency = <12500000>;
 		status = "okay";

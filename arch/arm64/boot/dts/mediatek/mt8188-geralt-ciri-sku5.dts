@@ -15,7 +15,7 @@
 	compatible = "google,ciri-sku5", "google,ciri", "mediatek,mt8188";
 };
 
-&panel {
+&dsi_panel {
 	compatible = "ivo,t109nw41";
 };
 

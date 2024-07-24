@@ -105,14 +105,14 @@
 		reg = <0 0x40000000 0 0x80000000>;
 	};
 
-	panel: panel {
+	edp_panel: panel {
 		compatible = "lg,lp120up1";
 		status = "disabled";
 		pinctrl-names = "default";
 		pinctrl-0 = <&edp_bl_pwm>;
 		backlight = <&backlight_lcd1>;
 		port {
-			panel_in: endpoint {
+			edp_panel_in: endpoint {
 				remote-endpoint = <&edp_out>;
 			};
 		};
@@ -328,7 +328,7 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	panel1@0 {
+	dsi_panel: panel {
 		compatible = "boe,tv110c9m-ll3";
 		reg = <0>;
 		enable-gpios = <&pio 25 0>;
@@ -342,7 +342,7 @@
 		status = "okay";
 
 		port {
-			panel1_in: endpoint {
+			dsi_panel_in: endpoint {
 				remote-endpoint = <&dsi_out>;
 			};
 		};
@@ -351,7 +351,7 @@
 	ports {
 		port {
 			dsi_out: endpoint {
-				remote-endpoint = <&panel1_in>;
+				remote-endpoint = <&dsi_panel_in>;
 			};
 		};
 	};
@@ -435,7 +435,7 @@
 		port@1 {
 			reg = <1>;
 			edp_out: endpoint {
-				remote-endpoint = <&panel_in>;
+				remote-endpoint = <&edp_panel_in>;
 				data-lanes = <0 1 2 3>;
 			};
 		};
