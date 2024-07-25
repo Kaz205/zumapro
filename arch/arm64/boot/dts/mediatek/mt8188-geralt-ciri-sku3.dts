@@ -17,6 +17,5 @@
 
 &touchscreen {
 	himax,pid = <0x1003>;
-	himax,firmware-name = "himax_i2chid_1003.bin";
 	firmware-name = "himax_i2chid_1003.bin";
 };
