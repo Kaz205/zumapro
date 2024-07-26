@@ -126,6 +126,72 @@
 		};
 	};
 
+	/* system wide semi-regulated power rail from battery or USB */
+	ppvar_sys: ppvar-sys {
+		compatible = "regulator-fixed";
+		regulator-name = "ppvar_sys";
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	/* system wide LDO 1.8V power rail */
+	pp1800_ldo_z1: regulator-pp1800-ldo-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp1800_ldo_z1";
+		/* controlled by PP3300_Z1 */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	/* separately switched 3.3V power rail */
+	pp3300_s3: regulator-pp3300-s3 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_s3";
+		/* controlled by EXT_PMIC_EN2 */
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	/* system wide 3.3V power rail */
+	pp3300_z1: regulator-pp3300-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_z1";
+		/* controlled by PP3300_LDO_Z5 & EN_PWR_Z1 */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
+	/* system wide 4.2V power rail */
+	pp4200_s5: regulator-pp4200-s5 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp4200_s5";
+		/* controlled by EC */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <4200000>;
+		regulator-max-microvolt = <4200000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
+	/* system wide 5.0V power rail */
+	pp5000_z1: regulator-pp5000-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp5000_z1";
+		/* controlled by EC */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
 	pcie_3v3_en: pcie-3v3-en-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "pcie_3v3_en";
@@ -155,9 +221,9 @@
 		enable-active-high;
 	};
 
-	pp3300_s3: pp3300-s3-regulator {
+	pp3300_mipi_tchscr: regulator-pp3300-mipi-tchscr {
 		compatible = "regulator-fixed";
-		regulator-name = "pp3300_s3";
+		regulator-name = "pp3300_mipi_tchscr";
 		pinctrl-names = "default";
 		pinctrl-0 = <&en_pp3300_mipi>;
 		enable-active-high;
@@ -509,7 +575,7 @@
 		interrupts = <143 IRQ_TYPE_EDGE_FALLING>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&touchscreen_pins>;
-		vdd-supply = <&pp3300_s3>;
+		vdd-supply = <&pp3300_mipi_tchscr>;
 		vddl-supply = <&mt6359_vm18_ldo_reg>;
 		post-power-on-delay-ms = <500>;
 		hid-descr-addr = <0x0001>;
