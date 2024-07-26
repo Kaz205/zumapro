@@ -35,11 +35,6 @@
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	rt5682s: rt5682s@1a {
 		compatible = "realtek,rt5682s";
 		reg = <0x1a>;

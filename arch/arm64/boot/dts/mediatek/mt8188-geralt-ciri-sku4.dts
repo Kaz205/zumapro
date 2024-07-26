@@ -15,11 +15,6 @@
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	tas2563: tas2563@4f {
 		#sound-dai-cells = <0>;
 		compatible = "ti,tas2563";
