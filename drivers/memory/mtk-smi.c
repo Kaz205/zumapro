@@ -15,12 +15,14 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <soc/mediatek/smi.h>
 #include <dt-bindings/memory/mt2701-larb-port.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
+#include <dt-bindings/reset/mt8188-resets.h>
 
 /* SMI COMMON */
 #define SMI_L1LEN			0x100
@@ -174,7 +176,9 @@ struct mtk_smi {
 	const struct mtk_smi_common_plat *plat;
 };
 
+struct mtk_smi_genpd;
 struct mtk_smi_larb { /* larb: local arbiter */
+	struct device 			*dev;
 	struct mtk_smi			smi;
 	void __iomem			*base;
 	struct device			*smi_common_dev; /* common or sub-common dev */
@@ -185,7 +189,74 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	struct regmap			*sub_comm_syscon[LARB_MAX_SUB_COMMON];
 	int				sub_comm_inport[LARB_MAX_SUB_COMMON];
 	enum mtk_smi_protect_status	prot_status;	/* -> smi_prot_lock */
+	struct mtk_smi_genpd		*smi_pd;
 };
+
+struct mtk_smi_genpd {
+	struct regmap			*power_reset_base;
+	u32				power_reset_offset;
+	void __iomem			*power_reset_reg;
+	u32				power_reset_value;
+	struct notifier_block		nb;
+	struct mtk_smi_larb		*parent;
+};
+
+#define SMI_LARB_RESET_NUMBER_MT8188		(10)
+static const u32 mtk_smi_larb_power_reset_offet_mt8188[SMI_LARB_RESET_NUMBER_MT8188] = {
+	[MT8188_SMI_RST_LARB10]		= 0xC, /* larb10 */
+	[MT8188_SMI_RST_LARB11A]	= 0xC, /* larb11a */
+	[MT8188_SMI_RST_LARB11C]	= 0xC, /* larb11c */
+	[MT8188_SMI_RST_LARB12]		= 0xC, /* larb12 */
+	[MT8188_SMI_RST_LARB11B]	= 0xC, /* larb11b */
+	[MT8188_SMI_RST_LARB15]		= 0xC, /* larb15 */
+	[MT8188_SMI_RST_LARB16B]	= 0xA0, /* larb16b */
+	[MT8188_SMI_RST_LARB17B]	= 0xA0, /* larb17b */
+	[MT8188_SMI_RST_LARB16A]	= 0xA0, /* larb16a */
+	[MT8188_SMI_RST_LARB17A]	= 0xA0, /* larb17a */
+};
+
+static const u32 mtk_smi_larb_power_reset_value_mt8188[SMI_LARB_RESET_NUMBER_MT8188] = {
+	[MT8188_SMI_RST_LARB10]		= BIT(0), /* larb10 */
+	[MT8188_SMI_RST_LARB11A]	= BIT(0), /* larb11a */
+	[MT8188_SMI_RST_LARB11C]	= BIT(0), /* larb11c */
+	[MT8188_SMI_RST_LARB12]		= BIT(8), /* larb12 */
+	[MT8188_SMI_RST_LARB11B]	= BIT(0), /* larb11b */
+	[MT8188_SMI_RST_LARB15]		= BIT(0), /* larb15 */
+	[MT8188_SMI_RST_LARB16B]	= BIT(4), /* larb16b */
+	[MT8188_SMI_RST_LARB17B]	= BIT(4), /* larb17b */
+	[MT8188_SMI_RST_LARB16A]	= BIT(4), /* larb16a */
+	[MT8188_SMI_RST_LARB17A]	= BIT(4), /* larb17a */
+};
+
+static int mtk_larb_power_reset(struct mtk_smi_larb *larb)
+{
+	struct mtk_smi_genpd* smi_genpd;
+	u32 offset, value;
+	int ret;
+
+	if (!larb || !larb->smi_pd || IS_ERR(larb->smi_pd->power_reset_base)) {
+		dev_err(larb->dev, "[%s] Invalid power reset base\n", __func__);
+		return -EINVAL;
+	}
+
+	smi_genpd = larb->smi_pd;
+	offset = smi_genpd->power_reset_offset;
+	value = smi_genpd->power_reset_value;
+
+	ret = regmap_set_bits(smi_genpd->power_reset_base, offset, value);
+	if (ret) {
+		dev_err(larb->dev, "[%s] Failed to shut down larb %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = regmap_clear_bits(smi_genpd->power_reset_base, offset, value);
+	if (ret) {
+		dev_err(larb->dev, "[%s] Failed to reopen larb %d\n", __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 static int
 mtk_smi_larb_bind(struct device *dev, struct device *master, void *data)
@@ -530,6 +601,25 @@ static void mtk_smi_larb_clamp_protect(struct device *dev, bool set_clamp)
 	}
 }
 
+static int mtk_smi_genpd_callback(struct notifier_block *nb,
+			unsigned long flags, void *data)
+{
+	struct mtk_smi_genpd *smi_pd = container_of(nb, struct mtk_smi_genpd, nb);
+	struct mtk_smi_larb *larb = smi_pd->parent;
+	struct device *dev = larb->dev;
+
+	if (flags == GENPD_NOTIFY_PRE_ON || flags == GENPD_NOTIFY_PRE_OFF) {
+		/* disable related SMI sub-common port */
+		 mtk_smi_larb_clamp_protect(dev, true);
+	}else if (flags == GENPD_NOTIFY_ON) {
+		/* enable related SMI sub-common port */
+		mtk_larb_power_reset(larb);
+		mtk_smi_larb_clamp_protect(dev, false);
+	}
+
+	return NOTIFY_OK;
+}
+
 static int mtk_smi_device_link_common(struct device *dev, struct device **com_dev)
 {
 	struct platform_device *smi_com_pdev;
@@ -586,6 +676,53 @@ static int mtk_smi_dts_clk_init(struct device *dev, struct mtk_smi *smi,
 	return ret;
 }
 
+static int mtk_smi_get_power_setting(struct mtk_smi_larb *larb)
+{
+	struct device_node *reset_node;
+	struct mtk_smi_genpd *smi_pd;
+	struct device *dev;
+	u32 reset_tmp;
+	int ret;
+
+	if (!larb)
+		return -EINVAL;
+	dev = larb->dev;
+
+	/* only larb with "mediatek,smi-reset" need to get power setting */
+	reset_node = of_parse_phandle(dev->of_node, "mediatek,smi-reset", 0);
+	if (!reset_node)
+		return 0;
+
+	smi_pd = devm_kzalloc(dev, sizeof(*smi_pd), GFP_KERNEL);
+	if (!smi_pd)
+		return -ENOMEM;
+	larb->smi_pd = smi_pd;
+	smi_pd->parent = larb;
+
+	smi_pd->power_reset_base = device_node_to_regmap(reset_node);
+	of_node_put(reset_node);
+	if (IS_ERR_OR_NULL(smi_pd->power_reset_base)) {
+		dev_err(dev, "Failed to regmap power reset base\n");
+		return -EINVAL;
+	}
+
+	if (of_property_read_u32_index(dev->of_node, "mediatek,smi-reset", 1, &reset_tmp)) {
+		dev_err(dev, "Failed to get power reset offset\n");
+		return -EINVAL;
+	}
+	smi_pd->power_reset_offset = mtk_smi_larb_power_reset_offet_mt8188[reset_tmp];
+	smi_pd->power_reset_value = mtk_smi_larb_power_reset_value_mt8188[reset_tmp];
+
+	smi_pd->nb.notifier_call = mtk_smi_genpd_callback;
+	ret = dev_pm_genpd_add_notifier(dev, &larb->smi_pd->nb);
+	if (ret) {
+		dev_err(dev, "Failed to add genpd callback %d\n", ret);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int mtk_smi_larb_probe(struct platform_device *pdev)
 {
 	struct mtk_smi_larb *larb;
@@ -597,6 +734,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	if (!larb)
 		return -ENOMEM;
 
+	larb->dev = dev;
 	larb->larb_gen = of_device_get_match_data(dev);
 	larb->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(larb->base))
@@ -633,15 +771,22 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 
 	larb->prot_status = SMI_PROT_STA_REFUSE_TO_CHANGE;
 
-	pm_runtime_enable(dev);
 	platform_set_drvdata(pdev, larb);
 	ret = component_add(dev, &mtk_smi_larb_component_ops);
 	if (ret)
 		goto err_pm_disable;
+
+	ret = mtk_smi_get_power_setting(larb);
+	if (ret) {
+		dev_err(dev, "Failed to get power setting for larb\n");
+		goto err_pm_disable;
+	}
+
+	pm_runtime_enable(dev);
+
 	return 0;
 
 err_pm_disable:
-	pm_runtime_disable(dev);
 	device_link_remove(dev, larb->smi_common_dev);
 	return ret;
 }
@@ -843,6 +988,10 @@ static const struct mtk_smi_common_plat mtk_smi_common_mt8188_vpp = {
 	.init     = mtk_smi_common_mt8195_init,
 };
 
+static const struct mtk_smi_common_plat mtk_smi_sub_common_mt8188 = {
+	.type     = MTK_SMI_GEN2_SUB_COMM,
+};
+
 static const struct mtk_smi_common_plat mtk_smi_common_mt8192 = {
 	.type     = MTK_SMI_GEN2,
 	.has_gals = true,
@@ -881,6 +1030,7 @@ static const struct of_device_id mtk_smi_common_of_ids[] = {
 	{.compatible = "mediatek,mt8186-smi-common", .data = &mtk_smi_common_mt8186},
 	{.compatible = "mediatek,mt8188-smi-common-vdo", .data = &mtk_smi_common_mt8188_vdo},
 	{.compatible = "mediatek,mt8188-smi-common-vpp", .data = &mtk_smi_common_mt8188_vpp},
+	{.compatible = "mediatek,mt8188-smi-sub-common", .data = &mtk_smi_sub_common_mt8188},
 	{.compatible = "mediatek,mt8192-smi-common", .data = &mtk_smi_common_mt8192},
 	{.compatible = "mediatek,mt8195-smi-common-vdo", .data = &mtk_smi_common_mt8195_vdo},
 	{.compatible = "mediatek,mt8195-smi-common-vpp", .data = &mtk_smi_common_mt8195_vpp},

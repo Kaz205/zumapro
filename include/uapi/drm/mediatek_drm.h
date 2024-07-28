@@ -18,6 +18,7 @@
 #include <drm/drm.h>
 
 #ifdef __KERNEL__
+#include <linux/bits.h>
 #include <linux/types.h>
 #else
 #include <stdint.h>
@@ -54,7 +55,9 @@ struct drm_mtk_gem_map_off {
 
 #define DRM_MTK_GEM_CREATE		0x00
 #define DRM_MTK_GEM_MAP_OFFSET		0x01
-#define DRM_MTK_GEM_CREATE_RESTRICTED	0x02
+
+#define DRM_MTK_GEM_CREATE_FLAG_RESTRICTED          BIT(0)
+#define DRM_MTK_GEM_CREATE_FLAG_ALLOC_SINGLE_PAGES  BIT(1)
 
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)

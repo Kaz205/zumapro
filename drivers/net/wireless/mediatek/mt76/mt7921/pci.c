@@ -344,7 +344,11 @@ static int mt7921_pci_probe(struct pci_dev *pdev,
 	bus_ops->rmw = mt7921_rmw;
 	dev->mt76.bus = bus_ops;
 
+	if (!mt7921_disable_aspm && mt76_pci_aspm_supported(pdev))
+		dev->aspm_supported = true;
+
 	ret = mt7921e_mcu_fw_pmctrl(dev);
+
 	if (ret)
 		goto err_free_dev;
 
@@ -418,6 +422,8 @@ static int mt7921_pci_suspend(struct device *device)
 	flush_work(&dev->reset_work);
 	cancel_delayed_work_sync(&pm->ps_work);
 	cancel_work_sync(&pm->wake_work);
+
+	mt7921_roc_abort_sync(dev);
 
 	err = mt7921_mcu_drv_pmctrl(dev);
 	if (err < 0)

@@ -303,6 +303,7 @@ struct mt7921_dev {
 	bool hw_init_done:1;
 	bool fw_assert:1;
 	bool regd_in_progress:1;
+	bool aspm_supported:1;
 	wait_queue_head_t wait;
 
 	struct list_head sta_poll_list;
@@ -605,5 +606,6 @@ int mt7921_mcu_set_roc(struct mt7921_phy *phy, struct mt7921_vif *vif,
 		       enum mt7921_roc_req type, u8 token_id);
 int mt7921_mcu_abort_roc(struct mt7921_phy *phy, struct mt7921_vif *vif,
 			 u8 token_id);
+void mt7921_roc_abort_sync(struct mt7921_dev *dev);
 u8 mt7921_check_offload_capability(struct device *dev, const char *fw_wm);
 #endif

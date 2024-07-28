@@ -8,11 +8,17 @@
 /delete-node/ &dp_intf0;
 /delete-node/ &edp_tx;
 /delete-node/ &panel;
-/delete-node/ &backlight_lcd0;
+/delete-node/ &backlight_lcd1;
 /delete-node/ &pp3300_dx_edp;
 /delete-node/ &nau8825;
 /delete-node/ &max98390_3a;
 /delete-node/ &max98390_3b;
+
+&aud_etdm_spk_on {
+	pins-cmd-dat {
+		drive-strength = <MTK_DRIVE_8mA>;
+	};
+};
 
 &disp_dsi0 {
 	panel: panel1@0 {
@@ -29,11 +35,6 @@
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	rt5682s: rt5682s@1a {
 		compatible = "realtek,rt5682s";
 		reg = <0x1a>;
@@ -149,7 +150,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	touchscreen: hid_hx_common_spi@0 {
+	touchscreen: hid-hx-common-spi@0 {
 		compatible = "himax,hx83102j";
 		pinctrl-names = "default";
 		pinctrl-0 = <&touchscreen_pins &touch_reset>;
@@ -181,9 +182,21 @@
 	};
 };
 
-&pio {
-	pinctrl-names = "default";
+&aud_etdm_hp_on {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>;
+	};
+};
 
+&aud_etdm_hp_off {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_B_GPIO114>;
+		bias-pull-down;
+		input-enable;
+	};
+};
+
+&pio {
 	gpio-line-names =
 		"GSC_AP_INT_ODL",
 		"AP_DISP_BKLTEN",
@@ -200,7 +213,7 @@
 		"EN_PP3300_WLAN_X",
 		"WIFI_KILL_1V8_L",
 		"BT_KILL_1V8_L",
-		"AP_FLASH_WP_L",
+		"AP_FLASH_WP_L", /* ... is crossystem ABI. Rev1 schematics call it AP_WP_ODL. */
 		"",
 		"",
 		"WCAM_PWDN_L",
@@ -235,8 +248,8 @@
 		"PCIE_WAKE_1V8_ODL",
 		"PCIE_RST_1V8_L",
 		"PCIE_CLKREQ_1V8_ODL",
-		"NC",
-		"NC",
+		"",
+		"",
 		"",
 		"",
 		"",
@@ -296,7 +309,7 @@
 		"HP_INT_ODL",
 		"SPKR_INT_ODL",
 		"I2S_HP_DATAIN",
-		"",
+		"EN_SPKR",
 		"I2S_SPKR_MCLK",
 		"I2S_SPKR_BCLK",
 		"I2S_HP_MCLK",
@@ -328,7 +341,7 @@
 		"EN_PP1200_UCAM_X",
 		"EN_PP2800A_WCAM_X",
 		"EN_PP1100_WCAM_X",
-		"TCHSCR_INI_1V8_L",
+		"TCHSCR_INT_1V8_L",
 		"",
 		"MT7921_PMU_EN_1V8",
 		"",
@@ -347,7 +360,7 @@
 		"EMMC_DAT2",
 		"EMMC_DAT1",
 		"EMMC_DAT0",
-		"EMMC_STRB",
+		"EMMC_DSL",
 		"",
 		"",
 		"",
@@ -362,28 +375,6 @@
 		"",
 		"SPMI_SCL",
 		"SPMI_SDA";
-
-	aud_etdm_hp_on: aud_etdm_hp_on {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_I0_I2SIN_D0>,
-				 <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>,
-				 <PINMUX_GPIO115__FUNC_B0_I2SO2_BCK>,
-				 <PINMUX_GPIO116__FUNC_B0_I2SO2_WS>,
-				 <PINMUX_GPIO117__FUNC_O_I2SO2_D0>;
-		};
-	};
-
-	aud_etdm_hp_off: aud_etdm_hp_off {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_B_GPIO110>,
-				 <PINMUX_GPIO114__FUNC_B_GPIO114>,
-				 <PINMUX_GPIO115__FUNC_B_GPIO115>,
-				 <PINMUX_GPIO116__FUNC_B_GPIO116>,
-				 <PINMUX_GPIO117__FUNC_B_GPIO117>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
 
 	touch_reset: touch-reset {
 		pins-rst {

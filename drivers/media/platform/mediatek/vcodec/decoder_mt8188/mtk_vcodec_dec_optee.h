@@ -94,6 +94,7 @@ struct mtk_vdec_optee_private {
 	struct mutex tee_mutex;
 };
 
+#if IS_ENABLED(CONFIG_TEE)
 /**
  * mtk_vcodec_dec_optee_open - setup the communication channels with TA.
  * @optee_private: optee private context
@@ -152,5 +153,47 @@ void *mtk_vcodec_dec_get_shm_buffer_va(struct mtk_vdec_optee_private *optee_priv
 int mtk_vcodec_dec_get_shm_buffer_size(struct mtk_vdec_optee_private *optee_private,
 				       enum mtk_vdec_hw_id hw_id,
 				       enum mtk_vdec_optee_data_index data_index);
+#else
+static inline int mtk_vcodec_dec_optee_open(struct mtk_vdec_optee_private *optee_private)
+{
+	return -ENODEV;
+}
+
+static inline int mtk_vcodec_dec_optee_private_init(struct mtk_vcodec_dec_dev *vcodec_dev)
+{
+	return -ENODEV;
+}
+
+static inline void mtk_vcodec_dec_optee_release(struct mtk_vdec_optee_private *optee_private)
+{
+}
+
+static inline void mtk_vcodec_dec_optee_set_data(struct mtk_vdec_optee_data_to_shm *data,
+						 void *buf, int buf_size,
+						 enum mtk_vdec_optee_data_index data_index)
+{
+}
+
+static inline int mtk_vcodec_dec_optee_invokd_cmd(struct mtk_vdec_optee_private *optee_private,
+						  enum mtk_vdec_hw_id hw_id,
+						  struct mtk_vdec_optee_data_to_shm *data)
+{
+	return -ENODEV;
+}
+
+static inline void *mtk_vcodec_dec_get_shm_buffer_va(struct mtk_vdec_optee_private *optee_private,
+						     enum mtk_vdec_hw_id hw_id,
+						     enum mtk_vdec_optee_data_index data_index)
+{
+	return NULL;
+}
+
+static inline int mtk_vcodec_dec_get_shm_buffer_size(struct mtk_vdec_optee_private *optee_private,
+						     enum mtk_vdec_hw_id hw_id,
+						     enum mtk_vdec_optee_data_index data_index)
+{
+	return -ENODEV;
+}
+#endif /* IS_ENABLED(CONFIG_TEE) */
 
 #endif /* _MTK_VCODEC_FW_OPTEE_H_ */
