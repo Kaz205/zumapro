@@ -33,7 +33,7 @@ int drv_start(struct ieee80211_local *local)
 	return ret;
 }
 
-void drv_stop(struct ieee80211_local *local)
+void drv_stop(struct ieee80211_local *local, bool suspend)
 {
 	might_sleep();
 	lockdep_assert_wiphy(local->hw.wiphy);
@@ -41,8 +41,8 @@ void drv_stop(struct ieee80211_local *local)
 	if (WARN_ON(!local->started))
 		return;
 
-	trace_drv_stop(local);
-	local->ops->stop(&local->hw);
+	trace_drv_stop(local, suspend);
+	local->ops->stop(&local->hw, suspend);
 	trace_drv_return_void(local);
 
 	/* sync away all work on the tasklet before clearing started */
@@ -575,7 +575,7 @@ int drv_change_sta_links(struct ieee80211_local *local,
 
 	for_each_set_bit(link_id, &links_to_rem, IEEE80211_MLD_MAX_NUM_LINKS) {
 		link_sta = rcu_dereference_protected(info->link[link_id],
-						     lockdep_is_wiphy_held(local->hw.wiphy));
+						     lockdep_is_held(&local->hw.wiphy->mtx));
 
 		ieee80211_link_sta_debugfs_drv_remove(link_sta);
 	}
@@ -595,7 +595,7 @@ int drv_change_sta_links(struct ieee80211_local *local,
 
 	for_each_set_bit(link_id, &links_to_add, IEEE80211_MLD_MAX_NUM_LINKS) {
 		link_sta = rcu_dereference_protected(info->link[link_id],
-						     lockdep_is_wiphy_held(local->hw.wiphy));
+						     lockdep_is_held(&local->hw.wiphy->mtx));
 		ieee80211_link_sta_debugfs_drv_add(link_sta);
 	}
 

@@ -395,9 +395,6 @@ ieee80211_add_tx_radiotap_header(struct ieee80211_local *local,
 	} else if (status_rate && (status_rate->rate_idx.flags &
 					RATE_INFO_FLAGS_HE_MCS))
 	{
-#if CFG80211_VERSION < KERNEL_VERSION(4,19,0)
-		WARN_ON_ONCE(1);
-#else
 		struct ieee80211_radiotap_he *he;
 
 		rthdr->it_present |= cpu_to_le32(BIT(IEEE80211_RADIOTAP_HE));
@@ -468,7 +465,6 @@ ieee80211_add_tx_radiotap_header(struct ieee80211_local *local,
 		}
 
 		pos += sizeof(struct ieee80211_radiotap_he);
-#endif
 	}
 
 	if (status_rate || info->status.rates[0].idx < 0)
@@ -639,19 +635,12 @@ static void ieee80211_report_ack_skb(struct ieee80211_local *local,
 								skb->len,
 								acked,
 								GFP_ATOMIC);
-			else if (ieee80211_is_any_nullfunc(hdr->frame_control)) {
-#if CFG80211_VERSION >= KERNEL_VERSION(4,17,0)
+			else if (ieee80211_is_any_nullfunc(hdr->frame_control))
 				cfg80211_probe_status(sdata->dev, hdr->addr1,
 						      cookie, acked,
 						      info->status.ack_signal,
 						      is_valid_ack_signal,
 						      GFP_ATOMIC);
-#else
-				cfg80211_probe_status(sdata->dev, hdr->addr1,
-						      cookie, acked,
-						      GFP_ATOMIC);
-#endif
-			}
 			else if (ieee80211_is_mgmt(hdr->frame_control))
 				cfg80211_mgmt_tx_status_ext(&sdata->wdev,
 							    &status,

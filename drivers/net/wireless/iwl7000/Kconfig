@@ -15,6 +15,7 @@ config IWL7000
 	select CRYPTO
 	select CRYPTO_AES
 	select CRYPTO_CCM
+	select CRYPTO_LIB_ARC4
 	select CRC32
 	select AVERAGE
 

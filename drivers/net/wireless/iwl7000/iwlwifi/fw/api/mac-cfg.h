@@ -495,7 +495,7 @@ struct iwl_link_config_cmd {
 	__le32 cck_short_preamble;
 	__le32 short_slot;
 	__le32 protection_flags;
-	/* MAC_QOS_PARAM_API_S_VER_1/_VER_2 */
+	/* MAC_QOS_PARAM_API_S_VER_1 */
 	__le32 qos_flags;
 	struct iwl_ac_qos ac[AC_NUM + 1];
 	u8 htc_trig_based_pkt_ext;

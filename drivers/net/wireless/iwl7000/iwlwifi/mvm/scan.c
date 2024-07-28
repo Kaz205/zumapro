@@ -208,7 +208,7 @@ static void iwl_mvm_scan_iterator(void *_data, u8 *mac,
 
 	curr_mvmvif = iwl_mvm_vif_from_mac80211(data->current_vif);
 
-	if (vif->type == NL80211_IFTYPE_AP && vif->p2p &&
+	if (ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_P2P_GO &&
 	    mvmvif->deflink.phy_ctxt && curr_mvmvif->deflink.phy_ctxt &&
 	    mvmvif->deflink.phy_ctxt->id != curr_mvmvif->deflink.phy_ctxt->id)
 		data->is_dcm_with_p2p_go = true;
@@ -225,6 +225,14 @@ iwl_mvm_scan_type _iwl_mvm_get_scan_type(struct iwl_mvm *mvm,
 		.is_dcm_with_p2p_go = false,
 		.global_cnt = 0,
 	};
+
+	/*
+	 * A scanning AP interface probably wants to generate a survey to do
+	 * ACS (automatic channel selection).
+	 * Force a non-fragmented scan in that case.
+	 */
+	if (vif && ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_AP)
+		return IWL_SCAN_TYPE_WILD;
 
 	ieee80211_iterate_active_interfaces_atomic(mvm->hw,
 						   IEEE80211_IFACE_ITER_NORMAL,
@@ -789,14 +797,12 @@ iwl_mvm_build_scan_probe(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		cpu_to_le16(ies->len[NL80211_BAND_5GHZ]);
 	pos += ies->len[NL80211_BAND_5GHZ];
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	memcpy(pos, ies->ies[NL80211_BAND_6GHZ],
 	       ies->len[NL80211_BAND_6GHZ]);
 	params->preq.band_data[2].offset = cpu_to_le16(pos - params->preq.buf);
 	params->preq.band_data[2].len =
 		cpu_to_le16(ies->len[NL80211_BAND_6GHZ]);
 	pos += ies->len[NL80211_BAND_6GHZ];
-#endif
 	memcpy(pos, ies->common_ies, ies->common_ie_len);
 	params->preq.common_data.offset = cpu_to_le16(pos - params->preq.buf);
 
@@ -854,11 +860,13 @@ static inline bool iwl_mvm_scan_use_ebs(struct iwl_mvm *mvm,
 	 *	4. it's not a p2p find operation.
 	 *	5. we are not in low latency mode,
 	 *	   or if fragmented ebs is supported by the FW
+	 *	6. the VIF is not an AP interface (scan wants survey results)
 	 */
 	return ((capa->flags & IWL_UCODE_TLV_FLAGS_EBS_SUPPORT) &&
 		mvm->last_ebs_successful && IWL_MVM_ENABLE_EBS &&
 		vif->type != NL80211_IFTYPE_P2P_DEVICE &&
-		(!low_latency || iwl_mvm_is_frag_ebs_supported(mvm)));
+		(!low_latency || iwl_mvm_is_frag_ebs_supported(mvm)) &&
+		ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_AP);
 }
 
 static inline bool iwl_mvm_is_regular_scan(struct iwl_mvm_scan_params *params)
@@ -1664,13 +1672,6 @@ iwl_mvm_umac_scan_cfg_channels_v7(struct iwl_mvm *mvm,
 	}
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,10,0)
-static void
-iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
-				    struct iwl_mvm_scan_params *params,
-				    struct iwl_scan_probe_params_v4 *pp){
-}
-#else
 static void
 iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
 				    struct iwl_mvm_scan_params *params,
@@ -1744,20 +1745,7 @@ iwl_mvm_umac_scan_fill_6g_chan_list(struct iwl_mvm *mvm,
 	pp->short_ssid_num = idex_s;
 	pp->bssid_num = idex_b;
 }
-#endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(5,10,0)
-static u32
-iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
-				     struct iwl_mvm_scan_params *params,
-				     u32 n_channels,
-				     struct iwl_scan_probe_params_v4 *pp,
-				     struct iwl_scan_channel_params_v7 *cp,
-				     enum nl80211_iftype vif_type,
-				     u32 version){
-	return 0;
-}
-#else
 /* TODO: this function can be merged with iwl_mvm_scan_umac_fill_ch_p_v7 */
 static u32
 iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
@@ -1815,11 +1803,7 @@ iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
 			/* Use the highest PSD value allowed as advertised by
 			 * APs for this channel
 			 */
-#if CFG80211_VERSION < KERNEL_VERSION(6,5,0)
 			tmp_psd_20 = IEEE80211_RNR_TBTT_PARAMS_PSD_RESERVED;
-#else
-			tmp_psd_20 = scan_6ghz_params[j].psd_20;
-#endif
 			if (tmp_psd_20 !=
 			    IEEE80211_RNR_TBTT_PARAMS_PSD_RESERVED &&
 			    (psd_20 ==
@@ -1849,7 +1833,7 @@ iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
 		 */
 		if (!iwl_mvm_is_scan_fragmented(params->type)) {
 			if (!cfg80211_channel_is_psc(params->channels[i]) ||
-			    flags & IWL_UHB_CHAN_CFG_FLAG_PSC_CHAN_NO_LISTEN) {
+			    psc_no_listen) {
 				if (unsolicited_probe_on_chan) {
 					max_s_ssids = 2;
 					max_bssids = 6;
@@ -1970,7 +1954,6 @@ iwl_mvm_umac_scan_cfg_channels_v7_6g(struct iwl_mvm *mvm,
 
 	return ch_cnt;
 }
-#endif
 
 
 static u8 iwl_mvm_scan_umac_chan_flags_v2(struct iwl_mvm *mvm,
@@ -2013,7 +1996,6 @@ static void iwl_mvm_scan_6ghz_passive_scan(struct iwl_mvm *mvm,
 					   struct iwl_mvm_scan_params *params,
 					   struct ieee80211_vif *vif)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	struct ieee80211_supported_band *sband =
 		&mvm->nvm_data->bands[NL80211_BAND_6GHZ];
 	u32 n_disabled, i;
@@ -2097,7 +2079,6 @@ static void iwl_mvm_scan_6ghz_passive_scan(struct iwl_mvm *mvm,
 	/* all conditions to enable 6ghz passive scan are satisfied */
 	IWL_DEBUG_SCAN(mvm, "6GHz passive scan: can be enabled\n");
 	params->enable_6ghz_passive = true;
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(5,10,0) */
 }
 
 static u16 iwl_mvm_scan_umac_flags_v2(struct iwl_mvm *mvm,
@@ -2187,7 +2168,11 @@ static u8 iwl_mvm_scan_umac_flags2(struct iwl_mvm *mvm,
 			IWL_UCODE_TLV_CAPA_SCAN_DONT_TOGGLE_ANT))
 		flags |= IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_DONT_TOGGLE_ANT;
 
-	if (gen_flags & IWL_UMAC_SCAN_GEN_FLAGS_V2_FORCE_PASSIVE)
+	/* Passive and AP interface -> ACS (automatic channel selection) */
+	if (gen_flags & IWL_UMAC_SCAN_GEN_FLAGS_V2_FORCE_PASSIVE &&
+	    ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_AP &&
+	    iwl_fw_lookup_notif_ver(mvm->fw, SCAN_GROUP, CHANNEL_SURVEY_NOTIF,
+				    0) >= 1)
 		flags |= IWL_UMAC_SCAN_GEN_FLAGS2_COLLECT_CHANNEL_STATS;
 
 	return flags;
@@ -2479,7 +2464,6 @@ iwl_mvm_scan_umac_fill_ch_p_v7(struct iwl_mvm *mvm,
 					  channel_cfg_flags,
 					  vif->type, version);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	if (params->enable_6ghz_passive) {
 		struct ieee80211_supported_band *sband =
 			&mvm->nvm_data->bands[NL80211_BAND_6GHZ];
@@ -2511,7 +2495,6 @@ iwl_mvm_scan_umac_fill_ch_p_v7(struct iwl_mvm *mvm,
 			cp->count++;
 		}
 	}
-#endif
 }
 
 static int iwl_mvm_scan_umac_v12(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
@@ -2824,7 +2807,7 @@ static void iwl_mvm_scan_respect_p2p_go_iter(void *_data, u8 *mac,
 	if (vif == data->current_vif)
 		return;
 
-	if (vif->type == NL80211_IFTYPE_AP && vif->p2p) {
+	if (ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_P2P_GO) {
 		u32 link_id;
 
 		for (link_id = 0;
@@ -2949,18 +2932,16 @@ static int _iwl_mvm_single_scan_start(struct iwl_mvm *mvm,
 	params.scan_plans = &scan_plan;
 	params.n_scan_plans = 1;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	params.n_6ghz_params = req->n_6ghz_params;
 	params.scan_6ghz_params = req->scan_6ghz_params;
 	params.scan_6ghz = req->scan_6ghz;
-#endif
 	iwl_mvm_fill_scan_type(mvm, &params, vif);
 	iwl_mvm_fill_respect_p2p_go(mvm, &params, vif);
 
 	if (req->duration)
 		params.iter_notif = true;
 
-	params.tsf_report_link_id = cfg80211_scan_request_tsf_report_link_id(req);
+	params.tsf_report_link_id = -1;
 	if (params.tsf_report_link_id < 0) {
 		if (vif->active_links)
 			params.tsf_report_link_id = __ffs(vif->active_links);
@@ -3267,10 +3248,11 @@ static int iwl_mvm_umac_scan_abort(struct iwl_mvm *mvm, int type)
 
 	ret = iwl_mvm_send_cmd_pdu(mvm,
 				   WIDE_ID(IWL_ALWAYS_LONG_GROUP, SCAN_ABORT_UMAC),
-				   0, sizeof(cmd), &cmd);
+				   CMD_SEND_IN_RFKILL, sizeof(cmd), &cmd);
 	if (!ret)
 		mvm->scan_uid_status[uid] = type << IWL_MVM_SCAN_STOPPING_SHIFT;
 
+	IWL_DEBUG_SCAN(mvm, "Scan abort: ret=%d\n", ret);
 	return ret;
 }
 
@@ -3526,7 +3508,6 @@ static int iwl_mvm_int_mlo_scan_start(struct iwl_mvm *mvm,
 	req->wdev = ieee80211_vif_to_wdev(vif);
 	req->wiphy = mvm->hw->wiphy;
 	req->scan_start = jiffies;
-	cfg80211_scan_request_set_tsf_report_link_id(req, -1);
 
 	ret = _iwl_mvm_single_scan_start(mvm, vif, req, &ies,
 					 IWL_MVM_SCAN_INT_MLO);

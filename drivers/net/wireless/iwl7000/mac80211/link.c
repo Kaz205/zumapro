@@ -37,22 +37,17 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 	link_conf->link_id = link_id;
 	link_conf->vif = &sdata->vif;
 
-	wiphy_work_init(&link->csa_finalize_work,
+	wiphy_work_init(&link->csa.finalize_work,
 			ieee80211_csa_finalize_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
 	wiphy_work_init(&link->color_change_finalize_work,
 			ieee80211_color_change_finalize_work);
-#endif
 	INIT_DELAYED_WORK(&link->color_collision_detect_work,
 			  ieee80211_color_collision_detection_work);
 	INIT_LIST_HEAD(&link->assigned_chanctx_list);
 	INIT_LIST_HEAD(&link->reserved_chanctx_list);
-	wiphy_delayed_work_init(&link->dfs_cac_timer_work,
-				ieee80211_dfs_cac_timer_work);
 
 	if (!deflink) {
 		switch (sdata->vif.type) {
-#if CFG80211_VERSION >= KERNEL_VERSION(6,0,0)
 		case NL80211_IFTYPE_AP:
 			ether_addr_copy(link_conf->addr,
 					sdata->wdev.links[link_id].addr);
@@ -62,7 +57,6 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 		case NL80211_IFTYPE_STATION:
 			/* station sets the bssid in ieee80211_mgd_setup_link */
 			break;
-#endif
 		default:
 			WARN_ON(1);
 		}
@@ -78,7 +72,7 @@ void ieee80211_link_stop(struct ieee80211_link_data *link)
 
 	cancel_delayed_work_sync(&link->color_collision_detect_work);
 	wiphy_work_cancel(link->sdata->local->hw.wiphy,
-			  &link->csa_finalize_work);
+			  &link->csa.finalize_work);
 	ieee80211_link_release_channel(link);
 }
 
@@ -372,8 +366,8 @@ static int _ieee80211_set_active_links(struct ieee80211_sub_if_data *sdata,
 		 */
 		if (link->conf->csa_active)
 			wiphy_delayed_work_queue(local->hw.wiphy,
-						 &link->u.mgd.chswitch_work,
-						 link->u.mgd.csa_time -
+						 &link->u.mgd.csa.switch_work,
+						 link->u.mgd.csa.time -
 						 jiffies);
 	}
 

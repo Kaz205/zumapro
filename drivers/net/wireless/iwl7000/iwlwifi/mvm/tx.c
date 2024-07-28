@@ -7,12 +7,11 @@
 #include <linux/ieee80211.h>
 #include <linux/etherdevice.h>
 #include <linux/tcp.h>
-#include <net/gso.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 
 #include "iwl-trans.h"
-#include "iwl-eeprom-parse.h"
+#include "iwl-nvm-utils.h"
 #include "mvm.h"
 #include "sta.h"
 #include "time-sync.h"
@@ -803,10 +802,30 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 	if (info.control.vif) {
 		struct iwl_mvm_vif *mvmvif =
 			iwl_mvm_vif_from_mac80211(info.control.vif);
+		bool p2p_aux = iwl_mvm_has_p2p_over_aux(mvm);
 
-		if (info.control.vif->type == NL80211_IFTYPE_P2P_DEVICE ||
-		    info.control.vif->type == NL80211_IFTYPE_AP ||
-		    info.control.vif->type == NL80211_IFTYPE_ADHOC) {
+		if ((info.control.vif->type == NL80211_IFTYPE_P2P_DEVICE &&
+		     p2p_aux) ||
+		    (info.control.vif->type == NL80211_IFTYPE_STATION &&
+		     offchannel)) {
+			/*
+			 * IWL_MVM_OFFCHANNEL_QUEUE is used for ROC packets
+			 * that can be used in 2 different types of vifs, P2P
+			 * Device and STATION.
+			 * P2P Device uses the offchannel queue.
+			 * STATION (HS2.0) uses the auxiliary context of the FW,
+			 * and hence needs to be sent on the aux queue.
+			 * If P2P_DEV_OVER_AUX is supported (p2p_aux = true)
+			 * also P2P Device uses the aux queue.
+			 */
+			sta_id = mvm->aux_sta.sta_id;
+			queue = mvm->aux_queue;
+			if (WARN_ON(queue == IWL_MVM_INVALID_QUEUE))
+				return -1;
+		} else if (info.control.vif->type ==
+			   NL80211_IFTYPE_P2P_DEVICE ||
+			   info.control.vif->type == NL80211_IFTYPE_AP ||
+			   info.control.vif->type == NL80211_IFTYPE_ADHOC) {
 			u32 link_id = u32_get_bits(info.control.flags,
 						   IEEE80211_TX_CTRL_MLO_LINK);
 			struct iwl_mvm_vif_link_info *link;
@@ -832,18 +851,6 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 		} else if (info.control.vif->type == NL80211_IFTYPE_MONITOR) {
 			queue = mvm->snif_queue;
 			sta_id = mvm->snif_sta.sta_id;
-		} else if (info.control.vif->type == NL80211_IFTYPE_STATION &&
-			   offchannel) {
-			/*
-			 * IWL_MVM_OFFCHANNEL_QUEUE is used for ROC packets
-			 * that can be used in 2 different types of vifs, P2P &
-			 * STATION.
-			 * P2P uses the offchannel queue.
-			 * STATION (HS2.0) uses the auxiliary context of the FW,
-			 * and hence needs to be sent on the aux queue.
-			 */
-			sta_id = mvm->aux_sta.sta_id;
-			queue = mvm->aux_queue;
 		}
 	}
 
@@ -1016,8 +1023,7 @@ static int iwl_mvm_tx_tso(struct iwl_mvm *mvm, struct sk_buff *skb,
 	netdev_features_t netdev_flags = NETIF_F_CSUM_MASK | NETIF_F_SG;
 	u8 tid;
 
-	snap_ip_tcp = 8 + skb_transport_header(skb) - skb_network_header(skb) +
-		tcp_hdrlen(skb);
+	snap_ip_tcp = 8 + skb_network_header_len(skb) + tcp_hdrlen(skb);
 
 	if (!mvmsta->max_amsdu_len ||
 	    !ieee80211_is_data_qos(hdr->frame_control) ||
@@ -1723,8 +1729,7 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		iwl_trans_free_tx_cmd(mvm->trans, info->driver_data[1]);
 
 		memset(&info->status, 0, sizeof(info->status));
-		info->flags &= ~(IEEE80211_TX_STAT_ACK |
-				 IEEE80211_TX_STAT_TX_FILTERED);
+		info->flags &= ~(IEEE80211_TX_STAT_ACK | IEEE80211_TX_STAT_TX_FILTERED);
 
 		/* inform mac80211 about what happened with the frame */
 		switch (status & TX_STATUS_MSK) {
@@ -1811,12 +1816,6 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		lq_color = TX_RES_RATE_TABLE_COL_GET(tx_resp->tlc_info);
 		info->status.status_driver_data[0] =
 			RS_DRV_DATA_PACK(lq_color, tx_resp->reduced_tpc);
-
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-		if (info->flags & IEEE80211_TX_STAT_ACK)
-			iwl_mvm_tdls_peer_cache_pkt(mvm, (void *)skb->data,
-						    skb->len, -1);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		if (likely(!iwl_mvm_time_sync_frame(mvm, skb, hdr->addr1)))
 			ieee80211_tx_status_skb(mvm->hw, skb);
@@ -2135,10 +2134,6 @@ static void iwl_mvm_tx_reclaim(struct iwl_mvm *mvm, int sta_id, int tid,
 			else
 				WARN_ON_ONCE(tid != IWL_MAX_TID_COUNT);
 		}
-
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, skb->len, -1);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		/* this is the first skb we deliver in this batch */
 		/* put the rate scaling data there */

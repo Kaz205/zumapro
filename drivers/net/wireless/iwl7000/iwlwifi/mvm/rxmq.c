@@ -1344,7 +1344,7 @@ static void iwl_mvm_decode_eht_ext_mu(struct iwl_mvm *mvm,
 
 		IWL_MVM_ENC_USIG_VALUE_MASK(usig, usig_a1,
 					    IWL_RX_USIG_A1_DISREGARD,
-					    IEEE80211_RADIOTAP_EHT_USIG1_MU_B0_B24_DISREGARD);
+					    IEEE80211_RADIOTAP_EHT_USIG1_MU_B20_B24_DISREGARD);
 		IWL_MVM_ENC_USIG_VALUE_MASK(usig, usig_a1,
 					    IWL_RX_USIG_A1_VALIDATE,
 					    IEEE80211_RADIOTAP_EHT_USIG1_MU_B25_VALIDATE);
@@ -1419,7 +1419,6 @@ static void iwl_mvm_decode_eht_ext_tb(struct iwl_mvm *mvm,
 	}
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,18,0)
 static void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
 				  struct ieee80211_rx_status *rx_status,
 				  struct ieee80211_radiotap_eht *eht)
@@ -1488,13 +1487,6 @@ static void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
 	rx_status->bw = RATE_INFO_BW_EHT_RU;
 	rx_status->eht.ru = nl_ru;
 }
-#else
-static inline void iwl_mvm_decode_eht_ru(struct iwl_mvm *mvm,
-					 struct ieee80211_rx_status *rx_status,
-					 struct ieee80211_radiotap_eht *eht){
-	return;
-}
-#endif
 
 static void iwl_mvm_decode_eht_phy_data(struct iwl_mvm *mvm,
 					struct iwl_mvm_rx_phy_data *phy_data,
@@ -1979,6 +1971,15 @@ static void iwl_mvm_rx_fill_status(struct iwl_mvm *mvm,
 
 	rx_status->device_timestamp = phy_data->gp2_on_air_rise;
 
+	if (mvm->rx_ts_ptp && mvm->monitor_on) {
+		u64 adj_time =
+			iwl_mvm_ptp_get_adj_time(mvm, phy_data->gp2_on_air_rise * NSEC_PER_USEC);
+
+		rx_status->mactime = div64_u64(adj_time, NSEC_PER_USEC);
+		rx_status->flag |= RX_FLAG_MACTIME_IS_RTAP_TS64;
+		rx_status->flag &= ~RX_FLAG_MACTIME;
+	}
+
 	rx_status->freq = ieee80211_channel_to_frequency(phy_data->channel,
 							 rx_status->band);
 	iwl_mvm_get_signal_strength(mvm, rx_status, rate_n_flags,
@@ -2315,14 +2316,6 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 		if (ieee80211_is_data(hdr->frame_control))
 			iwl_mvm_rx_csum(mvm, sta, skb, pkt);
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-		/*
-		 * these packets are from the AP or the existing TDLS peer.
-		 * In both cases an existing station.
-		 */
-		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, queue);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
-
 		if (iwl_mvm_is_dup(sta, queue, rx_status, hdr, desc)) {
 			IWL_DEBUG_DROP(mvm, "Dropping duplicate packet 0x%x\n",
 				       le16_to_cpu(hdr->seq_ctrl));
@@ -2407,7 +2400,6 @@ void iwl_mvm_rx_monitor_no_data(struct iwl_mvm *mvm, struct napi_struct *napi,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_rx_no_data_ver_3 *desc = (void *)pkt->data;
 	u32 rssi;
-	u32 info_type;
 	struct ieee80211_sta *sta = NULL;
 	struct sk_buff *skb;
 	struct iwl_mvm_rx_phy_data phy_data;
@@ -2420,7 +2412,6 @@ void iwl_mvm_rx_monitor_no_data(struct iwl_mvm *mvm, struct napi_struct *napi,
 		return;
 
 	rssi = le32_to_cpu(desc->rssi);
-	info_type = le32_to_cpu(desc->info) & RX_NO_DATA_INFO_TYPE_MSK;
 	phy_data.d0 = desc->phy_info[0];
 	phy_data.d1 = desc->phy_info[1];
 	phy_data.phy_info = IWL_RX_MPDU_PHY_TSF_OVERLOAD;
@@ -2472,7 +2463,12 @@ void iwl_mvm_rx_monitor_no_data(struct iwl_mvm *mvm, struct napi_struct *napi,
 	/* 0-length PSDU */
 	rx_status->flag |= RX_FLAG_NO_PSDU;
 
-	switch (info_type) {
+	/* mark as failed PLCP on any errors to skip checks in mac80211 */
+	if (le32_get_bits(desc->info, RX_NO_DATA_INFO_ERR_MSK) !=
+	    RX_NO_DATA_INFO_ERR_NONE)
+		rx_status->flag |= RX_FLAG_FAILED_PLCP_CRC;
+
+	switch (le32_get_bits(desc->info, RX_NO_DATA_INFO_TYPE_MSK)) {
 	case RX_NO_DATA_INFO_TYPE_NDP:
 		rx_status->zero_length_psdu_type =
 			IEEE80211_RADIOTAP_ZERO_LEN_PSDU_SOUNDING;
