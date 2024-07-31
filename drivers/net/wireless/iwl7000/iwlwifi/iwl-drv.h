@@ -7,7 +7,6 @@
 #define __iwl_drv_h__
 #include <linux/export.h>
 #include <linux/device.h>
-#include <kunit/visibility.h>
 
 /* for all modules */
 #define DRV_NAME        "iwlwifi"

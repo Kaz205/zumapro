@@ -296,6 +296,7 @@ int iwl_mvm_mac_ctxt_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 
 	INIT_LIST_HEAD(&mvmvif->time_event_data.list);
 	mvmvif->time_event_data.id = TE_MAX;
+	mvmvif->roc_activity = ROC_NUM_ACTIVITIES;
 
 	mvmvif->deflink.bcast_sta.sta_id = IWL_MVM_INVALID_STA;
 	mvmvif->deflink.mcast_sta.sta_id = IWL_MVM_INVALID_STA;
@@ -479,8 +480,7 @@ void iwl_mvm_set_fw_protection_flags(struct iwl_mvm *mvm,
 
 void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			       struct ieee80211_bss_conf *link_conf,
-			       struct iwl_ac_qos *ac, __le32 *qos_flags,
-			       int version)
+			       struct iwl_ac_qos *ac, __le32 *qos_flags)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm_vif_link_info *mvm_link =
@@ -501,10 +501,7 @@ void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		ac[ucode_ac].edca_txop =
 			cpu_to_le16(mvm_link->queue_params[i].txop * 32);
 		ac[ucode_ac].aifsn = mvm_link->queue_params[i].aifs;
-
-		/* FIFOs mask is reserved in version 3 */
-		if (version < 3)
-			ac[ucode_ac].fifos_mask = BIT(txf);
+		ac[ucode_ac].fifos_mask = BIT(txf);
 	}
 
 	if (link_conf->qos)
@@ -580,7 +577,7 @@ static void iwl_mvm_mac_ctxt_cmd_common(struct iwl_mvm *mvm,
 	cmd->filter_flags = 0;
 
 	iwl_mvm_set_fw_qos_params(mvm, vif, &vif->bss_conf, cmd->ac,
-				  &cmd->qos_flags, 2);
+				  &cmd->qos_flags);
 
 	/* The fw does not distinguish between ht and fat */
 	ht_flag = MAC_PROT_FLG_HT_PROT | MAC_PROT_FLG_FAT_PROT;
@@ -608,20 +605,20 @@ void iwl_mvm_set_fw_dtim_tbtt(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	u32 dtim_offs;
 
 	/*
-	* The DTIM count counts down, so when it is N that means N
-	* more beacon intervals happen until the DTIM TBTT. Therefore
-	* add this to the current time. If that ends up being in the
-	* future, the firmware will handle it.
-	*
-	* Also note that the system_timestamp (which we get here as
-	* "sync_device_ts") and TSF timestamp aren't at exactly the
-	* same offset in the frame -- the TSF is at the first symbol
-	* of the TSF, the system timestamp is at signal acquisition
-	* time. This means there's an offset between them of at most
-	* a few hundred microseconds (24 * 8 bits + PLCP time gives
-	* 384us in the longest case), this is currently not relevant
-	* as the firmware wakes up around 2ms before the TBTT.
-	*/
+	 * The DTIM count counts down, so when it is N that means N
+	 * more beacon intervals happen until the DTIM TBTT. Therefore
+	 * add this to the current time. If that ends up being in the
+	 * future, the firmware will handle it.
+	 *
+	 * Also note that the system_timestamp (which we get here as
+	 * "sync_device_ts") and TSF timestamp aren't at exactly the
+	 * same offset in the frame -- the TSF is at the first symbol
+	 * of the TSF, the system timestamp is at signal acquisition
+	 * time. This means there's an offset between them of at most
+	 * a few hundred microseconds (24 * 8 bits + PLCP time gives
+	 * 384us in the longest case), this is currently not relevant
+	 * as the firmware wakes up around 2ms before the TBTT.
+	 */
 	dtim_offs = link_conf->sync_dtim_count *
 			link_conf->beacon_int;
 	/* convert TU to usecs */
@@ -646,15 +643,6 @@ __le32 iwl_mvm_mac_ctxt_cmd_p2p_sta_get_oppps_ctwin(struct iwl_mvm *mvm,
 	struct ieee80211_p2p_noa_attr *noa =
 		&vif->bss_conf.p2p_noa_attr;
 
-#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
-	/*
-		* Pass CT window including OPPPS enable flag as part of a WA
-		* to pass P2P OPPPS certification test. Refer to
-		* IWLMVM_P2P_OPPPS_TEST_WA description in Kconfig.noupstream.
-		*/
-	if (mvm->p2p_opps_test_wa_vif)
-		return cpu_to_le32(noa->oppps_ctwindow);
-#endif
 	return cpu_to_le32(noa->oppps_ctwindow &
 			IEEE80211_P2P_OPPPS_CTWINDOW_MASK);
 }
@@ -886,7 +874,7 @@ void iwl_mvm_mac_ctxt_set_tim(struct iwl_mvm *mvm,
 	}
 }
 
-static u32 iwl_mvm_find_ie_offset(u8 *beacon, u8 eid, u32 frame_size)
+u32 iwl_mvm_find_ie_offset(u8 *beacon, u8 eid, u32 frame_size)
 {
 	struct ieee80211_mgmt *mgmt = (void *)beacon;
 	const u8 *ie;
@@ -1021,12 +1009,8 @@ static void iwl_mvm_mac_ctxt_set_tx(struct iwl_mvm *mvm,
 						TX_CMD_FLG_BT_PRIO_POS;
 	tx->tx_flags = cpu_to_le32(tx_flags);
 
-	/*
-	 * TODO: the firwmare advertises this, but has a bug. We should revert
-	 *	 this when the firmware will be fixed.
-	 */
 	if (!fw_has_capa(&mvm->fw->ucode_capa,
-			 IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION) || true) {
+			 IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION)) {
 		iwl_mvm_toggle_tx_ant(mvm, &mvm->mgmt_last_antenna_idx);
 
 		tx->rate_n_flags =
@@ -1206,9 +1190,7 @@ static int iwl_mvm_mac_ctxt_send_beacon(struct iwl_mvm *mvm,
 			 IWL_UCODE_TLV_CAPA_CSA_AND_TBTT_OFFLOAD))
 		return iwl_mvm_mac_ctxt_send_beacon_v6(mvm, vif, beacon);
 
-	/* TODO: remove first condition once FW merge new TLV */
-	if (iwl_mvm_has_new_tx_api(mvm) ||
-	    fw_has_api(&mvm->fw->ucode_capa,
+	if (fw_has_api(&mvm->fw->ucode_capa,
 		       IWL_UCODE_TLV_API_NEW_BEACON_TEMPLATE))
 		return iwl_mvm_mac_ctxt_send_beacon_v9(mvm, vif, beacon,
 						       link_conf);
@@ -1512,7 +1494,7 @@ static void iwl_mvm_csa_count_down(struct iwl_mvm *mvm,
 
 	mvmvif->csa_countdown = true;
 
-	if (!ieee80211_beacon_cntdwn_is_complete(csa_vif)) {
+	if (!ieee80211_beacon_cntdwn_is_complete(csa_vif, 0)) {
 		int c = ieee80211_beacon_update_cntdwn(csa_vif, 0);
 
 		iwl_mvm_mac_ctxt_beacon_changed(mvm, csa_vif,

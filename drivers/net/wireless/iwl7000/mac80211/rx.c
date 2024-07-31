@@ -19,7 +19,6 @@
 #include <linux/export.h>
 #include <linux/kcov.h>
 #include <linux/bitops.h>
-#include <kunit/visibility.h>
 #include <net/mac80211.h>
 #include <net/ieee80211_radiotap.h>
 #include <asm/unaligned.h>
@@ -2767,7 +2766,10 @@ ieee80211_rx_mesh_fast_forward(struct ieee80211_sub_if_data *sdata,
 			       struct sk_buff *skb, int hdrlen)
 {
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
-	struct ieee80211_mesh_fast_tx *entry = NULL;
+	struct ieee80211_mesh_fast_tx_key key = {
+		.type = MESH_FAST_TX_TYPE_FORWARDED
+	};
+	struct ieee80211_mesh_fast_tx *entry;
 	struct ieee80211s_hdr *mesh_hdr;
 	struct tid_ampdu_tx *tid_tx;
 	struct sta_info *sta;
@@ -2776,9 +2778,13 @@ ieee80211_rx_mesh_fast_forward(struct ieee80211_sub_if_data *sdata,
 
 	mesh_hdr = (struct ieee80211s_hdr *)(skb->data + sizeof(eth));
 	if ((mesh_hdr->flags & MESH_FLAGS_AE) == MESH_FLAGS_AE_A5_A6)
-		entry = mesh_fast_tx_get(sdata, mesh_hdr->eaddr1);
+		ether_addr_copy(key.addr, mesh_hdr->eaddr1);
 	else if (!(mesh_hdr->flags & MESH_FLAGS_AE))
-		entry = mesh_fast_tx_get(sdata, skb->data);
+		ether_addr_copy(key.addr, skb->data);
+	else
+		return false;
+
+	entry = mesh_fast_tx_get(sdata, &key);
 	if (!entry)
 		return false;
 
@@ -3358,10 +3364,8 @@ ieee80211_rx_check_bss_color_collision(struct ieee80211_rx_data *rx)
 	const struct element *ie;
 	size_t baselen;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,19,0)
 	if (!wiphy_ext_feature_isset(rx->local->hw.wiphy,
 				     NL80211_EXT_FEATURE_BSS_COLOR))
-#endif
 		return;
 
 	if (ieee80211_hw_check(&rx->local->hw, DETECTS_COLOR_COLLISION))
@@ -3392,8 +3396,7 @@ ieee80211_rx_check_bss_color_collision(struct ieee80211_rx_data *rx)
 				      IEEE80211_HE_OPERATION_BSS_COLOR_MASK);
 		if (color == bss_conf->he_bss_color.color)
 			ieee80211_obss_color_collision_notify(&rx->sdata->vif,
-							      BIT_ULL(color),
-							      GFP_ATOMIC);
+							      BIT_ULL(color));
 	}
 }
 
@@ -3434,16 +3437,10 @@ ieee80211_rx_h_mgmt_check(struct ieee80211_rx_data *rx)
 		    !(status->flag & RX_FLAG_NO_SIGNAL_VAL))
 			sig = status->signal;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
 		cfg80211_report_obss_beacon_khz(rx->local->hw.wiphy,
 						rx->skb->data, rx->skb->len,
 						ieee80211_rx_status_to_khz(status),
 						sig);
-#else
-		cfg80211_report_obss_beacon(rx->local->hw.wiphy,
-					    rx->skb->data, rx->skb->len,
-					    status->freq, sig);
-#endif
 		rx->flags |= IEEE80211_RX_BEACON_REPORTED;
 	}
 
@@ -3622,6 +3619,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 
 		break;
 	case WLAN_CATEGORY_PUBLIC:
+	case WLAN_CATEGORY_PROTECTED_DUAL_OF_ACTION:
 		if (len < IEEE80211_MIN_ACTION_SIZE + 1)
 			goto invalid;
 		if (sdata->vif.type != NL80211_IFTYPE_STATION)
@@ -4565,7 +4563,9 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		return ieee80211_is_public_action(hdr, skb->len) ||
 		       ieee80211_is_probe_req(hdr->frame_control) ||
 		       ieee80211_is_probe_resp(hdr->frame_control) ||
-		       ieee80211_is_beacon(hdr->frame_control);
+		       ieee80211_is_beacon(hdr->frame_control) ||
+		       (ieee80211_is_auth(hdr->frame_control) &&
+			ether_addr_equal(sdata->vif.addr, hdr->addr1));
 	case NL80211_IFTYPE_NAN:
 		/* Currently no frames on NAN interface are allowed */
 		return false;

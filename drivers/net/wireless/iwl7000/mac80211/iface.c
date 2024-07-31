@@ -235,7 +235,7 @@ static int ieee80211_can_powered_addr_change(struct ieee80211_sub_if_data *sdata
 	/* And if this iface is scanning */
 	if (local->scanning) {
 		scan_sdata = rcu_dereference_protected(local->scan_sdata,
-						       lockdep_is_wiphy_held(local->hw.wiphy));
+						       lockdep_is_held(&local->hw.wiphy->mtx));
 		if (sdata == scan_sdata)
 			ret = -EBUSY;
 	}
@@ -309,16 +309,12 @@ static int ieee80211_change_mac(struct net_device *dev, void *addr)
 	 * active (maybe other cases?) and we must get removed from it.
 	 * But we really don't care anymore if it's not registered now.
 	 */
-	if (!wdev_registered(dev->ieee80211_ptr))
+	if (!dev->ieee80211_ptr->registered)
 		return 0;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 	ret = _ieee80211_change_mac(sdata, addr);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 
 	return ret;
 }
@@ -456,18 +452,14 @@ static int ieee80211_open(struct net_device *dev)
 	if (!is_valid_ether_addr(dev->dev_addr))
 		return -EADDRNOTAVAIL;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
-#endif
 	err = ieee80211_check_concurrent_iface(sdata, sdata->vif.type);
 	if (err)
 		goto out;
 
 	err = ieee80211_do_open(&sdata->wdev, true);
 out:
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
-#endif
 
 	return err;
 }
@@ -525,7 +517,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 	 * would have removed them, but in other modes there shouldn't
 	 * be any stations.
 	 */
-	flushed = sta_info_flush(sdata);
+	flushed = sta_info_flush(sdata, -1);
 	WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_AP_VLAN && flushed > 0);
 
 	/* don't count this interface for allmulti while it is down */
@@ -557,20 +549,14 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 
 	sdata->vif.bss_conf.csa_active = false;
 	if (sdata->vif.type == NL80211_IFTYPE_STATION)
-		sdata->deflink.u.mgd.csa_waiting_bcn = false;
-	if (sdata->csa_blocked_queues) {
-		ieee80211_wake_vif_queues(local, sdata,
-					  IEEE80211_QUEUE_STOP_REASON_CSA);
-		sdata->csa_blocked_queues = false;
-	}
+		sdata->deflink.u.mgd.csa.waiting_bcn = false;
+	ieee80211_vif_unblock_queues_csa(sdata);
 
-	wiphy_work_cancel(local->hw.wiphy, &sdata->deflink.csa_finalize_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,15,0)
+	wiphy_work_cancel(local->hw.wiphy, &sdata->deflink.csa.finalize_work);
 	wiphy_work_cancel(local->hw.wiphy,
 			  &sdata->deflink.color_change_finalize_work);
-#endif
 	wiphy_delayed_work_cancel(local->hw.wiphy,
-				  &sdata->deflink.dfs_cac_timer_work);
+				  &sdata->dfs_cac_timer_work);
 
 	if (sdata->wdev.cac_started) {
 		chandef = sdata->vif.bss_conf.chanreq.oper;
@@ -718,7 +704,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 		wiphy_delayed_work_flush(local->hw.wiphy, &local->scan_work);
 
 	if (local->open_count == 0) {
-		ieee80211_stop_device(local);
+		ieee80211_stop_device(local, false);
 
 		/* no reconfiguring after stop! */
 		return;
@@ -774,15 +760,11 @@ static int ieee80211_stop(struct net_device *dev)
 		ieee80211_stop_mbssid(sdata);
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_lock(sdata->local->hw.wiphy);
-#endif
 	wiphy_work_cancel(sdata->local->hw.wiphy, &sdata->activate_links_work);
 
 	ieee80211_do_stop(sdata, true);
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_unlock(sdata->local->hw.wiphy);
-#endif
 
 	return 0;
 }
@@ -840,17 +822,6 @@ ieee80211_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
 {
 	dev_fetch_sw_netstats(stats, dev->tstats);
 }
-#if LINUX_VERSION_IS_LESS(4,11,0)
-/* Just declare it here to keep sparse happy */
-struct rtnl_link_stats64 *bp_ieee80211_get_stats64(struct net_device *dev,
-						   struct rtnl_link_stats64 *stats);
-struct rtnl_link_stats64 *
-bp_ieee80211_get_stats64(struct net_device *dev,
-			 struct rtnl_link_stats64 *stats){
-	ieee80211_get_stats64(dev, stats);
-	return stats;
-}
-#endif
 
 static int ieee80211_netdev_setup_tc(struct net_device *dev,
 				     enum tc_setup_type type, void *type_data)
@@ -861,40 +832,18 @@ static int ieee80211_netdev_setup_tc(struct net_device *dev,
 	return drv_net_setup_tc(local, sdata, dev, type, type_data);
 }
 
-#if LINUX_VERSION_IS_LESS(4,10,0)
-static int __change_mtu(struct net_device *ndev, int new_mtu){
-	if (new_mtu < 0 || new_mtu > 0)
-		return -EINVAL;
-	ndev->mtu = new_mtu;
-	return 0;
-}
-#endif
-
 static const struct net_device_ops ieee80211_dataif_ops = {
-#if LINUX_VERSION_IS_LESS(4,10,0)
-	.ndo_change_mtu = __change_mtu,
-#endif
-
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
 	.ndo_uninit		= ieee80211_uninit,
 	.ndo_start_xmit		= ieee80211_subif_start_xmit,
 	.ndo_set_rx_mode	= ieee80211_set_multicast_list,
 	.ndo_set_mac_address 	= ieee80211_change_mac,
-#if LINUX_VERSION_IS_GEQ(4,11,0)
 	.ndo_get_stats64	= ieee80211_get_stats64,
-#else
-	.ndo_get_stats64 = bp_ieee80211_get_stats64,
-#endif
-
 	.ndo_setup_tc		= ieee80211_netdev_setup_tc,
 };
 
 static const struct net_device_ops ieee80211_dataif_ops_itxq = {
-#if LINUX_VERSION_IS_LESS(4,10,0)
-	.ndo_change_mtu = __change_mtu,
-#endif
-
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
 	.ndo_uninit		= ieee80211_uninit,
@@ -950,10 +899,6 @@ static u16 ieee80211_monitor_select_queue(struct net_device *dev,
 }
 
 static const struct net_device_ops ieee80211_monitorif_ops = {
-#if LINUX_VERSION_IS_LESS(4,10,0)
-	.ndo_change_mtu = __change_mtu,
-#endif
-
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
 	.ndo_uninit		= ieee80211_uninit,
@@ -961,12 +906,7 @@ static const struct net_device_ops ieee80211_monitorif_ops = {
 	.ndo_set_rx_mode	= ieee80211_set_multicast_list,
 	.ndo_set_mac_address 	= ieee80211_change_mac,
 	.ndo_select_queue	= ieee80211_monitor_select_queue,
-#if LINUX_VERSION_IS_GEQ(4,11,0)
 	.ndo_get_stats64	= ieee80211_get_stats64,
-#else
-	.ndo_get_stats64 = bp_ieee80211_get_stats64,
-#endif
-
 };
 
 #if LINUX_VERSION_IS_GEQ(5,13,0)
@@ -1030,22 +970,13 @@ out:
 #endif /* LINUX_VERSION_IS_GEQ(5,13,0) */
 
 static const struct net_device_ops ieee80211_dataif_8023_ops = {
-#if LINUX_VERSION_IS_LESS(4,10,0)
-	.ndo_change_mtu = __change_mtu,
-#endif
-
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
 	.ndo_uninit		= ieee80211_uninit,
 	.ndo_start_xmit		= ieee80211_subif_start_xmit_8023,
 	.ndo_set_rx_mode	= ieee80211_set_multicast_list,
 	.ndo_set_mac_address	= ieee80211_change_mac,
-#if LINUX_VERSION_IS_GEQ(4,11,0)
 	.ndo_get_stats64	= ieee80211_get_stats64,
-#else
-	.ndo_get_stats64 = bp_ieee80211_get_stats64,
-#endif
-
 #if LINUX_VERSION_IS_GEQ(5,13,0)
 	.ndo_fill_forward_path	= ieee80211_netdev_fill_forward_path,
 #endif
@@ -1550,7 +1481,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	drv_remove_interface(local, sdata);
  err_stop:
 	if (!local->open_count)
-		drv_stop(local);
+		drv_stop(local, false);
  err_del_bss:
 	sdata->bss = NULL;
 	if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
@@ -1565,20 +1496,14 @@ static void ieee80211_if_free(struct net_device *dev)
 	free_percpu(dev->tstats);
 }
 
-#if LINUX_VERSION_IS_LESS(4,12,0)
-static void __ieee80211_if_free(struct net_device *ndev){
-	ieee80211_if_free(ndev);
-	free_netdev(ndev);
-}
-#endif
-
 static void ieee80211_if_setup(struct net_device *dev)
 {
 	ether_setup(dev);
 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
 	dev->priv_flags |= IFF_NO_QUEUE;
 	dev->netdev_ops = &ieee80211_dataif_ops;
-	netdev_set_priv_destructor(dev, ieee80211_if_free);
+	dev->needs_free_netdev = true;
+	dev->priv_destructor = ieee80211_if_free;
 }
 
 static void ieee80211_iface_process_skb(struct ieee80211_local *local,
@@ -1856,6 +1781,8 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	wiphy_work_init(&sdata->work, ieee80211_iface_work);
 	wiphy_work_init(&sdata->activate_links_work,
 			ieee80211_activate_links_work);
+	wiphy_delayed_work_init(&sdata->dfs_cac_timer_work,
+				ieee80211_dfs_cac_timer_work);
 
 	switch (type) {
 	case NL80211_IFTYPE_P2P_GO:
@@ -2317,22 +2244,11 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 		 * MPDU and A-MSDU frames which may be much larger so we do
 		 * not impose an upper limit in that case.
 		 */
-#if LINUX_VERSION_IS_GEQ(4,10,0)
 		ndev->min_mtu = 256;
-#endif
-		if (type == NL80211_IFTYPE_MONITOR) {
-#if LINUX_VERSION_IS_GEQ(4,10,0)
-			ndev->min_mtu = 0;
-#endif
-#if LINUX_VERSION_IS_GEQ(4,10,0)
+		if (type == NL80211_IFTYPE_MONITOR)
 			ndev->max_mtu = 0;
-#endif
-		}
-		else {
-#if LINUX_VERSION_IS_GEQ(4,10,0)
+		else
 			ndev->max_mtu = local->hw.max_mtu;
-#endif
-		}
 
 		ret = cfg80211_register_netdevice(ndev);
 		if (ret) {
@@ -2400,9 +2316,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 	 */
 	cfg80211_shutdown_all_interfaces(local->hw.wiphy);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_lock(local->hw.wiphy);
-#endif
 
 	WARN(local->open_count, "%s: open count remains %d\n",
 	     wiphy_name(local->hw.wiphy), local->open_count);
@@ -2432,9 +2346,7 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 		if (!netdev)
 			kfree(sdata);
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(5,12,0)
 	wiphy_unlock(local->hw.wiphy);
-#endif
 }
 
 static int netdev_notify(struct notifier_block *nb,
@@ -2487,4 +2399,27 @@ void ieee80211_vif_dec_num_mcast(struct ieee80211_sub_if_data *sdata)
 		atomic_dec(&sdata->u.ap.num_mcast_sta);
 	else if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
 		atomic_dec(&sdata->u.vlan.num_mcast_sta);
+}
+
+void ieee80211_vif_block_queues_csa(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_local *local = sdata->local;
+
+	if (ieee80211_hw_check(&local->hw, HANDLES_QUIET_CSA))
+		return;
+
+	ieee80211_stop_vif_queues(local, sdata,
+				  IEEE80211_QUEUE_STOP_REASON_CSA);
+	sdata->csa_blocked_queues = true;
+}
+
+void ieee80211_vif_unblock_queues_csa(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_local *local = sdata->local;
+
+	if (sdata->csa_blocked_queues) {
+		ieee80211_wake_vif_queues(local, sdata,
+					  IEEE80211_QUEUE_STOP_REASON_CSA);
+		sdata->csa_blocked_queues = false;
+	}
 }

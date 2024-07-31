@@ -7,7 +7,7 @@
 #include <crypto/aes.h>
 #include <crypto/hash.h>
 #include <crypto/skcipher.h>
-#include <crypto/utils.h>
+#include <crypto/algapi.h>
 
 #include "ieee80211_i.h"
 #include "aes_cmac.h"

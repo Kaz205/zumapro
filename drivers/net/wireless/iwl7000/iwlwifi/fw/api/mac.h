@@ -287,9 +287,9 @@ struct iwl_ac_qos {
 	__le16 cw_min;
 	__le16 cw_max;
 	u8 aifsn;
-	u8 fifos_mask; /* reserved in VER_3 */
+	u8 fifos_mask;
 	__le16 edca_txop;
-} __packed; /* AC_QOS_API_S_VER_2, AC_QOS_API_S_VER_3 */
+} __packed; /* AC_QOS_API_S_VER_2 */
 
 /**
  * struct iwl_mac_ctx_cmd - command structure to configure MAC contexts
@@ -328,7 +328,7 @@ struct iwl_mac_ctx_cmd {
 	__le32 cck_short_preamble;
 	__le32 short_slot;
 	__le32 filter_flags;
-	/* MAC_QOS_PARAM_API_S_VER_1/_VER_2 */
+	/* MAC_QOS_PARAM_API_S_VER_1 */
 	__le32 qos_flags;
 	struct iwl_ac_qos ac[AC_NUM+1];
 	/* MAC_CONTEXT_COMMON_DATA_API_S */

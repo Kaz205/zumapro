@@ -9,6 +9,7 @@
 
 #include <linux/list.h>
 #include <linux/spinlock.h>
+#include <linux/cleanup.h>
 #include <linux/leds.h>
 #include <linux/in6.h>
 
@@ -16,12 +17,14 @@
 #include <linux/thermal.h>
 #endif
 
+#include <linux/ptp_clock_kernel.h>
+
 #include <linux/ktime.h>
 
 #include "iwl-op-mode.h"
 #include "iwl-trans.h"
 #include "fw/notif-wait.h"
-#include "iwl-eeprom-parse.h"
+#include "iwl-nvm-utils.h"
 #include "fw/file.h"
 #include "iwl-config.h"
 #include "sta.h"
@@ -362,7 +365,9 @@ struct iwl_mvm_vif_link_info {
  * @IWL_MVM_ESR_BLOCKED_WOWLAN: WOWLAN is preventing the enablement of EMLSR
  * @IWL_MVM_ESR_BLOCKED_TPT: block EMLSR when there is not enough traffic
  * @IWL_MVM_ESR_BLOCKED_FW: FW didn't recommended/forced exit from EMLSR
- * @IWL_MVM_ESR_BLOCKED_NON_BSS: An active non-bssid link's preventing EMLSR
+ * @IWL_MVM_ESR_BLOCKED_NON_BSS: An active non-BSS interface's link is
+ *	preventing EMLSR
+ * @IWL_MVM_ESR_BLOCKED_ROC: remain-on-channel is preventing EMLSR
  * @IWL_MVM_ESR_EXIT_MISSED_BEACON: exited EMLSR due to missed beacons
  * @IWL_MVM_ESR_EXIT_LOW_RSSI: link is deactivated/not allowed for EMLSR
  *	due to low RSSI.
@@ -372,6 +377,7 @@ struct iwl_mvm_vif_link_info {
  *	preventing the enablement of EMLSR
  * @IWL_MVM_ESR_EXIT_CSA: CSA happened, so exit EMLSR
  * @IWL_MVM_ESR_EXIT_RFI: EMLSR not allowed due to RFI
+ * @IWL_MVM_ESR_EXIT_LINK_USAGE: Exit EMLSR due to low tpt on secondary link
  */
 enum iwl_mvm_esr_state {
 	IWL_MVM_ESR_BLOCKED_PREVENTION	= 0x1,
@@ -379,12 +385,14 @@ enum iwl_mvm_esr_state {
 	IWL_MVM_ESR_BLOCKED_TPT		= 0x4,
 	IWL_MVM_ESR_BLOCKED_FW		= 0x8,
 	IWL_MVM_ESR_BLOCKED_NON_BSS	= 0x10,
+	IWL_MVM_ESR_BLOCKED_ROC		= 0x20,
 	IWL_MVM_ESR_EXIT_MISSED_BEACON	= 0x10000,
 	IWL_MVM_ESR_EXIT_LOW_RSSI	= 0x20000,
 	IWL_MVM_ESR_EXIT_COEX		= 0x40000,
 	IWL_MVM_ESR_EXIT_BANDWIDTH	= 0x80000,
 	IWL_MVM_ESR_EXIT_CSA		= 0x100000,
 	IWL_MVM_ESR_EXIT_RFI		= 0x200000,
+	IWL_MVM_ESR_EXIT_LINK_USAGE	= 0x400000,
 };
 
 #define IWL_MVM_BLOCK_ESR_REASONS 0xffff
@@ -451,6 +459,8 @@ struct iwl_mvm_esr_exit {
  * @prevent_esr_done_wk: work that should be done when esr prevention ends.
  * @mlo_int_scan_wk: work for the internal MLO scan.
  * @unblock_esr_tpt_wk: work for unblocking EMLSR when tpt is high enough.
+ * @roc_activity: currently running ROC activity for this vif (or
+ *	ROC_NUM_ACTIVITIES if no activity is running).
  */
 struct iwl_mvm_vif {
 	struct iwl_mvm *mvm;
@@ -479,13 +489,8 @@ struct iwl_mvm_vif {
 #ifdef CONFIG_PM
 	/* WoWLAN GTK rekey data */
 	struct {
-#if CFG80211_VERSION >= KERNEL_VERSION(5,8,0)
 		u8 kck[NL80211_KCK_EXT_LEN];
 		u8 kek[NL80211_KEK_EXT_LEN];
-#else
-		u8 kck[NL80211_KCK_LEN];
-		u8 kek[NL80211_KEK_LEN];
-#endif
 		size_t kek_len;
 		size_t kck_len;
 		u32 akm;
@@ -533,6 +538,7 @@ struct iwl_mvm_vif {
 
 	struct iwl_mvm_time_event_data time_event_data;
 	struct iwl_mvm_time_event_data hs_time_event_data;
+	enum iwl_roc_activity roc_activity;
 
 	/* TCP Checksum Offload */
 	netdev_features_t features;
@@ -566,7 +572,6 @@ struct iwl_mvm_vif {
 	     link_id < ARRAY_SIZE((mvm_vif)->link);			\
 	     link_id++)							\
 		if ((mvm_vif)->link[link_id])
-
 
 static inline struct iwl_mvm_vif *
 iwl_mvm_vif_from_mac80211(struct ieee80211_vif *vif)
@@ -639,12 +644,10 @@ struct iwl_mvm_tt_mgmt {
 /**
  * struct iwl_mvm_thermal_device - thermal zone related data
  * @trips: temperature thresholds for report
- * @fw_trips_index: keep indexes to original array - temp_trips
  * @tzone: thermal zone device data
 */
 struct iwl_mvm_thermal_device {
 	struct thermal_trip trips[IWL_MAX_DTS_TRIPS];
-	u8 fw_trips_index[IWL_MAX_DTS_TRIPS];
 	struct thermal_zone_device *tzone;
 };
 
@@ -699,7 +702,6 @@ enum iwl_mvm_traffic_load {
 	IWL_MVM_TRAFFIC_HIGH,
 };
 
-
 DECLARE_EWMA(rate, 16, 16)
 
 struct iwl_mvm_tcm_mac {
@@ -739,22 +741,6 @@ struct iwl_mvm_tcm {
 		bool change[NUM_MAC_INDEX_DRIVER];
 	} result;
 };
-
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-#define IWL_MVM_TDLS_CNT_MAX_PEERS 4
-
-struct iwl_mvm_tdls_peer_counter {
-	struct list_head list;
-	struct rcu_head rcu_head;
-
-	struct mac_address mac __aligned(2);
-	struct ieee80211_vif *vif;
-	u32 tx_bytes;
-	struct {
-		u32 bytes;
-	} ____cacheline_aligned_in_smp rx[];
-};
-#endif
 
 /**
  * struct iwl_mvm_reorder_buffer - per ra/tid/queue reorder buffer
@@ -921,6 +907,31 @@ struct iwl_csi_data_buffer {
 };
 #endif
 
+struct ptp_data {
+	struct ptp_clock *ptp_clock;
+	struct ptp_clock_info ptp_clock_info;
+
+	struct delayed_work dwork;
+
+	/* The last GP2 reading from the hw */
+	u32 last_gp2;
+
+	/* number of wraparounds since scale_update_adj_time_ns */
+	u32 wrap_counter;
+
+	/* GP2 time when the scale was last updated */
+	u32 scale_update_gp2;
+
+	/* Adjusted time when the scale was last updated in nanoseconds */
+	u64 scale_update_adj_time_ns;
+
+	/* clock frequency offset, scaled to 65536000000 */
+	u64 scaled_freq;
+
+	/* Delta between hardware clock and ptp clock in nanoseconds */
+	s64 delta;
+};
+
 struct iwl_time_sync_data {
 	struct sk_buff_head frame_list;
 	u8 peer_addr[ETH_ALEN];
@@ -1047,7 +1058,6 @@ struct iwl_mvm {
 	struct iwl_rx_phy_info last_phy_info;
 	struct ieee80211_sta __rcu *fw_id_to_mac_id[IWL_MVM_STATION_COUNT_MAX];
 	struct ieee80211_link_sta __rcu *fw_id_to_link_sta[IWL_MVM_STATION_COUNT_MAX];
-	unsigned long fw_link_ids_map;
 	u8 rx_ba_sessions;
 
 	/* configured by mac80211 */
@@ -1158,6 +1168,7 @@ struct iwl_mvm {
 	struct ieee80211_channel **nd_channels;
 	int n_nd_channels;
 	bool net_detect;
+	bool fast_resume;
 	u8 offload_tid;
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	bool d3_wake_sysassert;
@@ -1198,17 +1209,11 @@ struct iwl_mvm {
 	bool fw_static_smps_request;
 
 	unsigned long bt_coex_last_tcm_ts;
+	struct iwl_mvm_tcm tcm;
 
 	u8 uapsd_noagg_bssid_write_idx;
 	struct mac_address uapsd_noagg_bssids[IWL_MVM_UAPSD_NOAGG_BSSIDS_NUM]
 		__aligned(2);
-
-	struct iwl_mvm_tcm tcm;
-
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-	struct list_head tdls_peer_cache_list;
-	u32 tdls_peer_cache_cnt;
-#endif
 
 	struct iwl_time_quota_cmd last_quota_cmd;
 
@@ -1272,15 +1277,6 @@ struct iwl_mvm {
 	struct iwl_dev_tx_power_cmd txp_cmd;
 #endif
 
-#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
-	/*
-	 * Add the following as part of a WA to pass P2P OPPPS certification
-	 * test. Refer to IWLMVM_P2P_OPPPS_TEST_WA description in
-	 * Kconfig.noupstream for details.
-	 */
-	struct iwl_mvm_vif *p2p_opps_test_wa_vif;
-#endif
-
 	u32 ciphers[IWL_MVM_NUM_CIPHERS];
 
 	struct cfg80211_ftm_responder_stats ftm_resp_stats;
@@ -1323,6 +1319,8 @@ struct iwl_mvm {
 	struct list_head list;
 #endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
 
+	struct ptp_data ptp_data;
+
 	struct {
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
 		u8 csi_notif;
@@ -1343,7 +1341,10 @@ struct iwl_mvm {
 
 	/* does a monitor vif exist (only one can exist hence bool) */
 	bool monitor_on;
-	/* primary channel place relative the whole bandwidth in gaps of 80Mhz */
+	/*
+	 * primary channel position relative to he whole bandwidth,
+	 * in steps of 80 MHz
+	 */
 	u8 monitor_p80;
 
 	/* sniffer data to include in radiotap */
@@ -1354,11 +1355,16 @@ struct iwl_mvm {
 	struct iwl_phy_specific_cfg phy_filters;
 #endif
 
+	/* report rx timestamp in ptp clock time */
+	bool rx_ts_ptp;
+
 	unsigned long last_6ghz_passive_scan_jiffies;
 	unsigned long last_reset_or_resume_time_jiffies;
 
 	bool sta_remove_requires_queue_remove;
 	bool mld_api_is_used;
+
+	bool pldr_sync;
 
 	struct iwl_time_sync_data time_sync;
 
@@ -1366,7 +1372,6 @@ struct iwl_mvm {
 
 	/* Firmware RFI state &enum iwl_rfi_support_reason */
 	u32 fw_rfi_state;
-	bool pldr_sync;
 	bool rfi_wlan_master;
 	bool force_enable_rfi;
 	bool statistics_clear;
@@ -1382,11 +1387,14 @@ struct iwl_mvm {
 #define IWL_MAC80211_GET_MVM(_hw)			\
 	IWL_OP_MODE_GET_MVM((struct iwl_op_mode *)((_hw)->priv))
 
+DEFINE_GUARD(mvm, struct iwl_mvm *, mutex_lock(&_T->mutex), mutex_unlock(&_T->mutex))
+
 /**
  * enum iwl_mvm_status - MVM status bits
  * @IWL_MVM_STATUS_HW_RFKILL: HW RF-kill is asserted
  * @IWL_MVM_STATUS_HW_CTKILL: CT-kill is active
- * @IWL_MVM_STATUS_ROC_RUNNING: remain-on-channel is running
+ * @IWL_MVM_STATUS_ROC_P2P_RUNNING: remain-on-channel on P2P is running (when
+ *	P2P is not over AUX)
  * @IWL_MVM_STATUS_HW_RESTART_REQUESTED: HW restart was requested
  * @IWL_MVM_STATUS_IN_HW_RESTART: HW restart is active
  * @IWL_MVM_STATUS_ROC_AUX_RUNNING: AUX remain-on-channel is running
@@ -1400,7 +1408,7 @@ struct iwl_mvm {
 enum iwl_mvm_status {
 	IWL_MVM_STATUS_HW_RFKILL,
 	IWL_MVM_STATUS_HW_CTKILL,
-	IWL_MVM_STATUS_ROC_RUNNING,
+	IWL_MVM_STATUS_ROC_P2P_RUNNING,
 	IWL_MVM_STATUS_HW_RESTART_REQUESTED,
 	IWL_MVM_STATUS_IN_HW_RESTART,
 	IWL_MVM_STATUS_ROC_AUX_RUNNING,
@@ -1657,16 +1665,16 @@ static inline bool iwl_mvm_cdb_scan_api(struct iwl_mvm *mvm)
 	return mvm->trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_22000;
 }
 
-static inline bool iwl_mvm_is_reduced_config_scan_supported(struct iwl_mvm *mvm)
-{
-	return fw_has_api(&mvm->fw->ucode_capa,
-			  IWL_UCODE_TLV_API_REDUCED_SCAN_CONFIG);
-}
-
 static inline bool iwl_mvm_is_scan_ext_chan_supported(struct iwl_mvm *mvm)
 {
 	return fw_has_api(&mvm->fw->ucode_capa,
 			  IWL_UCODE_TLV_API_SCAN_EXT_CHAN_VER);
+}
+
+static inline bool iwl_mvm_is_reduced_config_scan_supported(struct iwl_mvm *mvm)
+{
+	return fw_has_api(&mvm->fw->ucode_capa,
+			  IWL_UCODE_TLV_API_REDUCED_SCAN_CONFIG);
 }
 
 static inline bool iwl_mvm_is_band_in_rx_supported(struct iwl_mvm *mvm)
@@ -1775,7 +1783,7 @@ struct iwl_rate_info {
 	u8 ieee;	/* MAC header:  IWL_RATE_6M_IEEE, etc. */
 };
 
-void __iwl_mvm_mac_stop(struct iwl_mvm *mvm);
+void __iwl_mvm_mac_stop(struct iwl_mvm *mvm, bool suspend);
 int __iwl_mvm_mac_start(struct iwl_mvm *mvm);
 
 /******************
@@ -1809,6 +1817,7 @@ u8 iwl_mvm_next_antenna(struct iwl_mvm *mvm, u8 valid, u8 last_idx);
 void iwl_mvm_get_sync_time(struct iwl_mvm *mvm, int clock_type, u32 *gp2,
 			   u64 *boottime, ktime_t *realtime);
 u32 iwl_mvm_get_systime(struct iwl_mvm *mvm);
+u32 iwl_mvm_find_ie_offset(u8 *beacon, u8 eid, u32 frame_size);
 
 /* Tx / Host Commands */
 int __must_check iwl_mvm_send_cmd(struct iwl_mvm *mvm,
@@ -2014,8 +2023,7 @@ void iwl_mvm_set_fw_protection_flags(struct iwl_mvm *mvm,
 				     u32 tgg_flag);
 void iwl_mvm_set_fw_qos_params(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			       struct ieee80211_bss_conf *link_conf,
-			       struct iwl_ac_qos *ac, __le32 *qos_flags,
-			       int version);
+			       struct iwl_ac_qos *ac, __le32 *qos_flags);
 bool iwl_mvm_set_fw_mu_edca_params(struct iwl_mvm *mvm,
 				   const struct iwl_mvm_vif_link_info *link_info,
 				   struct iwl_he_backoff_conf *trig_based_txf);
@@ -2082,8 +2090,6 @@ void iwl_mvm_channel_switch_start_notif(struct iwl_mvm *mvm,
 					struct iwl_rx_cmd_buffer *rxb);
 void iwl_mvm_channel_switch_error_notif(struct iwl_mvm *mvm,
 					struct iwl_rx_cmd_buffer *rxb);
-void iwl_mvm_cfg_he_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			u8 sta_id);
 /* Bindings */
 int iwl_mvm_binding_add_vif(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
 int iwl_mvm_binding_remove_vif(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
@@ -2290,10 +2296,21 @@ extern const struct file_operations iwl_dbgfs_d3_test_ops;
 #ifdef CONFIG_PM
 void iwl_mvm_set_last_nonqos_seq(struct iwl_mvm *mvm,
 				 struct ieee80211_vif *vif);
+void iwl_mvm_fast_suspend(struct iwl_mvm *mvm);
+int iwl_mvm_fast_resume(struct iwl_mvm *mvm);
 #else
 static inline void
 iwl_mvm_set_last_nonqos_seq(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 {
+}
+
+static inline void iwl_mvm_fast_suspend(struct iwl_mvm *mvm)
+{
+}
+
+static inline int iwl_mvm_fast_resume(struct iwl_mvm *mvm)
+{
+	return 0;
 }
 #endif
 void iwl_mvm_set_wowlan_qos_seq(struct iwl_mvm_sta *mvm_ap_sta,
@@ -2344,10 +2361,11 @@ void iwl_mvm_update_smps(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 				enum iwl_mvm_smps_type_request req_type,
 				enum ieee80211_smps_mode smps_request,
 				unsigned int link_id);
-void iwl_mvm_update_smps_on_active_links(struct iwl_mvm *mvm,
-					 struct ieee80211_vif *vif,
-					 enum iwl_mvm_smps_type_request req_type,
-					 enum ieee80211_smps_mode smps_request);
+void
+iwl_mvm_update_smps_on_active_links(struct iwl_mvm *mvm,
+				    struct ieee80211_vif *vif,
+				    enum iwl_mvm_smps_type_request req_type,
+				    enum ieee80211_smps_mode smps_request);
 bool iwl_mvm_rx_diversity_allowed(struct iwl_mvm *mvm,
 				  struct iwl_mvm_phy_ctxt *ctxt);
 void iwl_mvm_update_link_smps(struct ieee80211_vif *vif,
@@ -2528,14 +2546,6 @@ void iwl_mvm_tdls_cancel_channel_switch(struct ieee80211_hw *hw,
 void iwl_mvm_rx_tdls_notif(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
 void iwl_mvm_tdls_ch_switch_work(struct work_struct *work);
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-void iwl_mvm_tdls_peer_cache_pkt(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
-				 u32 len, int rxq);
-void iwl_mvm_tdls_peer_cache_clear(struct iwl_mvm *mvm,
-				   struct ieee80211_vif *vif);
-struct iwl_mvm_tdls_peer_counter *
-iwl_mvm_tdls_peer_cache_find(struct iwl_mvm *mvm, const u8 *addr);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 void iwl_mvm_sync_rx_queues_internal(struct iwl_mvm *mvm,
 				     enum iwl_mvm_rxq_notif_type type,
 				     bool sync,
@@ -2576,10 +2586,10 @@ void iwl_mvm_rx_csi_chunk(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
 int iwl_mvm_send_csi_cmd(struct iwl_mvm *mvm);
 #endif
 
-static inline u64 iwl_mvm_ptp_get_adj_time(struct iwl_mvm *mvm, u64 base_time)
-{
-	return base_time;
-}
+void iwl_mvm_ptp_init(struct iwl_mvm *mvm);
+void iwl_mvm_ptp_remove(struct iwl_mvm *mvm);
+u64 iwl_mvm_ptp_get_adj_time(struct iwl_mvm *mvm, u64 base_time);
+
 
 /* NAN */
 void iwl_mvm_nan_match(struct iwl_mvm *mvm,
@@ -2666,7 +2676,7 @@ static inline bool iwl_mvm_fw_rfi_state_supported(struct iwl_mvm *mvm)
 
 static inline u8 iwl_mvm_phy_band_from_nl80211(enum nl80211_band band)
 {
-	switch((int)band) {
+	switch (band) {
 	case NL80211_BAND_2GHZ:
 		return PHY_BAND_24;
 	case NL80211_BAND_5GHZ:
@@ -2686,10 +2696,8 @@ static inline u8 iwl_mvm_nl80211_band_from_phy(u8 phy_band)
 		return NL80211_BAND_2GHZ;
 	case PHY_BAND_5:
 		return NL80211_BAND_5GHZ;
-#if CFG80211_VERSION >= KERNEL_VERSION(5,10,0)
 	case PHY_BAND_6:
 		return NL80211_BAND_6GHZ;
-#endif
 	default:
 		WARN_ONCE(1, "Unsupported phy band (%u)\n", phy_band);
 		return NL80211_BAND_5GHZ;
@@ -2729,11 +2737,12 @@ struct iwl_mvm_switch_vif_chanctx_ops {
 				       bool switching_chanctx);
 };
 
-int iwl_mvm_switch_vif_chanctx_common(struct ieee80211_hw *hw,
-				      struct ieee80211_vif_chanctx_switch *vifs,
-				      int n_vifs,
-				      enum ieee80211_chanctx_switch_mode mode,
-				      const struct iwl_mvm_switch_vif_chanctx_ops *ops);
+int
+iwl_mvm_switch_vif_chanctx_common(struct ieee80211_hw *hw,
+				  struct ieee80211_vif_chanctx_switch *vifs,
+				  int n_vifs,
+				  enum ieee80211_chanctx_switch_mode mode,
+				  const struct iwl_mvm_switch_vif_chanctx_ops *ops);
 
 /* Channel info utils */
 static inline bool iwl_mvm_has_ultra_hb_channel(struct iwl_mvm *mvm)
@@ -2852,6 +2861,13 @@ static inline void iwl_mvm_mei_set_sw_rfkill_state(struct iwl_mvm *mvm)
 					 sw_rfkill);
 }
 
+static inline bool iwl_mvm_has_p2p_over_aux(struct iwl_mvm *mvm)
+{
+	u32 cmd_id = WIDE_ID(MAC_CONF_GROUP, ROC_CMD);
+
+	return iwl_fw_lookup_cmd_ver(mvm->fw, cmd_id, 0) >= 4;
+}
+
 void iwl_mvm_send_roaming_forbidden_event(struct iwl_mvm *mvm,
 					  struct ieee80211_vif *vif,
 					  bool forbidden);
@@ -2870,7 +2886,7 @@ int iwl_mvm_op_set_antenna(struct ieee80211_hw *hw, u32 tx_ant, u32 rx_ant);
 int iwl_mvm_mac_start(struct ieee80211_hw *hw);
 void iwl_mvm_mac_reconfig_complete(struct ieee80211_hw *hw,
 				   enum ieee80211_reconfig_type reconfig_type);
-void iwl_mvm_mac_stop(struct ieee80211_hw *hw);
+void iwl_mvm_mac_stop(struct ieee80211_hw *hw, bool suspend);
 static inline int iwl_mvm_mac_config(struct ieee80211_hw *hw, u32 changed)
 {
 	return 0;
@@ -3003,7 +3019,7 @@ void iwl_mvm_roc_duration_and_delay(struct ieee80211_vif *vif,
 int iwl_mvm_roc_add_cmd(struct iwl_mvm *mvm,
 			struct ieee80211_channel *channel,
 			struct ieee80211_vif *vif,
-			int duration, u32 activity);
+			int duration, enum iwl_roc_activity activity);
 
 /* EMLSR */
 bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
@@ -3030,4 +3046,10 @@ iwl_mvm_bt_coex_calculate_esr_mode(struct iwl_mvm *mvm,
 				   bool primary);
 int iwl_mvm_esr_non_bss_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			     unsigned int link_id, bool active);
+
+void
+iwl_mvm_send_ap_tx_power_constraint_cmd(struct iwl_mvm *mvm,
+					struct ieee80211_vif *vif,
+					struct ieee80211_bss_conf *bss_conf,
+					bool is_ap);
 #endif /* __IWL_MVM_H__ */

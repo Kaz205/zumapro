@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2012-2014, 2018-2023 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2024 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -24,14 +24,7 @@
  * @IWL_MVM_VENDOR_CMD_SET_COUNTRY: set a new mcc regulatory information
  * @IWL_MVM_VENDOR_CMD_PROXY_FRAME_FILTERING: filter GTK, gratuitous
  *	ARP & unsolicited NA
- * @IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_ADD: add a peer to the TDLS peer cache
- * @IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_DEL: delete a peer from the TDLS peer
- *	cache
- * @IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_QUERY: query traffic statistics for a
- *	peer in the TDLS cache
  * @IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT: set the NIC's (SAR) TX power limit
- * @IWL_MVM_VENDOR_CMD_OPPPS_WA: wa to pass Sigma test - applicable code is
- *	claused under CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
  * @IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES: get driver gscan capabilities as
  *	specified in %IWL_MVM_VENDOR_ATTR_GSCAN_*
  * @IWL_MVM_VENDOR_CMD_GSCAN_START: set gscan parameters and start gscan
@@ -129,11 +122,11 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_LTE_COEX_WIFI_RPRTD_CHAN		= 0x07,
 	IWL_MVM_VENDOR_CMD_SET_COUNTRY				= 0x08,
 	IWL_MVM_VENDOR_CMD_PROXY_FRAME_FILTERING		= 0x09,
-	IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_ADD			= 0x0a,
-	IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_DEL			= 0x0b,
-	IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_QUERY		= 0x0c,
+	/* 0x0a is deprecated */
+	/* 0x0b is deprecated */
+	/* 0x0c is deprecated */
 	IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT		= 0x0d,
-	IWL_MVM_VENDOR_CMD_OPPPS_WA				= 0x0e,
+	/* 0x0e is deprecated */
 	IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES		= 0x0f,
 	IWL_MVM_VENDOR_CMD_GSCAN_START				= 0x10,
 	IWL_MVM_VENDOR_CMD_GSCAN_STOP				= 0x11,
@@ -643,7 +636,6 @@ enum iwl_vendor_auth_akm_mode {
  *	(s32 in units of 1/8 dBm)
  * @IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L: TX power limit for 5.2 GHz low (as 2.4)
  * @IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H: TX power limit for 5.2 GHz high (as 2.4)
- * @IWL_MVM_VENDOR_ATTR_OPPPS_WA: wa to pass Sigma test
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_CACHE_SIZE: scan cache size
  *	(in bytes)
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_BUCKETS: maximum number of channel
@@ -820,7 +812,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24			= 0x0d,
 	IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L			= 0x0e,
 	IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H			= 0x0f,
-	IWL_MVM_VENDOR_ATTR_OPPPS_WA				= 0x10,
+	/* 0x10 is deprecated */
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_CACHE_SIZE		= 0x11,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_BUCKETS		= 0x12,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_CACHE_PER_SCAN		= 0x13,

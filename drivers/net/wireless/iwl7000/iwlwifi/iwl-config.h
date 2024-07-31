@@ -561,8 +561,6 @@ extern const struct iwl_cfg iwl8260_2ac_cfg;
 extern const struct iwl_cfg iwl8265_2ac_cfg;
 extern const struct iwl_cfg iwl8275_2ac_cfg;
 extern const struct iwl_cfg iwl4165_2ac_cfg;
-#endif /* IS_ENABLED(CPTCFG_IWLMVM) */
-#if IS_ENABLED(CPTCFG_IWLMVM)
 extern const struct iwl_cfg iwl9260_2ac_cfg;
 extern const struct iwl_cfg iwl9560_qu_b0_jf_b0_cfg;
 extern const struct iwl_cfg iwl9560_qu_c0_jf_b0_cfg;
@@ -597,13 +595,15 @@ extern const struct iwl_cfg iwl_cfg_ma;
 extern const struct iwl_cfg iwl_cfg_so_a0_hr_a0;
 extern const struct iwl_cfg iwl_cfg_so_a0_ms_a0;
 extern const struct iwl_cfg iwl_cfg_quz_a0_hr_b0;
+#endif /* CPTCFG_IWLMVM */
 
+#if IS_ENABLED(CPTCFG_IWLMVM) || IS_ENABLED(CPTCFG_IWLMLD)
 extern const struct iwl_cfg iwl_cfg_bz;
 extern const struct iwl_cfg iwl_cfg_gl;
 
 extern const struct iwl_cfg iwl_cfg_sc;
 extern const struct iwl_cfg iwl_cfg_sc2;
 extern const struct iwl_cfg iwl_cfg_sc2f;
-#endif /* CPTCFG_IWLMVM */
+#endif /* CPTCFG_IWLMVM || CPTCFG_IWLMLD */
 
 #endif /* __IWL_CONFIG_H__ */
