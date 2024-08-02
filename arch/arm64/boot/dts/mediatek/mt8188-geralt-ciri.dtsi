@@ -144,7 +144,6 @@
 &spi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dma-names = "tx", "rx";
 	num-cs = <1>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&spi1_default>;
