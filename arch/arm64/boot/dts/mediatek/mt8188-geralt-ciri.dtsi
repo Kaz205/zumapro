@@ -5,7 +5,6 @@
 /dts-v1/;
 #include "mt8188-geralt.dtsi"
 
-/delete-node/ &backlight_lcd1;
 /delete-node/ &dp_intf0;
 /delete-node/ &edp_panel;
 /delete-node/ &edp_tx;

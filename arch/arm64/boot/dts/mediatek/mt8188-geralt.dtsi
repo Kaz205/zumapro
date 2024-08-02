@@ -42,35 +42,14 @@
 		vin-supply = <&pp5000_z1>;
 	};
 
-	backlight_lcd0: backlight-lcd0 {
+	backlight_lcd: backlight-lcd {
 		compatible = "pwm-backlight";
 		brightness-levels = <0 1023>;
 		default-brightness-level = <576>;
 		enable-gpios = <&pio 1 0>;
 		num-interpolated-steps = <1023>;
-		power-supply = <&pp5000_bl>;
+		power-supply = <&ppvar_sys>;
 		pwms = <&disp_pwm0 0 500000>;
-	};
-
-	backlight_lcd1: backlight-lcd1 {
-		compatible = "pwm-backlight";
-		brightness-levels = <0 1023>;
-		default-brightness-level = <576>;
-		enable-gpios = <&pio 110 0>;
-		num-interpolated-steps = <1023>;
-		power-supply = <&pp5000_bl>;
-		pwms = <&disp_pwm1 0 500000>;
-		status = "disabled";
-	};
-
-	pp5000_bl: regulator-pp5000-bl {
-		compatible = "regulator-fixed";
-		regulator-name = "pp5000_bl";
-		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
-		regulator-max-microvolt = <5000000>;
-		regulator-min-microvolt = <5000000>;
 	};
 
 	/* chosen */
@@ -106,7 +85,6 @@
 
 	edp_panel: panel {
 		compatible = "lg,lp120up1";
-		backlight = <&backlight_lcd1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&edp_bl_pwm>;
 		status = "disabled";
@@ -332,7 +310,7 @@
 		reg = <0>;
 		avdd-supply = <&ppvar_mipi_disp_avdd>;
 		avee-supply = <&ppvar_mipi_disp_avee>;
-		backlight = <&backlight_lcd0>;
+		backlight = <&backlight_lcd>;
 		enable-gpios = <&pio 25 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&disp_default>;
