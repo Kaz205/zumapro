@@ -67,7 +67,7 @@
 
 		mtk-svp-heap {
 			compatible = "mediatek,secure_heap";
-			memory-region = <&secure_cma_reserved>;
+			memory-region = <&restricted_region>;
 		};
 	};
 
@@ -244,10 +244,10 @@
 			reusable;
 		};
 
-		secure_cma_reserved: secure-cma-region {
+		restricted_region: secure-region {
 			compatible = "mediatek,dynamic-restricted-region";
 			reg = <0 0x7f000000 0 0x400000>;
-			reusable;
+			no-map;
 		};
 	};
 
