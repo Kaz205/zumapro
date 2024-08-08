@@ -125,7 +125,7 @@ static int get_tj_max(int cpu, u32 *tj_max)
 
 static int sys_get_curr_temp(struct thermal_zone_device *tzd, int *temp)
 {
-	struct zone_device *zonedev = tzd->devdata;
+	struct zone_device *zonedev = thermal_zone_device_priv(tzd);
 	u32 eax, edx;
 
 	rdmsr_on_cpu(zonedev->cpu, MSR_IA32_PACKAGE_THERM_STATUS,
@@ -141,7 +141,7 @@ static int sys_get_curr_temp(struct thermal_zone_device *tzd, int *temp)
 static int sys_get_trip_temp(struct thermal_zone_device *tzd,
 			     int trip, int *temp)
 {
-	struct zone_device *zonedev = tzd->devdata;
+	struct zone_device *zonedev = thermal_zone_device_priv(tzd);
 	unsigned long thres_reg_value;
 	u32 mask, shift, eax, edx;
 	int ret;
@@ -175,7 +175,7 @@ static int sys_get_trip_temp(struct thermal_zone_device *tzd,
 static int
 sys_set_trip_temp(struct thermal_zone_device *tzd, int trip, int temp)
 {
-	struct zone_device *zonedev = tzd->devdata;
+	struct zone_device *zonedev = thermal_zone_device_priv(tzd);
 	u32 l, h, mask, shift, intr;
 	int ret;
 

@@ -188,7 +188,7 @@ static int qpnp_tm_update_temp_no_adc(struct qpnp_tm_chip *chip)
 
 static int qpnp_tm_get_temp(struct thermal_zone_device *tz, int *temp)
 {
-	struct qpnp_tm_chip *chip = tz->devdata;
+	struct qpnp_tm_chip *chip = thermal_zone_device_priv(tz);
 	int ret, mili_celsius;
 
 	if (!temp)
@@ -266,7 +266,7 @@ skip:
 
 static int qpnp_tm_set_trip_temp(struct thermal_zone_device *tz, int trip, int temp)
 {
-	struct qpnp_tm_chip *chip = tz->devdata;
+	struct qpnp_tm_chip *chip = thermal_zone_device_priv(tz);
 	const struct thermal_trip *trip_points;
 	int ret;
 

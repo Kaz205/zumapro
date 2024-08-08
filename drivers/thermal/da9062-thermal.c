@@ -161,7 +161,7 @@ static int da9062_thermal_get_trip_temp(struct thermal_zone_device *z,
 static int da9062_thermal_get_temp(struct thermal_zone_device *z,
 				   int *temp)
 {
-	struct da9062_thermal *thermal = z->devdata;
+	struct da9062_thermal *thermal = thermal_zone_device_priv(z);
 
 	mutex_lock(&thermal->lock);
 	*temp = thermal->temperature;

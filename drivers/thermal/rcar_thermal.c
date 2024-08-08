@@ -101,7 +101,6 @@ struct rcar_thermal_priv {
 	list_for_each_entry(pos, &common->head, list)
 
 #define MCELSIUS(temp)			((temp) * 1000)
-#define rcar_zone_to_priv(zone)		((zone)->devdata)
 #define rcar_priv_to_dev(priv)		((priv)->common->dev)
 #define rcar_has_irq_support(priv)	((priv)->common->base)
 #define rcar_id_to_shift(priv)		((priv)->id * 8)
@@ -273,7 +272,7 @@ static int rcar_thermal_get_current_temp(struct rcar_thermal_priv *priv,
 
 static int rcar_thermal_get_temp(struct thermal_zone_device *zone, int *temp)
 {
-	struct rcar_thermal_priv *priv = rcar_zone_to_priv(zone);
+	struct rcar_thermal_priv *priv = thermal_zone_device_priv(zone);
 
 	return rcar_thermal_get_current_temp(priv, temp);
 }
@@ -281,7 +280,7 @@ static int rcar_thermal_get_temp(struct thermal_zone_device *zone, int *temp)
 static int rcar_thermal_get_trip_type(struct thermal_zone_device *zone,
 				      int trip, enum thermal_trip_type *type)
 {
-	struct rcar_thermal_priv *priv = rcar_zone_to_priv(zone);
+	struct rcar_thermal_priv *priv = thermal_zone_device_priv(zone);
 	struct device *dev = rcar_priv_to_dev(priv);
 
 	/* see rcar_thermal_get_temp() */
@@ -300,7 +299,7 @@ static int rcar_thermal_get_trip_type(struct thermal_zone_device *zone,
 static int rcar_thermal_get_trip_temp(struct thermal_zone_device *zone,
 				      int trip, int *temp)
 {
-	struct rcar_thermal_priv *priv = rcar_zone_to_priv(zone);
+	struct rcar_thermal_priv *priv =  thermal_zone_device_priv(zone);
 	struct device *dev = rcar_priv_to_dev(priv);
 
 	/* see rcar_thermal_get_temp() */
