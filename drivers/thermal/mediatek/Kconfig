@@ -22,40 +22,13 @@ config MTK_SOC_THERMAL
 	  via AUXADC interface.
 
 config MTK_SOC_THERMAL_LVTS
-	tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
-	depends on HAS_IOMEM
-	depends on NVMEM
-	help
-		Enable this option if you want to get SoC temperature
-		information for MediaTek platforms. This driver
-		configures LVTS thermal controllers to collect temperatures
-		via Analog Serial Interface(ASIF).
-
-endif
-
-if MTK_SOC_THERMAL_LVTS
-
-config LVTS_MT8188
-	tristate "LVTS driver for MediaTek MT8188 SoC"
-	depends on HAS_IOMEM
-	depends on NVMEM
-	depends on MTK_SOC_THERMAL_LVTS
-	help
-		Enable this option if you want to get SoC temperature
-		information for MT8188. This driver
-		configures LVTS thermal controllers to collect temperatures
-		via ASIF.
-
-config LVTS_MT8192
-	tristate "LVTS driver for MediaTek MT8192 SoC"
-	depends on HAS_IOMEM
-	depends on NVMEM
-	depends on RESET_TI_SYSCON
-	depends on MTK_SOC_THERMAL_LVTS
-	help
-		Enable this option if you want to get SoC temperature
-		information for MT8192. This driver
-		configures LVTS thermal controllers to collect temperatures
-		via ASIF.
-
+        tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
+        depends on HAS_IOMEM
+        depends on NVMEM
+        depends on RESET_TI_SYSCON
+        help
+          Enable this option if you want to get SoC temperature
+          information for Mediatek platforms. This driver
+          configures LVTS thermal controllers to collect temperatures
+          via Analog Serial Interface(ASIF).
 endif
