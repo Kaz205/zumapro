@@ -710,10 +710,10 @@ static int of_update_lvts_data(struct lvts_data *lvts_data,
 		}
 
 		/* Get interrupt number */
-		ret = platform_get_irq(pdev, i);
-		if (ret < 0)
-			return ret;
-		domain[i].irq_num = ret;
+		res = platform_get_irq(pdev, i);
+		if (res < 0)
+			return res;
+		domain[i].irq_num = res;
 
 		/* Get reset control */
 		domain[i].reset = devm_reset_control_get_by_index(dev, i);
