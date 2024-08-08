@@ -96,7 +96,8 @@ static bool mtk_cam_req_frame_sync_start(struct mtk_cam_request *req)
 		container_of(req->req.mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_ctx *sync_ctx[MTKCAM_SUBDEV_MAX];
-	int i, ctx_cnt = 0, synced_cnt = 0;
+	int i;
+	u32 ctx_cnt = 0, synced_cnt = 0;
 	bool ret = false;
 
 	/* pick out the used ctxs */

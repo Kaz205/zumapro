@@ -92,13 +92,13 @@ static ssize_t debug_ops_store(struct device *dev,
 	char *token = NULL;
 	char *sbuf = kcalloc(count + 1, sizeof(char), GFP_KERNEL);
 	char *s = sbuf;
-	int ret, i, num_para = 0;
+	int ret;
 	char *arg[REG_OPS_CMD_MAX_NUM];
 	struct seninf_core *core = dev_get_drvdata(dev);
 	struct seninf_ctx *ctx;
 	int csi_port = -1;
 	int rg_idx = -1;
-	u32 val;
+	u32 val, i, num_para = 0;
 
 	if (!sbuf)
 		goto ERR_DEBUG_OPS_STORE;
@@ -1549,7 +1549,7 @@ static int runtime_suspend(struct device *dev)
 
 static int runtime_resume(struct device *dev)
 {
-	int i;
+	u32 i;
 	int ret;
 
 	struct seninf_ctx *ctx = dev_get_drvdata(dev);

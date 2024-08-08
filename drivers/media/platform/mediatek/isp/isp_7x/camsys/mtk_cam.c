@@ -116,7 +116,8 @@ static void mtk_cam_req_return_pipe_buffers(struct mtk_cam_request *req,
 	struct mtk_cam_buffer *buf;
 	struct mtk_cam_video_device *node;
 	struct vb2_buffer *vb;
-	int i, buf_state, buf_start = 0, buf_end = 0, buf_ret_cnt;
+	int buf_state;
+	u32 i, buf_ret_cnt = 0, buf_start = 0, buf_end = 0;
 
 	s_data_pipe = mtk_cam_req_get_s_data(req, pipe_id, index);
 	if (!s_data_pipe) {
@@ -129,7 +130,6 @@ static void mtk_cam_req_return_pipe_buffers(struct mtk_cam_request *req,
 		buf_end = MTK_RAW_PIPELINE_PADS_NUM;
 	}
 
-	buf_ret_cnt = 0;
 	for (i = buf_start; i < buf_end; i++) {
 		/* make sure do not touch req/s_data after vb2_buffe_done */
 		buf = mtk_cam_s_data_get_vbuf(s_data_pipe, i);
@@ -356,13 +356,14 @@ int mtk_cam_dequeue_req_frame(struct mtk_cam_ctx *ctx,
 	struct mtk_cam_request_stream_data *deq_s_data[RUNNING_JOB_DEPTH];
 	struct mtk_raw_pipeline *pipe = ctx->pipe;
 	struct mtk_camsys_sensor_ctrl *sensor_ctrl = &ctx->sensor_ctrl;
+	struct mtk_ae_debug_data ae_data;
 	int buf_state;
-	int dequeue_cnt, s_data_cnt, handled_cnt;
+	u32 dequeue_cnt, s_data_cnt, handled_cnt;
 	bool del_job, del_req;
 	bool unreliable = false;
-	struct mtk_ae_debug_data ae_data;
 	unsigned int done_status_latch;
 
+	memset(&ae_data, 0, sizeof(struct mtk_ae_debug_data));
 	dequeue_cnt = 0;
 	s_data_cnt = 0;
 	spin_lock(&ctx->cam->running_job_lock);
@@ -586,7 +587,8 @@ void mtk_cam_dev_req_cleanup(struct mtk_cam_ctx *ctx, int pipe_id, int buf_state
 	struct mtk_cam_request_stream_data *clean_s_data[RUNNING_JOB_DEPTH];
 	struct list_head *running = &cam->running_job_list;
 	unsigned int other_pipes, done_status;
-	int i, num_s_data, s_data_cnt, handled_cnt;
+	int i;
+	u32 num_s_data, s_data_cnt, handled_cnt;
 	bool need_clean_req;
 
 	mtk_cam_dev_req_clean_pending(cam, pipe_id, buf_state);
@@ -1505,8 +1507,8 @@ static void mtk_cam_req_work_init(struct mtk_cam_req_work *work,
 }
 
 static void mtk_cam_req_s_data_init(struct mtk_cam_request *req,
-				    int pipe_id,
-				    int s_data_index)
+				    u32 pipe_id,
+				    u32 s_data_index)
 {
 	struct mtk_cam_request_stream_data *req_stream_data;
 
@@ -1749,10 +1751,13 @@ static int mtk_cam_req_chk_job_list(struct mtk_cam_device *cam,
 }
 
 static void mtk_cam_req_p_data_init(struct mtk_cam_request *req,
-				    int pipe_id,
-				    int s_data_num)
+				    u32 pipe_id,
+				    u32 s_data_num)
 {
-	int i = 0;
+	u32 i = 0;
+
+	if (pipe_id >= MTKCAM_SUBDEV_MAX)
+		return;
 
 	req->p_data[pipe_id].s_data_num = s_data_num;
 	for (i = 0; i < s_data_num; i++)

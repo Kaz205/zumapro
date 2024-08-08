@@ -2527,9 +2527,15 @@ static bool mtk_raw_try_fmt(struct v4l2_subdev *sd,
 
 static struct v4l2_mbus_framefmt*
 mtk_raw_pipeline_get_fmt(struct mtk_raw_pipeline *pipe,
-			 struct v4l2_subdev_state *sd_state, int padid,
+			 struct v4l2_subdev_state *sd_state, u32 padid,
 			 int which)
 {
+	struct mtk_raw *raw = pipe->raw;
+
+	if (padid >= MTK_RAW_PIPELINE_PADS_NUM) {
+		dev_err(raw->cam_dev, "Wrong pad id:%d\n", padid);
+		return NULL;
+	}
 	/* format invalid and return default format */
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
 		return v4l2_subdev_get_try_format(&pipe->subdev, sd_state, padid);
@@ -2542,9 +2548,15 @@ mtk_raw_pipeline_get_fmt(struct mtk_raw_pipeline *pipe,
 
 static struct v4l2_rect*
 mtk_raw_pipeline_get_selection(struct mtk_raw_pipeline *pipe,
-			       struct v4l2_subdev_state *sd_state, int pad,
+			       struct v4l2_subdev_state *sd_state, u32 pad,
 			       int which)
 {
+	struct mtk_raw *raw = pipe->raw;
+
+	if (pad >= MTK_RAW_PIPELINE_PADS_NUM) {
+		dev_err(raw->cam_dev, "Wrong pad id:%d\n", pad);
+		return NULL;
+	}
 	/* format invalid and return default format */
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
 		return v4l2_subdev_get_try_crop(&pipe->subdev, sd_state, pad);
