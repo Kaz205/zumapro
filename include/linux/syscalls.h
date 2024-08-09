@@ -450,7 +450,7 @@ asmlinkage long sys_fstatfs(unsigned int fd, struct statfs __user *buf);
 asmlinkage long sys_fstatfs64(unsigned int fd, size_t sz,
 				struct statfs64 __user *buf);
 asmlinkage long sys_truncate(const char __user *path, long length);
-asmlinkage long sys_ftruncate(unsigned int fd, unsigned long length);
+asmlinkage long sys_ftruncate(unsigned int fd, off_t length);
 #if BITS_PER_LONG == 32
 asmlinkage long sys_truncate64(const char __user *path, loff_t length);
 asmlinkage long sys_ftruncate64(unsigned int fd, loff_t length);
@@ -960,9 +960,15 @@ asmlinkage long sys_prlimit64(pid_t pid, unsigned int resource,
 				const struct rlimit64 __user *new_rlim,
 				struct rlimit64 __user *old_rlim);
 asmlinkage long sys_fanotify_init(unsigned int flags, unsigned int event_f_flags);
+#if defined(CONFIG_ARCH_SPLIT_ARG64)
+asmlinkage long sys_fanotify_mark(int fanotify_fd, unsigned int flags,
+                                unsigned int mask_1, unsigned int mask_2,
+				int dfd, const char  __user * pathname);
+#else
 asmlinkage long sys_fanotify_mark(int fanotify_fd, unsigned int flags,
 				  u64 mask, int fd,
 				  const char  __user *pathname);
+#endif
 asmlinkage long sys_name_to_handle_at(int dfd, const char __user *name,
 				      struct file_handle __user *handle,
 				      int __user *mnt_id, int flag);
@@ -1386,24 +1392,4 @@ int __sys_getsockopt(int fd, int level, int optname, char __user *optval,
 		int __user *optlen);
 int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
 		int optlen);
-
-/* Only used with ALT_SYSCALL enabled */
-
-int ksys_prctl(int option, unsigned long arg2, unsigned long arg3,
-	       unsigned long arg4, unsigned long arg5);
-int ksys_setpriority(int which, int who, int niceval);
-int ksys_getpriority(int which, int who);
-int ksys_perf_event_open(
-		struct perf_event_attr __user *attr_uptr,
-		pid_t pid, int cpu, int group_fd, unsigned long flags);
-int ksys_kcmp(pid_t pid1, pid_t pid2, int type,
-		unsigned long idx1, unsigned long idx2);
-int ksys_clock_adjtime(const clockid_t which_clock, struct __kernel_timex __user * utx);
-int ksys_adjtimex(struct __kernel_timex __user *txc_p);
-int ksys_getcpu(unsigned __user *cpu, unsigned __user *node,
-		struct getcpu_cache __user *cache);
-int ksys_clock_adjtime32(clockid_t which_clock,
-			 struct old_timex32 __user *utp);
-int ksys_adjtimex_time32(struct old_timex32 __user *utp);
-
 #endif

@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright 2024 Google LLC
+ */
+/dts-v1/;
+#include "mt8188-geralt-ciri.dtsi"
+#include "mt8188-ciri-camera-v4l2.dtsi"
+
+/delete-node/ &rt5682s;
+/delete-node/ &max98390_38;
+/delete-node/ &max98390_39;
+
+/ {
+	model = "Google Ciri sku6(rev4) board";
+	compatible = "google,ciri-sku6", "google,ciri", "mediatek,mt8188";
+};
+
+&i2c0 {
+	es8326: es8326@19 {
+		#sound-dai-cells = <0>;
+		compatible = "everest,es8326";
+		reg = <0x19>;
+		interrupt-parent = <&pio>;
+		interrupts = <108 IRQ_TYPE_LEVEL_LOW>;
+		everest,jack-pol = [0e];
+		everest,interrupt-clk = [00];
+		status = "okay";
+	};
+
+	tas2563: tas2563@4f {
+		#sound-dai-cells = <0>;
+		compatible = "ti,tas2563";
+		reg = <0x4f>, /* left-channel */
+			  <0x4c>; /* right-channel */
+		reset-gpios = <&pio 118 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+     };
+};
+
+&sound {
+	compatible = "mediatek,mt8188-es8326";
+	model = "mt8188_tas2563_8326";
+
+	audio-routing =
+		"ETDM1_OUT", "ETDM_SPK_PIN",
+		"ETDM2_OUT", "ETDM_HP_PIN",
+		"ETDM1_IN", "ETDM_SPK_PIN",
+		"ETDM2_IN", "ETDM_HP_PIN",
+		"ADDA Capture", "MTKAIF_PIN",
+		"Headphone Jack", "HPOL",
+		"Headphone Jack", "HPOR",
+		"MIC1", "Headset Mic";
+	status = "okay";
+
+	dai-link-0 {
+		link-name = "ETDM2_OUT_BE";
+		mediatek,clk-provider = "cpu";
+		codec {
+			sound-dai = <&es8326>;
+		};
+	};
+
+	dai-link-1 {
+		link-name = "ETDM2_IN_BE";
+		mediatek,clk-provider = "cpu";
+		codec {
+			sound-dai = <&es8326>;
+		};
+	};
+
+	dai-link-2 {
+		link-name = "ETDM1_OUT_BE";
+		dai-format = "i2s";
+		mediatek,clk-provider = "cpu";
+		codec {
+			sound-dai = <&tas2563>;
+		};
+	};
+};

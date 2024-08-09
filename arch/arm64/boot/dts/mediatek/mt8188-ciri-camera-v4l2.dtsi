@@ -27,7 +27,7 @@
 };
 
 &seninf_top {
-		seninf_csi_port_0: csi_receiver@0 {
+		seninf_csi_port_0: csi-receiver@0 {
 			compatible = "mediatek,seninf";
 			csi-port = "0";
 			port {
@@ -38,7 +38,7 @@
 			};
 		};
 
-		seninf_csi_port_1: csi_receiver@1 {
+		seninf_csi_port_1: csi-receiver@1 {
 			compatible = "mediatek,seninf";
 			csi-port = "1";
 			port {
@@ -52,14 +52,14 @@
 
 &pio {
 	camera_main_sensor_pins: camera-main-sensor-pins@0 {
-		pins_cmd_dat {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO22__FUNC_O_CMMCLK0>;
 			drive-strength = <MTK_DRIVE_2mA>;
 		};
 	};
 
 	camera_sub_sensor_pins: camera-sub-sensor-pins@1 {
-		pins_cmd_dat {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO23__FUNC_O_CMMCLK1>;
 			drive-strength = <MTK_DRIVE_2mA>;
 		};
@@ -89,7 +89,7 @@
 	status = "okay";
 	clock-frequency = <400000>;
 
-	camera_sub_sensor@37 {
+	camera-sub-sensor@37 {
 		compatible =  "galaxycore,gc05a2";
 		reg = <0x37>;
 
@@ -135,7 +135,7 @@
 		vdd-supply = <&mt6359_vibr_ldo_reg>;
 	};
 
-	camera_main_sensor@31 {
+	camera-main-sensor@31 {
 		compatible = "galaxycore,gc08a3";
 		reg = <0x31>;
 

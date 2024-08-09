@@ -314,6 +314,19 @@ int cmdq_pkt_logic_command(struct cmdq_pkt *pkt, u16 result_reg_idx,
 			   struct cmdq_operand *right_operand);
 
 /**
+ * cmdq_pkt_assign() - Append logic assign command to the CMDQ packet, ask GCE
+ *		       to execute an instruction that set a constant value into
+ *		       internal register and use as value, mask or address in
+ *		       read/write instruction.
+ * @pkt:	the CMDQ packet
+ * @reg_idx:	the CMDQ internal register ID
+ * @value:	the specified value
+ *
+ * Return: 0 for success; else the error code is returned
+ */
+int cmdq_pkt_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value);
+
+/**
  * cmdq_pkt_poll_addr() - Append blocking POLL command to CMDQ packet
  * @pkt:	the CMDQ packet
  * @addr:	the hardware register address
@@ -395,15 +408,6 @@ int cmdq_sec_pkt_alloc_sec_data(struct cmdq_pkt *pkt);
  * Return: 0 for success; else the error code is returned
  */
 int cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt);
-
-/**
- * cmdq_sec_pkt_set_data() - set secure configuration to sec_data in CDMQ packet.
- * @pkt:	the CMDQ packet.
- * @scenario:		the scenario to CMDQ TA.
- *
- * Return: 0 for success; else the error code is returned
- */
-int cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, enum cmdq_sec_scenario scenario);
 
 /**
  * cmdq_sec_pkt_write() - append write secure buffer related instructions.
@@ -538,11 +542,6 @@ static inline int cmdq_sec_pkt_alloc_sec_data(struct cmdq_pkt *pkt)
 }
 
 static inline int cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
-{
-	return -EINVAL;
-}
-
-static inline int cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, enum cmdq_sec_scenario scenario)
 {
 	return -EINVAL;
 }

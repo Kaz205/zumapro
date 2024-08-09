@@ -81,7 +81,7 @@ const struct mtk_imgsys_format mtk_imgsys_format_warp2p = {
 	.num_planes = 2,
 	.buffer_size = 0,
 	.pixels_per_group = 4,
-	.bytes_per_group = { 16, 16 },
+	.bytes_per_group = { 8, 8 },
 	.vertical_sub_sampling = { 1, 1 },
 };
 

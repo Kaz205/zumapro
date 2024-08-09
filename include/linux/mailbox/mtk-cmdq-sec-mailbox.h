@@ -21,24 +21,6 @@
 #define CMDQ_MAX_COOKIE_VALUE           (0xffff)
 
 /**
- * enum cmdq_sec_scenario - scenario settings for cmdq TA.
- * @CMDQ_SEC_SCNR_PRIMARY_DISP: primary display vdo mode enable.
- * @CMDQ_SEC_SCNR_SUB_DISP: external display vdo mode enable.
- * @CMDQ_SEC_SCNR_PRIMARY_DISP_DISABLE: primary display vdo mode disable.
- * @CMDQ_SEC_SCNR_SUB_DISP_DISABLE: external display vdo mode disable.
- * @CMDQ_SEC_SCNR_MAX: the end of enum.
- *
- * These states are used to record the state of IWC message structure.
- */
-enum cmdq_sec_scenario {
-	CMDQ_SEC_SCNR_PRIMARY_DISP		= 1,
-	CMDQ_SEC_SCNR_SUB_DISP			= 4,
-	CMDQ_SEC_SCNR_PRIMARY_DISP_DISABLE	= 18,
-	CMDQ_SEC_SCNR_SUB_DISP_DISABLE		= 19,
-	CMDQ_SEC_SCNR_MAX,
-};
-
-/**
  * enum cmdq_iwc_state_enum - state of Inter-world Communication(IWC) message
  * @IWC_INIT: state of initializing tee context, means tee context has not initialized.
  * @IWC_CONTEXT_INITED: tee context has initialized.
@@ -93,7 +75,6 @@ extern struct cmdq_sec_mailbox cmdq_sec_mbox;
 struct cmdq_sec_data {
 	u32 meta_cnt;
 	struct iwc_cmdq_addr_metadata_t meta_list[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
-	enum cmdq_sec_scenario scenario;
 };
 
 u16 cmdq_sec_get_eof_event_id(struct mbox_chan *chan);

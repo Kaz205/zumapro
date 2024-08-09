@@ -33,6 +33,19 @@ typedef int (*set_pad_selection_func_t)(struct v4l2_subdev *sd,
 			struct mtk_cam_resource *res,
 			int pad, int which);
 
+/*For state analysis and controlling for request*/
+enum MTK_BUF_STATE {
+	E_BUF_STATE_QUEUED = 0x0,
+	E_BUF_STATE_COMPOSED,
+	E_BUF_STATE_CQ,
+	E_BUF_STATE_OUTER,
+};
+
+struct mtk_buf_state {
+	enum MTK_BUF_STATE estate;
+	struct list_head list;
+};
+
 /*
  * struct mtk_cam_buffer - MTK camera device buffer.
  *
@@ -49,6 +62,7 @@ struct mtk_cam_buffer {
 
 	dma_addr_t daddr;
 	dma_addr_t scp_addr;
+	struct mtk_buf_state state;
 };
 
 struct mtk_cam_format_desc {

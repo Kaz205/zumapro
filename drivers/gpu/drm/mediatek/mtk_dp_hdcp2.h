@@ -44,9 +44,30 @@ enum ENUM_HDCP_ERR_CODE {
 	HDCP_ERR_PROCESS_FAIL
 };
 
+#if IS_ENABLED(CONFIG_TEE)
 int dp_tx_hdcp2_fsm(struct mtk_hdcp_info *hdcp_info);
 void dp_tx_hdcp2_set_start_auth(struct mtk_hdcp_info *hdcp_info, bool enable);
 bool dp_tx_hdcp2_support(struct mtk_hdcp_info *hdcp_info);
 bool dp_tx_hdcp2_irq(struct mtk_hdcp_info *hdcp_info);
+#else
+static inline int dp_tx_hdcp2_fsm(struct mtk_hdcp_info *hdcp_info)
+{
+	return -ENODEV;
+}
+
+static inline void dp_tx_hdcp2_set_start_auth(struct mtk_hdcp_info *hdcp_info, bool enable)
+{
+}
+
+static inline bool dp_tx_hdcp2_support(struct mtk_hdcp_info *hdcp_info)
+{
+	return false;
+}
+
+static inline bool dp_tx_hdcp2_irq(struct mtk_hdcp_info *hdcp_info)
+{
+	return false;
+}
+#endif /* IS_ENABLED(CONFIG_TEE) */
 
 #endif /* _MTK_dp_HDCP2_H_ */
