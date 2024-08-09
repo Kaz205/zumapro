@@ -147,39 +147,29 @@ static int mtk_apusys_rv_fill_sec_info(struct apusys_secure_info_t *sec_info,
 	uint64_t coredump_buf_sz = 0, sec_mem_sz = 0;
 
 	sec_info->up_code_buf_ofs = 0;
-	if (config->up_code_buf_sz < 0)
-		goto out;
 	sec_info->up_code_buf_sz = config->up_code_buf_sz;
 	tmp_ofs = sec_info->up_code_buf_ofs + sec_info->up_code_buf_sz;
 	dev_dbg(apu->dev, "%s: up_code_buf_sz is 0x%x\n", __func__, sec_info->up_code_buf_sz);
 
 	sec_info->up_coredump_ofs = apusys_part_size - (0x200) + tmp_ofs;
-	if (config->up_coredump_buf_sz < 0)
-		goto out;
 	sec_info->up_coredump_sz = config->up_coredump_buf_sz;
 	tmp_ofs = sec_info->up_coredump_ofs + sec_info->up_coredump_sz;
 	dev_dbg(apu->dev, "%s: up_coredump_ofs is 0x%x, up_coredump_sz is 0x%x\n",
 		__func__, sec_info->up_coredump_ofs, sec_info->up_coredump_sz);
 
 	sec_info->mdla_coredump_ofs = tmp_ofs;
-	if (config->mdla_coredump_buf_sz < 0)
-		goto out;
 	sec_info->mdla_coredump_sz = config->mdla_coredump_buf_sz;
 	tmp_ofs = sec_info->mdla_coredump_ofs + sec_info->mdla_coredump_sz;
 	dev_dbg(apu->dev, "%s: mdla_coredump_ofs is 0x%x, mdla_coredump_sz is 0x%x\n",
 		__func__, sec_info->mdla_coredump_ofs, sec_info->mdla_coredump_sz);
 
 	sec_info->mvpu_coredump_ofs = tmp_ofs;
-	if (config->mvpu_coredump_buf_sz < 0)
-		goto out;
 	sec_info->mvpu_coredump_sz = config->mvpu_coredump_buf_sz;
 	tmp_ofs = sec_info->mvpu_coredump_ofs + sec_info->mvpu_coredump_sz;
 	dev_dbg(apu->dev, "%s: mvpu_coredump_ofs is 0x%x, mvpu_coredump_sz is 0x%x\n",
 		__func__, sec_info->mvpu_coredump_ofs, sec_info->mvpu_coredump_sz);
 
 	sec_info->mvpu_sec_coredump_ofs = tmp_ofs;
-	if (config->mvpu_sec_coredump_buf_sz < 0)
-		goto out;
 	sec_info->mvpu_sec_coredump_sz = config->mvpu_sec_coredump_buf_sz;
 	dev_dbg(apu->dev, "%s: mvpu_sec_coredump_ofs is 0x%x, mvpu_sec_coredump_sz is 0x%x\n",
 		__func__, sec_info->mvpu_sec_coredump_ofs, sec_info->mvpu_sec_coredump_sz);
@@ -194,8 +184,6 @@ static int mtk_apusys_rv_fill_sec_info(struct apusys_secure_info_t *sec_info,
 	sec_info->total_sz = sec_mem_sz;
 
 	return 0;
-out:
-	return -EINVAL;
 }
 
 int mtk_apu_load(struct rproc *rproc, const struct firmware *fw)
@@ -241,8 +229,6 @@ int mtk_apu_load(struct rproc *rproc, const struct firmware *fw)
 	/* calc apu aee coredump mem info */
 	sec_mem_size = sec_info->total_sz;
 
-	if (config.regdump_buf_sz < 0)
-		goto err_apusys_rv_get_buf_sz;
 	dev_dbg(apu->dev, "%s: regdump_buf_sz is 0x%llx\n", __func__, config.regdump_buf_sz);
 
 	/* set memory addr,size to mtk_apu */

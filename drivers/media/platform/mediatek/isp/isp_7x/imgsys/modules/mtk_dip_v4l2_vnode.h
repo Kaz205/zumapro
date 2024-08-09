@@ -39,6 +39,11 @@ static const struct mtk_imgsys_dev_format dip_imgi_fmts[] = {
 		.align = 1,
 		.scan_align = 1,
 	},
+	{
+		.fmt = &mtk_imgsys_format_y8,
+		.align = 1,
+		.scan_align = 1,
+	},
 };
 
 static const struct mtk_imgsys_dev_format dip_vipi_fmts[] = {
@@ -59,6 +64,11 @@ static const struct mtk_imgsys_dev_format dip_vipi_fmts[] = {
 	},
 	{
 		.fmt = &mtk_imgsys_format_2p012p,
+		.align = 1,
+		.scan_align = 1,
+	},
+	{
+		.fmt = &mtk_imgsys_format_2p010p,
 		.align = 1,
 		.scan_align = 1,
 	},
@@ -134,6 +144,11 @@ static const struct mtk_imgsys_dev_format dip_tnrw_fmts[] = {
 		.align = 192,
 		.scan_align = 192,
 	},
+	{
+		.fmt = &mtk_imgsys_format_y8,
+		.align = 1,
+		.scan_align = 1,
+	},
 };
 
 static const struct mtk_imgsys_dev_format dip_tnrci_fmts[] = {
@@ -141,6 +156,11 @@ static const struct mtk_imgsys_dev_format dip_tnrci_fmts[] = {
 		.fmt = &mtk_imgsys_format_grey,
 		.align = 144,
 		.scan_align = 108,
+	},
+	{
+		.fmt = &mtk_imgsys_format_y8,
+		.align = 1,
+		.scan_align = 1,
 	},
 };
 
@@ -171,6 +191,16 @@ static const struct mtk_imgsys_dev_format dip_img2o_fmts[] = {
 	{
 		.fmt = &mtk_imgsys_format_grey,
 		.align = 16,
+		.scan_align = 1,
+	},
+	{
+		.fmt = &mtk_imgsys_format_2p010p,
+		.align = 1,
+		.scan_align = 1,
+	},
+	{
+		.fmt = &mtk_imgsys_format_y8,
+		.align = 1,
 		.scan_align = 1,
 	},
 };

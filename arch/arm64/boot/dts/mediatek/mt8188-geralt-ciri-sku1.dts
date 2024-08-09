@@ -17,16 +17,11 @@
 		     "google,ciri", "mediatek,mt8188";
 };
 
-&panel {
+&dsi_panel {
 	compatible = "ivo,t109nw41";
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	es8326: es8326@19 {
 		#sound-dai-cells = <0>;
 		compatible = "everest,es8326";
@@ -75,6 +70,5 @@
 
 &touchscreen {
 	himax,pid = <0x1003>;
-	himax,firmware-name = "himax_i2chid_1003.bin";
 	firmware-name = "himax_i2chid_1003.bin";
 };

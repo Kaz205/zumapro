@@ -29,7 +29,6 @@ struct cmdq_sec_task {
 	/* secure CMDQ */
 	bool				reset_exec;
 	u32				wait_cookie;
-	s32				scenario;
 	u64				trigger;
 	u64				exec_time;
 	struct work_struct		exec_work;
@@ -416,7 +415,7 @@ static int cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 {
 	struct iwc_cmdq_message_t *iwc_msg = NULL;
 	struct cmdq_sec_data *data = (struct cmdq_sec_data *)sec_task->task.pkt->sec_data;
-	u32 size = 0, *instr;
+	u32 *instr;
 
 	iwc_msg = (struct iwc_cmdq_message_t *)context->iwc_msg;
 
@@ -433,11 +432,8 @@ static int cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	}
 
 	iwc_msg->command.thread = thrd_idx;
-	iwc_msg->command.scenario = sec_task->scenario;
-	size = sec_task->task.pkt->cmd_buf_size;
-	memcpy(iwc_msg->command.va_base, sec_task->task.pkt->va_base, size);
-	iwc_msg->command.cmd_size += size;
-
+	iwc_msg->command.cmd_size = sec_task->task.pkt->cmd_buf_size;
+	memcpy(iwc_msg->command.va_base, sec_task->task.pkt->va_base, iwc_msg->command.cmd_size);
 	instr = &iwc_msg->command.va_base[iwc_msg->command.cmd_size / 4 - 4];
 	/* Remove IRQ_EN in EOC */
 	if (*(u64 *)instr == CMDQ_EOC_CMD)
@@ -449,7 +445,7 @@ static int cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	iwc_msg->command.wait_cookie = sec_task->wait_cookie;
 	iwc_msg->command.reset_exec = sec_task->reset_exec;
 
-	if (data->meta_cnt) {
+	if (data->meta_cnt > 0) {
 		iwc_msg->command.metadata.addr_list_length = data->meta_cnt;
 		memcpy(iwc_msg->command.metadata.addr_list, data->meta_list,
 		       data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
@@ -627,6 +623,19 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 		return;
 	}
 
+	if (sec_thread->task_cnt > CMDQ_MAX_TASK_IN_SECURE_THREAD) {
+		struct cmdq_cb_data cb_data;
+
+		dev_dbg(&cmdq->dev, "task_cnt:%u cannot more than %u sec_task:%p thread:%u",
+			sec_thread->task_cnt, CMDQ_MAX_TASK_IN_SECURE_THREAD,
+			sec_task, sec_thread->idx);
+		cb_data.sta = -EMSGSIZE;
+		cb_data.pkt = sec_task->task.pkt;
+		mbox_chan_received_data(sec_thread->thread.chan, &cb_data);
+		kfree(sec_task);
+		return;
+	}
+
 	mutex_lock(&cmdq->exec_lock);
 
 	spin_lock_irqsave(&sec_thread->thread.chan->lock, flags);
@@ -655,14 +664,6 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 			atomic_set(&cmdq_path_res, 0);
 			goto task_end;
 		}
-	}
-
-	if (sec_thread->task_cnt > CMDQ_MAX_TASK_IN_SECURE_THREAD) {
-		dev_err(&cmdq->dev, "task_cnt:%u cannot more than %u sec_task:%p thread:%u",
-			sec_thread->task_cnt, CMDQ_MAX_TASK_IN_SECURE_THREAD,
-			sec_task, sec_thread->idx);
-		err = -EMSGSIZE;
-		goto task_end;
 	}
 
 	err = cmdq_sec_task_submit(cmdq, sec_task, CMD_CMDQ_IWC_SUBMIT_TASK,
@@ -719,7 +720,6 @@ static int cmdq_sec_mbox_send_data(struct mbox_chan *chan, void *data)
 
 	sec_task->task.pkt = pkt;
 	sec_task->task.thread = thread;
-	sec_task->scenario = sec_data->scenario;
 
 	INIT_WORK(&sec_task->exec_work, cmdq_sec_task_exec_work);
 	queue_work(sec_thread->task_exec_wq, &sec_task->exec_work);

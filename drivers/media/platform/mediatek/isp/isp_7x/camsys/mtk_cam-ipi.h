@@ -15,6 +15,7 @@
 #define MTK_CAM_MAX_RUNNING_JOBS (3)
 #define CAM_MAX_PLANENUM (3)
 #define CAM_MAX_SUBSAMPLE (32)
+#define MTK_CAM_MAX_PROCESSING_BUFS (2)
 
 /*
  * struct mtkcam_ipi_point - Point

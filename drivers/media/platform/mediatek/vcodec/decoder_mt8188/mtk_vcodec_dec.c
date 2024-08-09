@@ -262,9 +262,11 @@ static int mtk_vcodec_dec_init_pic_info(struct mtk_vcodec_dec_ctx *ctx, enum v4l
 	 * v4l2-compliance will fail
 	 */
 	ret = vdec_if_get_param(ctx, GET_PARAM_PIC_INFO, &ctx->picinfo);
-	if (ret)
-		mtk_v4l2_vdec_err(ctx, "[%d]Error!! Get GET_PARAM_PICTURE_INFO Fail",
+	if (ret) {
+		mtk_v4l2_vdec_dbg(0, ctx,
+				  "[%d] Getting GET_PARAM_PICTURE_INFO failed.",
 				  ctx->id);
+	}
 
 	q_data = mtk_vdec_get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	if (q_data->fmt->num_planes == 1) {
@@ -602,7 +604,7 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 		ctx->picinfo.pic_w = pix_mp->width;
 		ctx->picinfo.pic_h = pix_mp->height;
 
-		if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+		if (ctx->state != MTK_STATE_FREE)
 			ret = mtk_vcodec_dec_init_pic_info(ctx, f->type);
 	}
 
@@ -808,10 +810,12 @@ int vb2ops_vdec_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers,
 					  ctx->is_secure_playback);
 		}
 
-		ret = mtk_vcodec_dec_init_pic_info(ctx, vq->type);
-		if (ret) {
-			mtk_v4l2_vdec_err(ctx, "Failed to init picture information");
-			return ret;
+		if (ctx->state == MTK_STATE_FREE) {
+			ret = mtk_vcodec_dec_init_pic_info(ctx, vq->type);
+			if (ret) {
+				mtk_v4l2_vdec_err(ctx, "Failed to init picture information");
+				return ret;
+			}
 		}
 	}
 
@@ -930,10 +934,10 @@ void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 			if (src_buf != &ctx->empty_flush_buf.vb) {
 				struct media_request *req =
 					src_buf->vb2_buf.req_obj.req;
-				v4l2_m2m_buf_done(src_buf,
-						VB2_BUF_STATE_ERROR);
+
 				if (req)
 					v4l2_ctrl_request_complete(req, &ctx->ctrl_hdl);
+				v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
 			}
 		}
 		return;

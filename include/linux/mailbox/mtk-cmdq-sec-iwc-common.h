@@ -71,69 +71,6 @@ enum cmdq_iwc_addr_metadata_type {
 	CMDQ_IWC_PH_2_MVA	= 3,
 };
 
-/*
- * enum cmdq_sec_engine_enum - the flag for HW engines need to be proteced in secure world.
- * Each enum is a bit in a u64 engine flag variable.
- */
-enum cmdq_sec_engine_enum {
-	/* MDP */
-	CMDQ_SEC_MDP_RDMA0		= 0,
-	CMDQ_SEC_MDP_RDMA1		= 1,
-	CMDQ_SEC_MDP_WDMA		= 2,
-	CMDQ_SEC_MDP_RDMA2		= 3,
-	CMDQ_SEC_MDP_RDMA3		= 4,
-	CMDQ_SEC_MDP_WROT0		= 5,
-	CMDQ_SEC_MDP_WROT1		= 6,
-	CMDQ_SEC_MDP_WROT2		= 7,
-	CMDQ_SEC_MDP_WROT3		= 8,
-	CMDQ_SEC_MDP_HDR0		= 9,
-	CMDQ_SEC_MDP_HDR1		= 10,
-	CMDQ_SEC_MDP_HDR2		= 11,
-	CMDQ_SEC_MDP_HDR3		= 12,
-	CMDQ_SEC_MDP_AAL0		= 13,
-	CMDQ_SEC_MDP_AAL1		= 14,
-	CMDQ_SEC_MDP_AAL2		= 15,
-	CMDQ_SEC_MDP_AAL3		= 16,
-
-	/* DISP (VDOSYS0) */
-	CMDQ_SEC_DISP_RDMA0		= 17,
-	CMDQ_SEC_DISP_RDMA1		= 18,
-	CMDQ_SEC_DISP_WDMA0		= 19,
-	CMDQ_SEC_DISP_WDMA1		= 20,
-	CMDQ_SEC_DISP_OVL0		= 21,
-	CMDQ_SEC_DISP_OVL1		= 22,
-	CMDQ_SEC_DISP_OVL2		= 23,
-	CMDQ_SEC_DISP_2L_OVL0		= 24,
-	CMDQ_SEC_DISP_2L_OVL1		= 25,
-	CMDQ_SEC_DISP_2L_OVL2		= 26,
-
-	/* DSIP (VDOSYS1) */
-	CMDQ_SEC_VDO1_DISP_RDMA_L0	= 27,
-	CMDQ_SEC_VDO1_DISP_RDMA_L1	= 28,
-	CMDQ_SEC_VDO1_DISP_RDMA_L2	= 29,
-	CMDQ_SEC_VDO1_DISP_RDMA_L3	= 30,
-
-	/* VENC */
-	CMDQ_SEC_VENC_BSDMA		= 31,
-	CMDQ_SEC_VENC_CUR_LUMA		= 32,
-	CMDQ_SEC_VENC_CUR_CHROMA	= 33,
-	CMDQ_SEC_VENC_REF_LUMA		= 34,
-	CMDQ_SEC_VENC_REF_CHROMA	= 35,
-	CMDQ_SEC_VENC_REC		= 36,
-	CMDQ_SEC_VENC_SUB_R_LUMA	= 37,
-	CMDQ_SEC_VENC_SUB_W_LUMA	= 38,
-	CMDQ_SEC_VENC_SV_COMV		= 39,
-	CMDQ_SEC_VENC_RD_COMV		= 40,
-	CMDQ_SEC_VENC_NBM_RDMA		= 41,
-	CMDQ_SEC_VENC_NBM_WDMA		= 42,
-	CMDQ_SEC_VENC_NBM_RDMA_LITE	= 43,
-	CMDQ_SEC_VENC_NBM_WDMA_LITE	= 44,
-	CMDQ_SEC_VENC_FCS_NBM_RDMA	= 45,
-	CMDQ_SEC_VENC_FCS_NBM_WDMA	= 46,
-
-	CMDQ_SEC_MAX_ENG_COUNT
-};
-
 /**
  * struct iwc_cmdq_addr_metadata_t - metadata structure for converting address of secure buffer.
  * @type: addr metadata type.
@@ -176,30 +113,6 @@ struct iwc_cmdq_addr_metadata_t {
 struct iwc_cmdq_metadata_t {
 	u32 addr_list_length;
 	struct iwc_cmdq_addr_metadata_t addr_list[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
-};
-
-/**
- * enum sec_extension_iwc - extension HW engine flag to be protcted in secure world.
- * @IWC_MDP_AAL: for MDP AAL engine.
- * @IWC_MDP_TDSHP: for MDP TDSHP engine.
- */
-enum sec_extension_iwc {
-	IWC_MDP_AAL = 0,
-	IWC_MDP_TDSHP,
-};
-
-/**
- * struct readback_engine - readback engine parameters.
- * @engine: HW engine flag for readback.
- * @start: start address pa of readback buffer.
- * @count: u32 size count of readback buffer.
- * @param: other parameters need in secure world.
- */
-struct readback_engine {
-	u32 engine;
-	u32 start;
-	u32 count;
-	u32 param;
 };
 
 /**

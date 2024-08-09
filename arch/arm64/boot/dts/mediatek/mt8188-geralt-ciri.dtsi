@@ -6,18 +6,21 @@
 #include "mt8188-geralt.dtsi"
 
 /delete-node/ &dp_intf0;
+/delete-node/ &edp_panel;
 /delete-node/ &edp_tx;
-/delete-node/ &panel;
-/delete-node/ &backlight_lcd0;
-/delete-node/ &pp3300_dx_edp;
-/delete-node/ &nau8825;
 /delete-node/ &max98390_3a;
 /delete-node/ &max98390_3b;
+/delete-node/ &nau8825;
+/delete-node/ &pp3300_edp_disp;
 
-&disp_dsi0 {
-	panel: panel1@0 {
-		compatible = "boe,nv110wum-l60";
+&aud_etdm_spk_on {
+	pins-bus {
+		drive-strength = <MTK_DRIVE_8mA>;
 	};
+};
+
+&dsi_panel {
+	compatible = "boe,nv110wum-l60";
 };
 
 &disp_pwm1 {
@@ -29,11 +32,6 @@
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	rt5682s: rt5682s@1a {
 		compatible = "realtek,rt5682s";
 		reg = <0x1a>;
@@ -56,8 +54,8 @@
 };
 
 &mipi_tx_config0 {
-	status = "okay";
 	drive-strength-microamp = <5200>;
+	status = "okay";
 };
 
 &mt6359_vm18_ldo_reg {
@@ -109,6 +107,7 @@
 	dai-link-0 {
 		link-name = "ETDM2_OUT_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&rt5682s>;
 		};
@@ -117,6 +116,7 @@
 	dai-link-1 {
 		link-name = "ETDM2_IN_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&rt5682s>;
 		};
@@ -126,6 +126,7 @@
 		link-name = "ETDM1_OUT_BE";
 		dai-format = "i2s";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&max98390_38>,
 				    <&max98390_39>;
@@ -140,32 +141,28 @@
 };
 
 &spi1 {
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&spi1_pins_default>;
-	pinctrl-1 = <&spi1_pins_sleep>;
-	status = "okay";
-	dma-names = "tx","rx";
-	num-cs = <1>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	num-cs = <1>;
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
 
-	touchscreen: hid_hx_common_spi@0 {
+	touchscreen: hid-hx-common-spi@0 {
 		compatible = "himax,hx83102j";
-		pinctrl-names = "default";
-		pinctrl-0 = <&touchscreen_pins &touch_reset>;
-		panel = <&panel>;
 		reg = <0>;
-		spi-max-frequency = <12500000>;
-		status = "okay";
-		reset-gpios = <&pio 5  GPIO_ACTIVE_LOW>;
-		himax_gpio_irq = <&pio 143  IRQ_TYPE_LEVEL_LOW>;
-		himax,pid = <0x1002>;
-		himax,firmware-name = "himax_i2chid_1002.bin";
 		firmware-name = "himax_i2chid_1002.bin";
-
 		interrupt-parent = <&pio>;
 		interrupts = <143 IRQ_TYPE_LEVEL_LOW>;
 		irq_flag = <0x02>;
+		panel = <&dsi_panel>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tchscr_int &tchscr_rst>;
+		reset-gpios = <&pio 5 GPIO_ACTIVE_LOW>;
+		spi-max-frequency = <12500000>;
+		himax_gpio_irq = <&pio 143 IRQ_TYPE_LEVEL_LOW>;
+		himax,pid = <0x1002>;
+		status = "okay";
 	};
 };
 
@@ -181,9 +178,21 @@
 	};
 };
 
-&pio {
-	pinctrl-names = "default";
+&aud_etdm_hp_on {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>;
+	};
+};
 
+&aud_etdm_hp_off {
+	pins-mclk {
+		pinmux = <PINMUX_GPIO114__FUNC_B_GPIO114>;
+		bias-pull-down;
+		input-enable;
+	};
+};
+
+&pio {
 	gpio-line-names =
 		"GSC_AP_INT_ODL",
 		"AP_DISP_BKLTEN",
@@ -200,7 +209,7 @@
 		"EN_PP3300_WLAN_X",
 		"WIFI_KILL_1V8_L",
 		"BT_KILL_1V8_L",
-		"AP_FLASH_WP_L",
+		"AP_FLASH_WP_L", /* ... is crossystem ABI. Rev1 schematics call it AP_WP_ODL. */
 		"",
 		"",
 		"WCAM_PWDN_L",
@@ -235,8 +244,8 @@
 		"PCIE_WAKE_1V8_ODL",
 		"PCIE_RST_1V8_L",
 		"PCIE_CLKREQ_1V8_ODL",
-		"NC",
-		"NC",
+		"",
+		"",
 		"",
 		"",
 		"",
@@ -296,7 +305,7 @@
 		"HP_INT_ODL",
 		"SPKR_INT_ODL",
 		"I2S_HP_DATAIN",
-		"",
+		"EN_SPKR",
 		"I2S_SPKR_MCLK",
 		"I2S_SPKR_BCLK",
 		"I2S_HP_MCLK",
@@ -328,7 +337,7 @@
 		"EN_PP1200_UCAM_X",
 		"EN_PP2800A_WCAM_X",
 		"EN_PP1100_WCAM_X",
-		"TCHSCR_INI_1V8_L",
+		"TCHSCR_INT_1V8_L",
 		"",
 		"MT7921_PMU_EN_1V8",
 		"",
@@ -347,7 +356,7 @@
 		"EMMC_DAT2",
 		"EMMC_DAT1",
 		"EMMC_DAT0",
-		"EMMC_STRB",
+		"EMMC_DSL",
 		"",
 		"",
 		"",
@@ -363,36 +372,14 @@
 		"SPMI_SCL",
 		"SPMI_SDA";
 
-	aud_etdm_hp_on: aud_etdm_hp_on {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_I0_I2SIN_D0>,
-				 <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>,
-				 <PINMUX_GPIO115__FUNC_B0_I2SO2_BCK>,
-				 <PINMUX_GPIO116__FUNC_B0_I2SO2_WS>,
-				 <PINMUX_GPIO117__FUNC_O_I2SO2_D0>;
-		};
-	};
-
-	aud_etdm_hp_off: aud_etdm_hp_off {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO110__FUNC_B_GPIO110>,
-				 <PINMUX_GPIO114__FUNC_B_GPIO114>,
-				 <PINMUX_GPIO115__FUNC_B_GPIO115>,
-				 <PINMUX_GPIO116__FUNC_B_GPIO116>,
-				 <PINMUX_GPIO117__FUNC_B_GPIO117>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
-
-	touch_reset: touch-reset {
-		pins-rst {
+	tchscr_rst: touch-reset-pins {
+		pins-tchscr-rst {
 			pinmux = <PINMUX_GPIO5__FUNC_B_GPIO5>;
 			output-high;
 		};
 	};
 
-	spi1_pins_default: spi1-pins-default {
+	spi1_default: spi1-default-pins {
 		pins-bus {
 			pinmux = <PINMUX_GPIO75__FUNC_O_SPIM1_CSB>,
 				 <PINMUX_GPIO76__FUNC_O_SPIM1_CLK>,
@@ -403,7 +390,7 @@
 		};
 	};
 
-	spi1_pins_sleep: spi1-pins-sleep {
+	spi1_sleep: spi1-sleep-pins {
 		pins-bus {
 			pinmux = <PINMUX_GPIO75__FUNC_B_GPIO75>,
 				 <PINMUX_GPIO76__FUNC_B_GPIO76>,

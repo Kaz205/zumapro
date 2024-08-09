@@ -39,8 +39,8 @@ static const struct mtk_imgsys_dev_format me_fmts[] = {
 static const struct mtk_imgsys_dev_format mewmap_fmts[] = {
 	{
 		.fmt = &mtk_imgsys_format_warp2p,
-		.align = 1168,
-		.scan_align = 217,
+		.align = 8,
+		.scan_align = 1,
 	},
 };
 

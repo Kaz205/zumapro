@@ -21,55 +21,35 @@
 		mmc1 = &mmc1;
 	};
 
-	avdd_lcd: avdd-lcd {
+	ppvar_mipi_disp_avdd: regulator-ppvar-mipi-disp-avdd {
 		compatible = "regulator-fixed";
-		regulator-name = "avdd_lcd";
+		regulator-name = "ppvar_mipi_disp_avdd";
+		enable-active-high;
 		gpio = <&pio 3 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
 		pinctrl-names = "default";
-		pinctrl-0 = <&avdd_lcd_en>;
+		pinctrl-0 = <&mipi_disp_avdd_en>;
+		vin-supply = <&pp5000_z1>;
 	};
 
-	avee_lcd: avee-lcd {
+	ppvar_mipi_disp_avee: regulator-ppvar-mipi-disp-avee {
 		compatible = "regulator-fixed";
-		regulator-name = "avee_lcd";
+		regulator-name = "ppvar_mipi_disp_avee";
+		enable-active-high;
 		gpio = <&pio 4 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
 		pinctrl-names = "default";
-		pinctrl-0 = <&avee_lcd_en>;
+		pinctrl-0 = <&mipi_disp_avee_en>;
 		regulator-enable-ramp-delay = <10000>;
+		vin-supply = <&pp5000_z1>;
 	};
 
-	backlight_lcd0: backlight_lcd0 {
+	backlight_lcd: backlight-lcd {
 		compatible = "pwm-backlight";
-		pwms = <&disp_pwm1 0 500000>;
-		power-supply = <&bl_pp5000>;
-		enable-gpios = <&pio 110 0>;
 		brightness-levels = <0 1023>;
-		num-interpolated-steps = <1023>;
 		default-brightness-level = <576>;
-		status = "disabled";
-	};
-
-	backlight_lcd1: backlight_lcd1 {
-		compatible = "pwm-backlight";
-		pwms = <&disp_pwm0 0 500000>;
-		power-supply = <&bl_pp5000>;
 		enable-gpios = <&pio 1 0>;
-		brightness-levels = <0 1023>;
 		num-interpolated-steps = <1023>;
-		default-brightness-level = <576>;
-		status = "okay";
-	};
-
-	bl_pp5000: regulator2 {
-		compatible = "regulator-fixed";
-		regulator-name = "bl_pp5000";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-always-on;
-		regulator-boot-on;
-		enable-active-high;
+		power-supply = <&ppvar_sys>;
+		pwms = <&disp_pwm0 0 500000>;
 	};
 
 	/* chosen */
@@ -86,7 +66,7 @@
 			interrupts = <GIC_SPI 547 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
-		mtk_svp_heap {
+		mtk-svp-heap {
 			compatible = "mediatek,secure_heap";
 			memory-region = <&secure_cma_reserved>;
 		};
@@ -98,72 +78,121 @@
 		wakeup-delay-ms = <50>;
 	};
 
-	dx_pp3300: regulator3 {
-		compatible = "regulator-fixed";
-		regulator-name = "dx_pp3300";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-		regulator-boot-on;
-		enable-active-high;
-	};
-
 	memory {
 		device_type = "memory";
 		reg = <0 0x40000000 0 0x80000000>;
 	};
 
-	panel: panel {
+	edp_panel: panel {
 		compatible = "lg,lp120up1";
-		status = "disabled";
 		pinctrl-names = "default";
-		pinctrl-0 = <&panel_pin_default>;
-		backlight = <&backlight_lcd0>;
+		pinctrl-0 = <&edp_bl_pwm>;
+		status = "disabled";
+
 		port {
-			panel_in: endpoint {
+			edp_panel_in: endpoint {
 				remote-endpoint = <&edp_out>;
 			};
 		};
 	};
 
-	pcie_3v3_en: pcie-3v3-en-regulator {
+	/* system wide semi-regulated power rail from battery or USB */
+	ppvar_sys: ppvar-sys {
 		compatible = "regulator-fixed";
-		regulator-name = "pcie_3v3_en";
-		regulator-always-on;
-		gpio = <&pio 12 0>;
-		enable-active-high;
-	};
-
-	pp3300_dx_edp: pp3300-dx-edp-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "pp3300_dx_edp";
-		pinctrl-names = "default";
-		pinctrl-0 = <&en_pp3300_dxedp>;
-		enable-active-high;
-		regulator-boot-on;
-		gpio = <&pio 27 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&dx_pp3300>;
-	};
-
-	pp3300_mipi: regulator-pp3300-mipi {
-		compatible = "regulator-fixed";
-		regulator-name = "pp3300_mipi";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
+		regulator-name = "ppvar_sys";
 		regulator-always-on;
 		regulator-boot-on;
-		enable-active-high;
 	};
 
-	pp3300_s3: pp3300-s3-regulator {
+	/* system wide LDO 1.8V power rail */
+	pp1800_ldo_z1: regulator-pp1800-ldo-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp1800_ldo_z1";
+		/* controlled by PP3300_Z1 */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	/* separately switched 3.3V power rail */
+	pp3300_s3: regulator-pp3300-s3 {
 		compatible = "regulator-fixed";
 		regulator-name = "pp3300_s3";
-		pinctrl-names = "default";
-		pinctrl-0 = <&en_pp3300_mipi>;
-		enable-active-high;
+		/* controlled by EXT_PMIC_EN2 */
+		regulator-always-on;
 		regulator-boot-on;
-		gpio = <&pio 144 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&pp3300_mipi>;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	/* system wide 3.3V power rail */
+	pp3300_z1: regulator-pp3300-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_z1";
+		/* controlled by PP3300_LDO_Z5 & EN_PWR_Z1 */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
+	/* system wide 4.2V power rail */
+	pp4200_s5: regulator-pp4200-s5 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp4200_s5";
+		/* controlled by EC */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <4200000>;
+		regulator-max-microvolt = <4200000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
+	/* system wide 5.0V power rail */
+	pp5000_z1: regulator-pp5000-z1 {
+		compatible = "regulator-fixed";
+		regulator-name = "pp5000_z1";
+		/* controlled by EC */
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&ppvar_sys>;
+	};
+
+	pp3300_wlan: regulator-pp3300-wlan {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wlan_en>;
+		gpio = <&pio 12 GPIO_ACTIVE_HIGH>; /* EN_PP3300_WLAN_X */
+		enable-active-high;
+		regulator-always-on;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	pp3300_edp_disp: regulator-pp3300-edp-disp {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_edp_disp";
+		enable-active-high;
+		gpio = <&pio 27 GPIO_ACTIVE_HIGH>; /* EN_PP3300_EDP_DISP_X */
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_disp_en>;
+		regulator-boot-on;
+		vin-supply = <&pp3300_z1>;
+	};
+
+	pp3300_mipi_tchscr: regulator-pp3300-mipi-tchscr {
+		compatible = "regulator-fixed";
+		regulator-name = "pp3300_mipi_tchscr";
+		enable-active-high;
+		gpio = <&pio 144 GPIO_ACTIVE_HIGH>;  /* EN_PP3300_MIPI_TCHSCR_X */
+		pinctrl-names = "default";
+		pinctrl-0 = <&mipi_tchscr_en>;
+		regulator-boot-on;
+		vin-supply = <&pp3300_z1>;
 	};
 
 	/*
@@ -175,7 +204,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		scp_mem_reserved: scp_mem_region {
+		scp_mem_reserved: scp-mem-region {
 			compatible = "shared-dma-pool";
 			reg = <0 0x50000000 0 0x800000>;
 			no-map;
@@ -186,19 +215,19 @@
 			reg = <0 0x55000000 0 0x1400000>;
 		};
 
-		adsp_mem_reserved: adsp_mem_region {
+		adsp_mem_reserved: adsp-mem-region {
 			compatible = "mediatek,adsp-reserved-memory";
 			reg = <0 0x60000000 0 0xF00000>;
 			no-map;
 		};
 
-		afe_dma_mem_reserved: snd_dma_mem_region {
+		afe_dma_mem_reserved: snd-dma-mem-region {
 			compatible = "shared-dma-pool";
-			reg = <0 0x60F00000 0 0x100000>;
+			reg = <0 0x60f00000 0 0x100000>;
 			no-map;
 		};
 
-		adsp_dma_mem_reserved: adsp_dma_mem_region {
+		adsp_dma_mem_reserved: adsp-dma-mem-region {
 			compatible = "shared-dma-pool";
 			reg = <0 0x61000000 0 0x100000>;
 			no-map;
@@ -206,36 +235,34 @@
 
 		scp_dual_mem_reserved: scp-dual-mem-region {
 			compatible = "shared-dma-pool";
-			reg = <0 0x70000000 0 0x0A000000>;
+			reg = <0 0x70000000 0 0x0a000000>;
 			no-map;
 		};
 
 		scp_isp_cma_reserved: scp-isp-cma-region {
 			compatible = "shared-dma-pool";
-			reg = <0 0x7A000000 0 0x05000000>;
+			reg = <0 0x7a000000 0 0x05000000>;
 			reusable;
 		};
 
-		secure_cma_reserved: secure_cma_region {
+		secure_cma_reserved: secure-cma-region {
 			compatible = "mediatek,dynamic-restricted-region";
-			reg = <0 0x7F000000 0 0x100000>;
+			reg = <0 0x7f000000 0 0x400000>;
 			reusable;
 		};
 	};
 
-	usb_p1_vbus: regulator-usb-p1-vbus {
+	pp5000_usb_p1_vbus: regulator-pp5000-usb-p1-vbus {
 		compatible = "regulator-fixed";
-		regulator-name = "vbus0";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
+		regulator-name = "pp5000_usb_p1_vbus";
 		enable-active-high;
 		gpio = <&pio 150 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&pp5000_z1>;
 	};
 };
 
 &adsp {
-	memory-region = <&adsp_dma_mem_reserved>,
-		<&adsp_mem_reserved>;
+	memory-region = <&adsp_dma_mem_reserved>, <&adsp_mem_reserved>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&adsp_uart_pin>;
 	status = "okay";
@@ -278,21 +305,21 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	panel1@0 {
+	dsi_panel: panel {
 		compatible = "boe,tv110c9m-ll3";
 		reg = <0>;
+		avdd-supply = <&ppvar_mipi_disp_avdd>;
+		avee-supply = <&ppvar_mipi_disp_avee>;
+		backlight = <&backlight_lcd>;
 		enable-gpios = <&pio 25 0>;
-		avdd-supply = <&avdd_lcd>;
-		avee-supply = <&avee_lcd>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&panel_pins_default>;
+		pinctrl-0 = <&disp_default>;
 		pp1800-supply = <&mt6359_vm18_ldo_reg>;
-		backlight = <&backlight_lcd1>;
 		rotation = <270>;
 		status = "okay";
 
 		port {
-			panel1_in: endpoint {
+			dsi_panel_in: endpoint {
 				remote-endpoint = <&dsi_out>;
 			};
 		};
@@ -301,7 +328,7 @@
 	ports {
 		port {
 			dsi_out: endpoint {
-				remote-endpoint = <&panel1_in>;
+				remote-endpoint = <&dsi_panel_in>;
 			};
 		};
 	};
@@ -309,19 +336,17 @@
 
 &disp_pwm0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pwm0_gpio_def_cfg>;
+	pinctrl-0 = <&disp_pwm0_default>;
 	status = "okay";
 };
 
 &disp_pwm1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pwm1_gpio_def_cfg>;
+	pinctrl-0 = <&disp_pwm1_default>;
 	status = "okay";
 };
 
 &dp_intf0 {
-	status = "disabled";
-
 	port {
 		dp_intf0_out: endpoint {
 			remote-endpoint = <&edp_in>;
@@ -340,10 +365,9 @@
 };
 
 &dp_tx {
-	status = "okay";
-
 	pinctrl-names = "default";
-	pinctrl-0 = <&dptx_pin>;
+	pinctrl-0 = <&dp_tx_hpd>;
+	status = "okay";
 
 	ports {
 		#address-cells = <1>;
@@ -366,10 +390,8 @@
 };
 
 &edp_tx {
-	status = "disabled";
-
 	pinctrl-names = "default";
-	pinctrl-0 = <&edp_pins_default>;
+	pinctrl-0 = <&edp_tx_hpd>;
 
 	ports {
 		#address-cells = <1>;
@@ -385,7 +407,7 @@
 		port@1 {
 			reg = <1>;
 			edp_out: endpoint {
-				remote-endpoint = <&panel_in>;
+				remote-endpoint = <&edp_panel_in>;
 				data-lanes = <0 1 2 3>;
 			};
 		};
@@ -396,15 +418,14 @@
 	supply-names = "mali","mali_sram";
 	mali-supply = <&mt6359_vproc2_buck_reg>;
 	mali_sram-supply = <&mt6359_vsram_others_ldo_reg>;
-	operating-points-v2 = <&gpu_opp_table>;
 	volt-bin-mapping = <3 4 5 6>;
 
 	power_model@0 {
 		compatible = "arm,mali-simple-power-model";
-		static-coefficient = <2427750>;
 		dynamic-coefficient = <4687>;
-		ts = <20000 2000 (-20) 2>;
+		static-coefficient = <2427750>;
 		thermal-zone = "soc_max";
+		ts = <20000 2000 (-20) 2>;
 	};
 
 	power_model@1 {
@@ -415,18 +436,18 @@
 
 &i2c0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
+	pinctrl-0 = <&i2c0_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 
 	nau8825: nau8825@1a {
-		#sound-dai-cells = <0>;
 		compatible = "nuvoton,nau8825";
 		reg = <0x1a>;
 		interrupt-parent = <&pio>;
 		interrupts = <108 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&nau8825_pins_default>;
+		pinctrl-0 = <&hp_int>;
+		#sound-dai-cells = <0>;
 
 		nuvoton,jkdet-enable;
 		nuvoton,jkdet-polarity = <1>;
@@ -440,48 +461,43 @@
 		nuvoton,jack-insert-debounce = <7>;
 		nuvoton,jack-eject-debounce = <7>;
 		nuvoton,adc-delay-ms = <300>;
-		status = "okay";
 	};
 
 	max98390_38: max98390@38 {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x38>;
 		sound-name-prefix = "Rear Right";
 		reset-gpios = <&pio 118 1>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&max98390_pins_default>;
-		status = "okay";
+		pinctrl-0 = <&spkr_en>;
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_39: max98390@39 {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
 		reg = <0x39>;
 		sound-name-prefix = "Rear Left";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_3a: max98390@3a {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
-		reg = <0x3A>;
+		reg = <0x3a>;
 		sound-name-prefix = "Front Left";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 
 	max98390_3b: max98390@3b {
-		#sound-dai-cells = <0>;
 		compatible = "maxim,max98390";
-		reg = <0x3B>;
+		reg = <0x3b>;
 		sound-name-prefix = "Front Right";
-		status = "okay";
+		#sound-dai-cells = <0>;
 	};
 };
 
 &i2c1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c1_pin>;
+	pinctrl-0 = <&i2c1_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 
@@ -491,34 +507,33 @@
 		interrupt-parent = <&pio>;
 		interrupts = <0 IRQ_TYPE_EDGE_RISING>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&gsc_ap_int_odl>;
+		pinctrl-0 = <&gsc_int>;
 	};
 };
 
 &i2c2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c2_pin>;
+	pinctrl-0 = <&i2c2_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 
 	touchscreen@1 {
-		status = "okay";
 		compatible = "hid-over-i2c";
 		reg = <0x1>;
+		hid-descr-addr = <0x0001>;
 		interrupt-parent = <&pio>;
 		interrupts = <143 IRQ_TYPE_EDGE_FALLING>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&touchscreen_pins>;
-		vdd-supply = <&pp3300_s3>;
-		vddl-supply = <&mt6359_vm18_ldo_reg>;
+		pinctrl-0 = <&tchscr_int>;
 		post-power-on-delay-ms = <500>;
-		hid-descr-addr = <0x0001>;
+		vdd-supply = <&pp3300_mipi_tchscr>;
+		vddl-supply = <&mt6359_vm18_ldo_reg>;
 	};
 };
 
 &i2c3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c3_pin>;
+	pinctrl-0 = <&i2c3_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 
@@ -526,44 +541,44 @@
 		compatible = "semtech,sx9324";
 		reg = <0x28>;
 		#io-channel-cells = <1>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sar_sensor_pins>;
 		interrupt-parent = <&pio>;
 		interrupts = <88 IRQ_TYPE_LEVEL_LOW>;
-		vdd-supply = <&mt6359_vio18_ldo_reg>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sar_int>;
 		svdd-supply = <&mt6359_vio18_ldo_reg>;
+		vdd-supply = <&mt6359_vio18_ldo_reg>;
 	};
 };
 
 &i2c4 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c4_pin>;
+	pinctrl-0 = <&i2c4_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 
 	touchpad: touchpad@56 {
-		status = "disabled";
 		compatible = "hid-over-i2c";
 		reg = <0x56>;
+		hid-descr-addr = <0x0001>;
 		interrupt-parent = <&pio>;
 		interrupts = <148 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&touchpad_pins>;
-		hid-descr-addr = <0x0001>;
+		pinctrl-0 = <&hid_int>;
 		wakeup-source;
+		status = "disabled";
 	};
 };
 
 &i2c5 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c5_pin>;
+	pinctrl-0 = <&i2c5_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 };
 
 &i2c6 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c6_pin>;
+	pinctrl-0 = <&i2c6_pins>;
 	clock-frequency = <400000>;
 	status = "okay";
 };
@@ -589,40 +604,41 @@
 };
 
 &mmc0 {
-	status = "okay";
-	pinctrl-names = "default", "state_uhs";
-	pinctrl-0 = <&mmc0_pins_default>;
-	pinctrl-1 = <&mmc0_pins_uhs>;
 	bus-width = <8>;
-	max-frequency = <200000000>;
 	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	hs400-ds-delay = <0x1481b>;
+	max-frequency = <200000000>;
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
-	supports-cqe;
-	cap-mmc-hw-reset;
-	no-sdio;
+	mmc-hs400-enhanced-strobe;
 	no-sd;
-	hs400-ds-delay = <0x1481b>;
+	no-sdio;
+	non-removable;
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_default>;
+	pinctrl-1 = <&mmc0_uhs>;
+	supports-cqe;
 	vmmc-supply = <&mt6359_vemc_1_ldo_reg>;
 	vqmmc-supply = <&mt6359_vufs_ldo_reg>;
-	non-removable;
+	status = "okay";
 };
 
 &mmc1 {
-	status = "okay";
-	pinctrl-names = "default", "state_uhs";
-	pinctrl-0 = <&mmc1_pins_default>;
-	pinctrl-1 = <&mmc1_pins_uhs>;
 	bus-width = <4>;
-	max-frequency = <200000000>;
 	cap-sd-highspeed;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
+	cd-gpios = <&pio 107 GPIO_ACTIVE_LOW>;
+	max-frequency = <200000000>;
 	no-mmc;
 	no-sdio;
-	cd-gpios = <&pio 107 GPIO_ACTIVE_LOW>;
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc1_default>;
+	pinctrl-1 = <&mmc1_uhs>;
+	sd-uhs-sdr104;
+	sd-uhs-sdr50;
 	vmmc-supply = <&mt6359_vpa_buck_reg>;
 	vqmmc-supply = <&mt6359_vsim1_ldo_reg>;
+	status = "okay";
 };
 
 &mt6359codec {
@@ -640,9 +656,9 @@
 };
 
 &mt6359_vgpu11_sshub_buck_reg {
-	regulator-always-on;
 	regulator-min-microvolt = <550000>;
 	regulator-max-microvolt = <550000>;
+	regulator-always-on;
 };
 
 &mt6359_vio28_ldo_reg {
@@ -688,9 +704,9 @@
 };
 
 &nor_flash {
-	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&nor_pins_default>;
+	pinctrl-0 = <&nor_default>;
+	status = "okay";
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -701,16 +717,17 @@
 
 &pcie {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie_pins_default>;
-	pcie3v3-supply = <&pcie_3v3_en>;
+	pinctrl-0 = <&pcie_default>;
 	pcie1v8-supply = <&mt6359_vcn18_ldo_reg>;
+	pcie3v3-supply = <&pp3300_wlan>;
 	dsc-reset-gpios = <&pio 145 1>;
 	status = "okay";
 
 	pcie@0,0 {
+		reg = <0x0000 0 0 0 0>;
 		#address-cells = <3>;
 		#size-cells = <2>;
-		reg = <0x0000 0 0 0 0>;
+
 		wifi: pcie@1,0 {
 			reg = <0x0000 0 0 0 0>;
 			wakeup-source;
@@ -726,7 +743,7 @@
 	pinctrl-names = "default";
 
 	gpio-line-names =
-		"GSC_AP_INT_ODL",
+		"gsc_int",
 		"AP_DISP_BKLTEN",
 		"",
 		"EN_PPVAR_MIPI_DISP",
@@ -741,9 +758,9 @@
 		"EN_PP3300_WLAN_X",
 		"WIFI_KILL_1V8_L",
 		"BT_KILL_1V8_L",
-		"AP_FLASH_WP_L",
+		"AP_FLASH_WP_L", /* ... is crossystem ABI. Rev1 schematics call it AP_WP_ODL. */
 		"",
-		"EDP_HDP_1V8",
+		"EDP_HPD_1V8",
 		"WCAM_PWDN_L",
 		"WCAM_RST_L",
 		"UCAM_PWDM_L",
@@ -768,7 +785,7 @@
 		"JTAG_AP_TDI",
 		"JTAG_AP_TDO",
 		"JTAG_AP_TRST",
-		"AP_KPCOLO",
+		"AP_KPCOL0",
 		"TP",
 		"BEEP_ON_OD",
 		"TP",
@@ -776,8 +793,8 @@
 		"PCIE_WAKE_1V8_ODL",
 		"PCIE_RST_1V8_L",
 		"PCIE_CLKREQ_1V8_ODL",
-		"MIPI_DISP_ID0",
-		"MIPI_DISP_ID1",
+		"",
+		"",
 		"",
 		"",
 		"",
@@ -869,8 +886,8 @@
 		"EN_PP1200_UCAM_X",
 		"EN_PP2800A_WCAM_X",
 		"EN_PP1100_WCAM_X",
-		"TCHSCR_INI_1V8_L",
-		"EN_PP300_MIPI_TCHSRC_X",
+		"TCHSCR_INT_1V8_L",
+		"EN_PP3300_MIPI_TCHSCR_X",
 		"MT7921_PMU_EN_1V8",
 		"EN_PP3300_EDP_TCHSCR_X",
 		"AP_EC_WARM_RST_REQ",
@@ -904,15 +921,15 @@
 		"SPMI_SCL",
 		"SPMI_SDA";
 
-	adsp_uart_pin: adsp_uart_pin {
-		adsp_uart_pins {
+	adsp_uart_pin: adsp-uart-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO35__FUNC_O_ADSP_UTXD0>,
 				 <PINMUX_GPIO36__FUNC_I1_ADSP_URXD0>;
 		};
 	};
 
-	aud_etdm_hp_on: aud_etdm_hp_on {
-		pins-cmd-dat {
+	aud_etdm_hp_on: aud-etdm-hp-on-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO110__FUNC_I0_I2SIN_D0>,
 				 <PINMUX_GPIO115__FUNC_B0_I2SO2_BCK>,
 				 <PINMUX_GPIO116__FUNC_B0_I2SO2_WS>,
@@ -920,8 +937,8 @@
 		};
 	};
 
-	aud_etdm_hp_off: aud_etdm_hp_off {
-		pins-cmd-dat {
+	aud_etdm_hp_off: aud-etdm-hp-off-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO110__FUNC_B_GPIO110>,
 				 <PINMUX_GPIO115__FUNC_B_GPIO115>,
 				 <PINMUX_GPIO116__FUNC_B_GPIO116>,
@@ -931,8 +948,8 @@
 		};
 	};
 
-	aud_etdm_spk_on: aud_etdm_spk_on {
-		pins-cmd-dat {
+	aud_etdm_spk_on: aud-etdm-spk-on-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO11__FUNC_O_I2SO1_D0>,
 				 <PINMUX_GPIO113__FUNC_B0_TDMIN_BCK>,
 				 <PINMUX_GPIO119__FUNC_B0_TDMIN_LRCK>,
@@ -940,8 +957,8 @@
 		};
 	};
 
-	aud_etdm_spk_off: aud_etdm_spk_off {
-		pins-cmd-dat {
+	aud_etdm_spk_off: aud-etdm-spk-off-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO11__FUNC_B_GPIO11>,
 				 <PINMUX_GPIO113__FUNC_B_GPIO113>,
 				 <PINMUX_GPIO119__FUNC_B_GPIO119>,
@@ -951,8 +968,8 @@
 		};
 	};
 
-	aud_mtkaif_on: aud_mtkaif_on {
-		pins_cmd_dat {
+	aud_mosi_on: aud-mosi-on-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO101__FUNC_O_AUD_CLK_MOSI>,
 				 <PINMUX_GPIO102__FUNC_O_AUD_SYNC_MOSI>,
 				 <PINMUX_GPIO103__FUNC_O_AUD_DAT_MOSI0>,
@@ -962,8 +979,8 @@
 		};
 	};
 
-	aud_mtkaif_off: aud_mtkaif_off {
-		pins_cmd_dat {
+	aud_mosi_off: aud-mosi-off-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO101__FUNC_B_GPIO101>,
 				 <PINMUX_GPIO102__FUNC_B_GPIO102>,
 				 <PINMUX_GPIO103__FUNC_B_GPIO103>,
@@ -975,76 +992,76 @@
 		};
 	};
 
-	avdd_lcd_en: avdd-lcd-en {
-		pins1 {
+	mipi_disp_avdd_en: mipi-disp-avdd-en-pins {
+		pins-en-ppvar-mipi-disp {
 			pinmux = <PINMUX_GPIO3__FUNC_B_GPIO3>;
 			output-low;
 		};
 	};
 
-	avee_lcd_en: avee-lcd-en {
-		pins1 {
+	mipi_disp_avee_en: mipi-disp-avee-en-pins {
+		pins-en-ppvar-mipi-disp-150ma {
 			pinmux = <PINMUX_GPIO4__FUNC_B_GPIO4>;
 			output-low;
 		};
 	};
 
-	dptx_pin: dptx-default-pins {
-		pins-cmd-dat {
+	dp_tx_hpd: dp-tx-hpd-pins {
+		pins-dp-tx-hpd {
 			pinmux = <PINMUX_GPIO46__FUNC_I0_DP_TX_HPD>;
 		};
 	};
 
-	ec_ap_int: cros-ec-irq-default-pins {
-		pins1 {
+	cros_ec_int: cros-ec-int-pins {
+		pins-ec-ap-int-odl {
 			pinmux = <PINMUX_GPIO149__FUNC_B_GPIO149>;
 			input-enable;
 		};
 	};
 
-	edp_pins_default: edp-default-pins {
-		pins-cmd-dat {
+	edp_tx_hpd: edp-tx-hpd-pins {
+		pins-dp-tx-hpd {
 			pinmux = <PINMUX_GPIO17__FUNC_I0_EDP_TX_HPD>;
 		};
 	};
 
-	en_pp3300_dxedp: en-pp3300-dxedp {
-		pins1 {
+	edp_disp_en: edp-disp-en-pins {
+		pins-en-pp3300-edp-disp {
 			pinmux = <PINMUX_GPIO27__FUNC_B_GPIO27>;
 			output-low;
 		};
 	};
 
-	en_pp3300_mipi: en-pp3300-mipi {
-		pins1 {
+	mipi_tchscr_en: mipi-tchscr-en-pins {
+		pins-en-pp3300-mipi-tchscr {
 			pinmux = <PINMUX_GPIO144__FUNC_B_GPIO144>;
 			output-low;
 		};
 	};
 
-	gsc_ap_int_odl: gsc_ap_int_odl {
-		pin {
+	gsc_int: gsc-int-pins {
+		pins-gsc-ap-int-odl {
 			pinmux = <PINMUX_GPIO0__FUNC_B_GPIO0>;
 			input-enable;
 		};
 	};
 
-	i2c0_pin: i2c0_pin {
-		pins_bus {
+	i2c0_pins: i2c0-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO56__FUNC_B1_SDA0>,
 				 <PINMUX_GPIO55__FUNC_B1_SCL0>;
 		};
 	};
 
-	i2c1_pin: i2c1_pin {
-		pins_bus {
+	i2c1_pins: i2c1-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO58__FUNC_B1_SDA1>,
 				 <PINMUX_GPIO57__FUNC_B1_SCL1>;
 		};
 	};
 
-	i2c2_pin: i2c2_pin {
-		pins_bus {
+	i2c2_pins: i2c2-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO60__FUNC_B1_SDA2>,
 				 <PINMUX_GPIO59__FUNC_B1_SCL2>;
 			bias-disable;
@@ -1052,50 +1069,50 @@
 		};
 	};
 
-	i2c3_pin: i2c3_pin {
-		pins_bus {
+	i2c3_pins: i2c3-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO62__FUNC_B1_SDA3>,
 				 <PINMUX_GPIO61__FUNC_B1_SCL3>;
 		};
 	};
 
-	i2c4_pin: i2c4_pin {
-		pins_bus {
+	i2c4_pins: i2c4-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO64__FUNC_B1_SDA4>,
 				 <PINMUX_GPIO63__FUNC_B1_SCL4>;
 		};
 	};
 
-	i2c5_pin: i2c5_pin {
-		pins_bus {
+	i2c5_pins: i2c5-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO66__FUNC_B1_SDA5>,
 				 <PINMUX_GPIO65__FUNC_B1_SCL5>;
 		};
 	};
 
-	i2c6_pin: i2c6_pin {
-		pins_bus {
+	i2c6_pins: i2c6-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO68__FUNC_B1_SDA6>,
 				 <PINMUX_GPIO67__FUNC_B1_SCL6>;
 		};
 	};
 
-	uart0_pin: uart0_pin {
-		uart0_pins {
+	uart0_pins: uart0-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO31__FUNC_O_UTXD0>,
 				 <PINMUX_GPIO32__FUNC_I1_URXD0>;
 			bias-pull-up;
 		};
 	};
 
-	max98390_pins_default: max98390_rst {
-		pins_rst {
+	spkr_en: spkr-en-pins {
+		pins-en-spkr {
 			pinmux = <PINMUX_GPIO111__FUNC_B_GPIO111>;
 		};
 	};
 
-	mmc0_pins_default: mmc0default {
-		pins_cmd_dat {
+	mmc0_default: mmc0-default-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO161__FUNC_B1_MSDC0_DAT0>,
 				 <PINMUX_GPIO160__FUNC_B1_MSDC0_DAT1>,
 				 <PINMUX_GPIO159__FUNC_B1_MSDC0_DAT2>,
@@ -1110,21 +1127,21 @@
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
 
-		pins_clk {
+		pins-clk {
 			pinmux = <PINMUX_GPIO157__FUNC_B1_MSDC0_CLK>;
 			drive-strength = <MTK_DRIVE_6mA>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 
-		pins_rst {
+		pins-rst {
 			pinmux = <PINMUX_GPIO155__FUNC_O_MSDC0_RSTB>;
 			drive-strength = <MTK_DRIVE_6mA>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
 	};
 
-	mmc0_pins_uhs: mmc0uhs {
-		pins_cmd_dat {
+	mmc0_uhs: mmc0-uhs-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO161__FUNC_B1_MSDC0_DAT0>,
 				 <PINMUX_GPIO160__FUNC_B1_MSDC0_DAT1>,
 				 <PINMUX_GPIO159__FUNC_B1_MSDC0_DAT2>,
@@ -1139,34 +1156,34 @@
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
 
-		pins_clk {
+		pins-clk {
 			pinmux = <PINMUX_GPIO157__FUNC_B1_MSDC0_CLK>;
 			drive-strength = <MTK_DRIVE_8mA>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 
-		pins_ds {
+		pins-ds {
 			pinmux = <PINMUX_GPIO162__FUNC_B0_MSDC0_DSL>;
 			drive-strength = <MTK_DRIVE_8mA>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 
-		pins_rst {
+		pins-rst {
 			pinmux = <PINMUX_GPIO155__FUNC_O_MSDC0_RSTB>;
 			drive-strength = <MTK_DRIVE_8mA>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
 	};
 
-	nau8825_pins_default: nau8825_irq {
-		pins-irq {
+	hp_int: hp-int-pins {
+		pins-hp-int-odl {
 			pinmux = <PINMUX_GPIO108__FUNC_B_GPIO108>;
 			input-enable;
-			};
+		};
 	};
 
-	mmc1_pins_default: mmc1-pins-default {
-		pins_cmd_dat {
+	mmc1_default: mmc1-default-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO163__FUNC_B1_MSDC1_CMD>,
 				 <PINMUX_GPIO165__FUNC_B1_MSDC1_DAT0>,
 				 <PINMUX_GPIO166__FUNC_B1_MSDC1_DAT1>,
@@ -1176,19 +1193,21 @@
 			drive-strength = <MTK_DRIVE_6mA>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
-		pins_clk {
+
+		pins-clk {
 			pinmux = <PINMUX_GPIO164__FUNC_B1_MSDC1_CLK>;
 			drive-strength = <MTK_DRIVE_6mA>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
-		pins_insert {
+
+		pins-insert {
 			pinmux = <PINMUX_GPIO107__FUNC_B_GPIO107>;
 			bias-pull-up;
 		};
 	};
 
-	mmc1_pins_uhs: mmc1-pins-uhs {
-		pins_cmd_dat {
+	mmc1_uhs: mmc1-uhs-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO163__FUNC_B1_MSDC1_CMD>,
 				 <PINMUX_GPIO165__FUNC_B1_MSDC1_DAT0>,
 				 <PINMUX_GPIO166__FUNC_B1_MSDC1_DAT1>,
@@ -1198,82 +1217,82 @@
 			drive-strength = <MTK_DRIVE_10mA>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
 		};
-		pins_clk {
+		pins-clk {
 			pinmux = <PINMUX_GPIO164__FUNC_B1_MSDC1_CLK>;
 			drive-strength = <MTK_DRIVE_6mA>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 	};
 
-	nor_pins_default: nor-pins {
-		pins0 {
+	nor_default: nor-default-pins {
+		pins-clk {
 			pinmux = <PINMUX_GPIO127__FUNC_B0_SPINOR_IO0>,
 				 <PINMUX_GPIO125__FUNC_O_SPINOR_CK>,
 				 <PINMUX_GPIO128__FUNC_B0_SPINOR_IO1>;
 			bias-pull-down;
 		};
 
-		pins1 {
+		pins-cs {
 			pinmux = <PINMUX_GPIO126__FUNC_O_SPINOR_CS>;
 			bias-pull-up;
 		};
 	};
 
-	panel_pin_default: panel-default-pins {
-		pins-cmd-dat {
+	edp_bl_pwm: edp-bl-pwm-pins {
+		pins-edp-bl-pwm {
 			pinmux = <PINMUX_GPIO30__FUNC_B_GPIO30>;
 			output-low;
 		};
 	};
 
-	panel_pins_default: panel_pins_default {
-		pins_cmd_dat {
+	disp_default: disp-default-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO25__FUNC_B_GPIO25>,
 				 <PINMUX_GPIO1__FUNC_B_GPIO1>;
 			output-low;
 		};
 	};
 
-	pcie_pins_default: pcie-default {
-		mux {
+	pcie_default: pcie-default-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO47__FUNC_I1_WAKEN>,
 				 <PINMUX_GPIO48__FUNC_O_PERSTN>,
 				 <PINMUX_GPIO49__FUNC_B1_CLKREQN>;
 		};
 	};
 
-	pwm0_gpio_def_cfg: pwm0default {
-		pins_cmd_dat {
+	disp_pwm0_default: disp-pwm0-pins {
+		pins-disp-pwm0 {
 			pinmux = <PINMUX_GPIO29__FUNC_O_DISP_PWM0>;
 			output-high;
 		};
 	};
 
-	pwm1_gpio_def_cfg: pwm1default {
-		pins_cmd_dat {
+	disp_pwm1_default: disp-pwm1-pins {
+		pins-disp-pwm1 {
 			pinmux = <PINMUX_GPIO30__FUNC_O_DISP_PWM1>;
 			output-high;
 		};
 	};
 
-	sar_sensor_pins: sar-sensor-pins {
-		pins-irq {
+	sar_int: sar-int-pins {
+		pins-sar-int-odl {
 			pinmux = <PINMUX_GPIO88__FUNC_B_GPIO88>;
 			input-enable;
 			bias-pull-up;
 		};
 	};
 
-	scp_pins: scp {
-		pins_scp_vreq {
+	scp_default: scp-default-pins {
+		pins-scp-vreq {
 			pinmux = <PINMUX_GPIO98__FUNC_O_SCP_VREQ_VAO>;
 			bias-disable;
 			input-enable;
 		};
 	};
 
-	spi0_pins: spi0_pins {
-		pins_spi {
+	spi0_pins: spi0-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO69__FUNC_O_SPIM0_CSB>,
 				 <PINMUX_GPIO70__FUNC_O_SPIM0_CLK>,
 				 <PINMUX_GPIO71__FUNC_B0_SPIM0_MOSI>,
@@ -1282,8 +1301,8 @@
 		};
 	};
 
-	spi1_pins: spi1_pins {
-		pins_spi {
+	spi1_pins: spi1-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO75__FUNC_O_SPIM1_CSB>,
 				 <PINMUX_GPIO76__FUNC_O_SPIM1_CLK>,
 				 <PINMUX_GPIO77__FUNC_B0_SPIM1_MOSI>,
@@ -1292,8 +1311,8 @@
 		};
 	};
 
-	spi2_pins: spi2_pins {
-		pins_spi {
+	spi2_pins: spi2-pins {
+		pins-bus {
 			pinmux = <PINMUX_GPIO79__FUNC_O_SPIM2_CSB>,
 				 <PINMUX_GPIO80__FUNC_O_SPIM2_CLK>,
 				 <PINMUX_GPIO81__FUNC_B0_SPIM2_MOSI>,
@@ -1302,18 +1321,25 @@
 		};
 	};
 
-	touchscreen_pins: touchscreen-pins {
-		pins-irq {
+	tchscr_int: tchscr-int-pins {
+		pins-tchscr-int {
 			pinmux = <PINMUX_GPIO143__FUNC_B_GPIO143>;
 			input-enable;
 		};
 	};
 
-	touchpad_pins: touchpad-pins {
-		pins-irq {
+	hid_int: hid-int-pins {
+		pins-ec-ap-hid-int-odl {
 			pinmux = <PINMUX_GPIO148__FUNC_B_GPIO148>;
 			input-enable;
 			bias-disable;
+		};
+	};
+
+	wlan_en: wlan-en-pins {
+		pins-en-pp3300-wlan {
+			pinmux = <PINMUX_GPIO12__FUNC_B_GPIO12>;
+			output-low;
 		};
 	};
 };
@@ -1329,9 +1355,9 @@
 
 &scp_c0 {
 	firmware-name = "mediatek/mt8188/scp.img";
-	pinctrl-names = "default";
-	pinctrl-0 = <&scp_pins>;
 	memory-region = <&scp_mem_reserved>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&scp_default>;
 	status = "okay";
 };
 
@@ -1344,10 +1370,6 @@
 &sound {
 	compatible = "mediatek,mt8188-nau8825";
 	model = "mt8188_m98390_8825";
-	mediatek,adsp = <&adsp>;
-	mediatek,dai-link = "DL10_FE", "ETDM1_IN_BE", "ETDM2_IN_BE",
-			"ETDM1_OUT_BE", "ETDM2_OUT_BE", "DPTX_BE", "UL_SRC_BE",
-			"AFE_SOF_DL2", "AFE_SOF_DL3", "AFE_SOF_UL4", "AFE_SOF_UL5";
 	pinctrl-names = "aud_etdm_hp_on",
 			"aud_etdm_hp_off",
 			"aud_etdm_spk_on",
@@ -1358,8 +1380,8 @@
 	pinctrl-1 = <&aud_etdm_hp_off>;
 	pinctrl-2 = <&aud_etdm_spk_on>;
 	pinctrl-3 = <&aud_etdm_spk_off>;
-	pinctrl-4 = <&aud_mtkaif_on>;
-	pinctrl-5 = <&aud_mtkaif_off>;
+	pinctrl-4 = <&aud_mosi_on>;
+	pinctrl-5 = <&aud_mosi_off>;
 	audio-routing =
 		"ETDM1_OUT", "ETDM_SPK_PIN",
 		"ETDM2_OUT", "ETDM_HP_PIN",
@@ -1373,11 +1395,16 @@
 		"Right Spk", "Front Right BE_OUT",
 		"Rear Left Spk", "Rear Left BE_OUT",
 		"Rear Right Spk", "Rear Right BE_OUT";
+	mediatek,adsp = <&adsp>;
+	mediatek,dai-link = "DL10_FE", "ETDM1_IN_BE", "ETDM2_IN_BE",
+			"ETDM1_OUT_BE", "ETDM2_OUT_BE", "DPTX_BE", "UL_SRC_BE",
+			"AFE_SOF_DL2", "AFE_SOF_DL3", "AFE_SOF_UL4", "AFE_SOF_UL5";
 	status = "okay";
 
 	dai-link-0 {
 		link-name = "ETDM2_OUT_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&nau8825>;
 		};
@@ -1386,6 +1413,7 @@
 	dai-link-1 {
 		link-name = "ETDM2_IN_BE";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&nau8825>;
 		};
@@ -1395,6 +1423,7 @@
 		link-name = "ETDM1_OUT_BE";
 		dai-format = "dsp_b";
 		mediatek,clk-provider = "cpu";
+
 		codec {
 			sound-dai = <&max98390_38>,
 				    <&max98390_39>,
@@ -1411,6 +1440,7 @@
 
 	dai-link-4 {
 		link-name = "DPTX_BE";
+
 		codec {
 			sound-dai = <&dp_tx>;
 		};
@@ -1426,11 +1456,11 @@
 	cros_ec: cros-ec@0 {
 		compatible = "google,cros-ec-spi";
 		reg = <0>;
-		spi-max-frequency = <3000000>;
 		interrupt-parent = <&pio>;
 		interrupts = <149 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&ec_ap_int>;
+		pinctrl-0 = <&cros_ec_int>;
+		spi-max-frequency = <3000000>;
 
 		i2c_tunnel: i2c-tunnel {
 			compatible = "google,cros-ec-i2c-tunnel";
@@ -1461,7 +1491,7 @@
 
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_pin>;
+	pinctrl-0 = <&uart0_pins>;
 	status = "okay";
 };
 
@@ -1498,13 +1528,13 @@
 };
 
 &xhci1 {
+	vbus-supply = <&pp5000_usb_p1_vbus>;
 	status = "okay";
-	vbus-supply = <&usb_p1_vbus>;
 };
 
 &xhci2 {
-	status = "okay";
 	usb2-lpm-disable;
+	status = "okay";
 };
 
 #include <arm/cros-ec-keyboard.dtsi>

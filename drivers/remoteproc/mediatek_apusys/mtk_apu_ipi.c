@@ -255,12 +255,14 @@ static void mtk_apu_init_ipi_handler(void *data, unsigned int len, void *priv)
 static void mtk_apu_ipi_bottom_handle(struct mbox_client *cl, void *mssg)
 {
 	struct mtk_apu *apu = container_of(cl, struct mtk_apu, cl);
-	u32 id, len;
+	int id, len;
 	id = apu->ipi_task.id;
 	len = apu->ipi_task.len;
 
-	if (id < 0)
+	if (id < 0 || id >= MTK_APU_IPI_MAX) {
+		dev_err(apu->dev, "IPI id=%d is out of range", id);
 		return;
+	}
 
 	mutex_lock(&apu->ipi_desc[id].lock);
 	if (!apu->ipi_desc[id].handler) {

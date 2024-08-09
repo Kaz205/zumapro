@@ -39,8 +39,23 @@ enum DPTX_DRV_HDCP1X_sub_states {
 	HDCP1X_sub_FSM_auth_fail          = 9,
 };
 
+#if IS_ENABLED(CONFIG_TEE)
 bool dp_tx_hdcp1x_support(struct mtk_hdcp_info *hdcp_info);
 void dp_tx_hdcp1x_fsm(struct mtk_hdcp_info *hdcp_info);
 void dp_tx_hdcp1x_set_start_auth(struct mtk_hdcp_info *hdcp_info, bool enable);
+#else
+static inline bool dp_tx_hdcp1x_support(struct mtk_hdcp_info *hdcp_info)
+{
+	return false;
+}
+
+static inline void dp_tx_hdcp1x_fsm(struct mtk_hdcp_info *hdcp_info)
+{
+}
+
+static inline void dp_tx_hdcp1x_set_start_auth(struct mtk_hdcp_info *hdcp_info, bool enable)
+{
+}
+#endif /* IS_ENABLED(CONFIG_TEE) */
 
 #endif /* _MTK_DP_HDCP1X_H_ */

@@ -58,6 +58,25 @@ unsigned int mtk_cam_dmao_xsize(int w, unsigned int ipi_fmt, int pixel_mode_shif
 	return ALIGN(bytes, bus_size);
 }
 
+static void mtk_cam_release_all_buffer(struct mtk_cam_device *cam)
+{
+	struct mtk_cam_buffer *buf, *tmp;
+
+	spin_lock(&cam->dma_pending_lock);
+	list_for_each_entry_safe(buf, tmp, &cam->dma_pending, list) {
+		list_del(&buf->list);
+		vb2_buffer_done(&buf->vbb.vb2_buf, VB2_BUF_STATE_ERROR);
+	}
+	spin_unlock(&cam->dma_pending_lock);
+
+	spin_lock(&cam->dma_processing_lock);
+	list_for_each_entry_safe(buf, tmp, &cam->dma_processing, list) {
+		list_del(&buf->list);
+		vb2_buffer_done(&buf->vbb.vb2_buf, VB2_BUF_STATE_ERROR);
+	}
+	spin_unlock(&cam->dma_processing_lock);
+}
+
 static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 				   unsigned int *num_buffers,
 				   unsigned int *num_planes,
@@ -235,13 +254,11 @@ static int mtk_cam_vb2_start_streaming(struct vb2_queue *vq,
 	dev_dbg(dev, "%s:%s:ctx(%d): node:%d count info:%d\n", __func__,
 		node->desc.name, ctx->stream_id, node->desc.id, ctx->streaming_node_cnt);
 
-	if (ctx->streaming_node_cnt < ctx->enabled_node_cnt)
-		return 0;
-
-	/* all enabled nodes are streaming, enable all subdevs */
 	ret = mtk_cam_ctx_stream_on(ctx, node);
 	if (ret)
 		goto fail_destroy_session;
+
+	mtk_cam_buf_try_queue(ctx);
 
 	return 0;
 
@@ -255,6 +272,7 @@ fail_stop_ctx:
 	mtk_cam_dev_req_cleanup(ctx, node->uid.pipe_id, VB2_BUF_STATE_QUEUED);
 	mtk_cam_stop_ctx(ctx, node);
 fail_return_buffer:
+	mtk_cam_release_all_buffer(cam);
 	/* relese bufs by request */
 	return ret;
 }
@@ -277,8 +295,7 @@ static void mtk_cam_vb2_stop_streaming(struct vb2_queue *vq)
 	dev_dbg(dev, "%s:%s:ctx(%d): node:%d count info:%d\n", __func__,
 		node->desc.name, ctx->stream_id, node->desc.id, ctx->streaming_node_cnt);
 
-	if (ctx->streaming_node_cnt == ctx->enabled_node_cnt)
-		mtk_cam_ctx_stream_off(ctx, node);
+	mtk_cam_ctx_stream_off(ctx, node);
 
 	if (cam->streaming_pipe & (1 << node->uid.pipe_id)) {
 		/* NOTE: take multi-pipelines case into consideration     */
@@ -289,6 +306,7 @@ static void mtk_cam_vb2_stop_streaming(struct vb2_queue *vq)
 	}
 
 	/* all bufs of node should be return by per requests */
+	mtk_cam_release_all_buffer(ctx->cam);
 
 	/* NOTE: take multi-pipelines case into consideration */
 	cam->streaming_pipe &= ~(1 << node->uid.pipe_id);
@@ -547,18 +565,31 @@ const struct mtk_format_info *mtk_format_info(u32 format)
 static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 {
 	struct mtk_cam_device *cam = vb2_get_drv_priv(vb->vb2_queue);
-	unsigned int pipe_id;
 	struct mtk_cam_buffer *buf = mtk_cam_vb2_buf_to_dev_buf(vb);
 	struct mtk_cam_request *req = to_mtk_cam_req(vb->request);
 	struct mtk_cam_request_stream_data *req_stream_data;
 	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
 	struct mtk_raw_pde_config *pde_cfg;
 	struct device *dev = cam->dev;
-	unsigned int desc_id;
-	unsigned int dma_port = node->desc.dma_port;
 	struct mtkcam_ipi_frame_param *frame_param;
 	struct mtkcam_ipi_meta_input *meta_in;
 	struct mtkcam_ipi_meta_output *meta_out;
+	struct mtk_cam_ctx *ctx;
+	unsigned int pipe_id;
+	unsigned int desc_id;
+	unsigned int dma_port = node->desc.dma_port;
+
+	if (!vb->vb2_queue->uses_requests) {
+		spin_lock(&cam->dma_pending_lock);
+		list_add_tail(&buf->list, &cam->dma_pending);
+		spin_unlock(&cam->dma_pending_lock);
+		buf->state.estate = E_BUF_STATE_QUEUED;
+		if (media_entity_is_streaming(&node->vdev.entity)) {
+			ctx = mtk_cam_find_ctx(cam, &node->vdev.entity);
+			mtk_cam_buf_try_queue(ctx);
+		}
+		return;
+	}
 
 	dma_port = node->desc.dma_port;
 	pipe_id = node->uid.pipe_id;
@@ -1472,13 +1503,6 @@ int mtk_cam_video_register(struct mtk_cam_video_device *video,
 	}
 
 	q->supports_requests = true;
-
-	/* TODO:
-	 * Add requires_requests to avoid kernel crash.
-	 * Remove requires_requests after standard v4l2
-	 * utility is available.
-	 */
-	q->requires_requests = true;
 	q->lock = &video->q_lock;
 	q->ops = &mtk_cam_vb2_ops;
 	q->mem_ops = &vb2_dma_contig_memops;

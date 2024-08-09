@@ -59,7 +59,6 @@ struct mtk_crtc {
 	wait_queue_head_t		cb_blocking_queue;
 
 	struct cmdq_client		sec_cmdq_client;
-	struct cmdq_pkt			sec_cmdq_handle;
 	bool				sec_cmdq_working;
 	wait_queue_head_t		sec_cb_blocking_queue;
 #endif
@@ -123,145 +122,6 @@ static void mtk_drm_finish_page_flip(struct mtk_crtc *mtk_crtc)
 	}
 }
 
-void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
-{
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-	enum cmdq_sec_scenario sec_scn = CMDQ_SEC_SCNR_MAX;
-	int i;
-	struct mtk_ddp_comp *ddp_first_comp;
-	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
-	mutex_lock(&mtk_crtc->hw_lock);
-
-	if (!mtk_crtc->sec_cmdq_client.chan) {
-		pr_err("crtc-%d secure mbox channel is NULL\n", drm_crtc_index(crtc));
-		goto err;
-	}
-
-	if (!mtk_crtc->sec_on) {
-		pr_debug("crtc-%d is already disabled!\n", drm_crtc_index(crtc));
-		goto err;
-	}
-
-	mbox_flush(mtk_crtc->sec_cmdq_client.chan, 0);
-	mtk_crtc->sec_cmdq_handle.cmd_buf_size = 0;
-
-	if (mtk_crtc->sec_cmdq_handle.sec_data) {
-		struct cmdq_sec_data *sec_data = mtk_crtc->sec_cmdq_handle.sec_data;
-
-		memset(sec_data->meta_list, 0,
-		       sec_data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
-		sec_data->meta_cnt = 0;
-	}
-
-	/*
-	 * Secure path only support DL mode, so we just wait
-	 * the first path frame done here
-	 */
-	cmdq_pkt_wfe(&mtk_crtc->sec_cmdq_handle, mtk_crtc->cmdq_event, false);
-
-	ddp_first_comp = mtk_crtc->ddp_comp[0];
-	for (i = 0; i < mtk_crtc->layer_nr; i++) {
-		struct drm_plane *plane = &mtk_crtc->planes[i];
-
-		/* make sure secure layer off before switching secure state */
-		if (!mtk_plane_fb_is_secure(plane->state->fb)) {
-			struct mtk_plane_state *plane_state = to_mtk_plane_state(plane->state);
-
-			plane_state->pending.enable = false;
-			mtk_ddp_comp_layer_config(ddp_first_comp, i, plane_state,
-						  &mtk_crtc->sec_cmdq_handle);
-		}
-	}
-
-	/* Disable secure path */
-	if (drm_crtc_index(crtc) == 0)
-		sec_scn = CMDQ_SEC_SCNR_PRIMARY_DISP_DISABLE;
-	else if (drm_crtc_index(crtc) == 1)
-		sec_scn = CMDQ_SEC_SCNR_SUB_DISP_DISABLE;
-
-	cmdq_sec_pkt_set_data(&mtk_crtc->sec_cmdq_handle, sec_scn);
-
-	cmdq_sec_insert_backup_cookie(&mtk_crtc->sec_cmdq_handle);
-	cmdq_pkt_finalize(&mtk_crtc->sec_cmdq_handle);
-	dma_sync_single_for_device(mtk_crtc->sec_cmdq_client.chan->mbox->dev,
-				   mtk_crtc->sec_cmdq_handle.pa_base,
-				   mtk_crtc->sec_cmdq_handle.cmd_buf_size,
-				   DMA_TO_DEVICE);
-
-	mtk_crtc->sec_cmdq_working = true;
-	mbox_send_message(mtk_crtc->sec_cmdq_client.chan, &mtk_crtc->sec_cmdq_handle);
-	mbox_client_txdone(mtk_crtc->sec_cmdq_client.chan, 0);
-
-	// Wait for sec state to be disabled by cmdq
-	wait_event_timeout(mtk_crtc->sec_cb_blocking_queue,
-			   !mtk_crtc->sec_cmdq_working,
-			   msecs_to_jiffies(500));
-
-	mtk_crtc->sec_on = false;
-	pr_debug("crtc-%d disable secure plane!\n", drm_crtc_index(crtc));
-
-err:
-	mutex_unlock(&mtk_crtc->hw_lock);
-#endif
-}
-
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-static void mtk_crtc_enable_secure_state(struct drm_crtc *crtc)
-{
-	enum cmdq_sec_scenario sec_scn = CMDQ_SEC_SCNR_MAX;
-	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
-	if (drm_crtc_index(crtc) == 0)
-		sec_scn = CMDQ_SEC_SCNR_PRIMARY_DISP;
-	else if (drm_crtc_index(crtc) == 1)
-		sec_scn = CMDQ_SEC_SCNR_SUB_DISP;
-
-	cmdq_sec_pkt_set_data(&mtk_crtc->sec_cmdq_handle, sec_scn);
-
-	pr_debug("crtc-%d enable secure plane!\n", drm_crtc_index(crtc));
-}
-#endif
-
-static void mtk_crtc_plane_switch_sec_state(struct drm_crtc *crtc,
-					    struct drm_atomic_state *state)
-{
-#if IS_REACHABLE(CONFIG_MTK_CMDQ)
-	bool sec_on[MAX_CRTC] = {0};
-	int i;
-	struct drm_crtc_state *new_crtc_state;
-	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct drm_plane *plane;
-	struct drm_plane_state *new_plane_state;
-
-	for_each_new_plane_in_state(state, plane, new_plane_state, i) {
-		if (!plane->state->crtc || !new_plane_state->crtc)
-			continue;
-
-		if (plane->state->fb &&
-		    mtk_plane_fb_is_secure(plane->state->fb) &&
-		    mtk_crtc->sec_cmdq_client.chan)
-			sec_on[drm_crtc_index(plane->state->crtc)] = true;
-	}
-
-	for_each_new_crtc_in_state(state, crtc, new_crtc_state, i) {
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		if (!sec_on[i]) {
-			mtk_crtc_disable_secure_state(crtc);
-			continue;
-		}
-
-		if (!new_crtc_state->active)
-			continue;
-
-		mutex_lock(&mtk_crtc->hw_lock);
-		mtk_crtc->sec_on = true;
-		mutex_unlock(&mtk_crtc->hw_lock);
-	}
-#endif
-}
-
 #if IS_REACHABLE(CONFIG_MTK_CMDQ)
 static int mtk_drm_cmdq_pkt_create(struct cmdq_client *client, struct cmdq_pkt *pkt,
 				   size_t size)
@@ -301,6 +161,142 @@ static void mtk_drm_cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 }
 #endif
 
+void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
+{
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	int i;
+	struct mtk_ddp_comp *ddp_first_comp;
+	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_pkt *cmdq_handle;
+
+	mutex_lock(&mtk_crtc->hw_lock);
+
+	if (!mtk_crtc->sec_cmdq_client.chan) {
+		pr_err("crtc-%d secure mbox channel is NULL\n", drm_crtc_index(crtc));
+		goto err;
+	}
+
+	if (!mtk_crtc->sec_on) {
+		pr_debug("crtc-%d is already disabled!\n", drm_crtc_index(crtc));
+		goto err;
+	}
+
+	cmdq_handle = kzalloc(sizeof(*cmdq_handle), GFP_KERNEL);
+	if (!cmdq_handle){
+		DRM_ERROR("mtk_crtc %d failed to kzalloc secure cmdq packet\n",
+			  drm_crtc_index(&mtk_crtc->base));
+		return;
+	}
+	if (mtk_drm_cmdq_pkt_create(&mtk_crtc->sec_cmdq_client, cmdq_handle, PAGE_SIZE) < 0) {
+		DRM_ERROR("mtk_crtc %d failed to create secure cmdq packet\n",
+			  drm_crtc_index(&mtk_crtc->base));
+		return;
+	}
+	if (cmdq_sec_pkt_alloc_sec_data(cmdq_handle) < 0) {
+		DRM_ERROR("mtk_crtc %d failed to create secure cmdq packet data\n",
+			  drm_crtc_index(&mtk_crtc->base));
+		return;
+	}
+
+	/*
+	 * Secure path only support DL mode, so we just wait
+	 * the first path frame done here
+	 */
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->cmdq_event);
+	cmdq_pkt_wfe(cmdq_handle, mtk_crtc->cmdq_event, false);
+
+	ddp_first_comp = mtk_crtc->ddp_comp[0];
+	for (i = 0; i < mtk_crtc->layer_nr; i++) {
+		struct drm_plane *plane = &mtk_crtc->planes[i];
+		struct mtk_plane_state *plane_state = to_mtk_plane_state(plane->state);
+
+		/* make sure secure layer off before switching secure state */
+		if (plane_state->pending.is_secure) {
+			plane_state->pending.enable = false;
+			mtk_ddp_comp_layer_config(ddp_first_comp, i, plane_state,
+						  cmdq_handle);
+		}
+	}
+
+	cmdq_sec_insert_backup_cookie(cmdq_handle);
+	cmdq_pkt_finalize(cmdq_handle);
+	dma_sync_single_for_device(mtk_crtc->sec_cmdq_client.chan->mbox->dev,
+				   cmdq_handle->pa_base,
+				   cmdq_handle->cmd_buf_size,
+				   DMA_TO_DEVICE);
+
+	mtk_crtc->sec_cmdq_working = true;
+	mbox_send_message(mtk_crtc->sec_cmdq_client.chan, cmdq_handle);
+	mbox_client_txdone(mtk_crtc->sec_cmdq_client.chan, 0);
+
+	// Wait for sec state to be disabled by cmdq
+	wait_event_timeout(mtk_crtc->sec_cb_blocking_queue,
+			   !mtk_crtc->sec_cmdq_working,
+			   msecs_to_jiffies(500));
+
+	mtk_crtc->sec_on = false;
+	pr_debug("crtc-%d disable secure plane!\n", drm_crtc_index(crtc));
+
+err:
+	mutex_unlock(&mtk_crtc->hw_lock);
+#endif
+}
+
+static void mtk_crtc_plane_switch_sec_state(struct drm_crtc *crtc,
+					    struct drm_atomic_state *state)
+{
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	bool sec_on = false, cursor_update = false;
+	int i, plane_num = 0;
+	struct drm_crtc_state *new_crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
+	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct drm_plane *plane;
+	struct drm_plane_state *new_plane_state;
+
+	if (!mtk_crtc->sec_cmdq_client.chan)
+		return;
+
+	/* check updating plane state */
+	for_each_new_plane_in_state(state, plane, new_plane_state, i) {
+		if (!plane->state->crtc || !new_plane_state->crtc)
+			continue;
+
+		if(plane && plane->type == DRM_PLANE_TYPE_CURSOR)
+			cursor_update = true;
+
+		if (new_plane_state->fb && mtk_plane_fb_is_secure(new_plane_state->fb))
+			sec_on = true;
+
+		plane_num++;
+	}
+
+	pr_debug("%s %d: plane_num=%d, sec_on=%d, cursor_only=%d, crtc-%d\n",
+		__func__, __LINE__, plane_num, sec_on,
+		(plane_num == 1 && cursor_update), drm_crtc_index(crtc));
+
+	/* If no plane changed, not switching secure state */
+	if (plane_num == 0)
+		return;
+
+	/* If only the cursor is updated, not switching secure state */
+	if (plane_num == 1 && cursor_update)
+		return;
+
+	if (!sec_on) {
+		mtk_crtc_disable_secure_state(crtc);
+		return;
+	}
+
+	/* If crtc is going to be disabled, not switching to secure state */
+	if (new_crtc_state && !new_crtc_state->active)
+		return;
+
+	mutex_lock(&mtk_crtc->hw_lock);
+	mtk_crtc->sec_on = true;
+	mutex_unlock(&mtk_crtc->hw_lock);
+#endif
+}
+
 static void mtk_crtc_destroy(struct drm_crtc *crtc)
 {
 	struct mtk_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -312,7 +308,6 @@ static void mtk_crtc_destroy(struct drm_crtc *crtc)
 	mtk_mutex_put(mtk_crtc->mutex);
 #if IS_REACHABLE(CONFIG_MTK_CMDQ)
 	mtk_drm_cmdq_pkt_destroy(&mtk_crtc->cmdq_handle);
-	mtk_drm_cmdq_pkt_destroy(&mtk_crtc->sec_cmdq_handle);
 
 	if (mtk_crtc->cmdq_client.chan) {
 		mbox_free_channel(mtk_crtc->cmdq_client.chan);
@@ -468,11 +463,17 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
 	struct mtk_crtc *mtk_crtc = container_of(cmdq_cl, struct mtk_crtc, cmdq_client);
 	struct mtk_crtc_state *state;
 	unsigned int i;
+	bool is_secure = (data->pkt && data->pkt->sec_data);
 
-	if (data->sta < 0)
+	if (data->sta < 0) {
+		if (is_secure) {
+			mtk_drm_cmdq_pkt_destroy(data->pkt);
+			kfree(data->pkt);
+		}
 		return;
+	}
 
-	if (!data->pkt || !data->pkt->sec_data)
+	if (!is_secure)
 		mtk_crtc = container_of(cmdq_cl, struct mtk_crtc, cmdq_client);
 	else
 		mtk_crtc = container_of(cmdq_cl, struct mtk_crtc, sec_cmdq_client);
@@ -480,34 +481,40 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
 	state = to_mtk_crtc_state(mtk_crtc->base.state);
 
 	state->pending_config = false;
+	if (!mtk_crtc->config_updating) {
+		if (mtk_crtc->pending_planes) {
+			for (i = 0; i < mtk_crtc->layer_nr; i++) {
+				struct drm_plane *plane = &mtk_crtc->planes[i];
+				struct mtk_plane_state *plane_state;
 
-	if (mtk_crtc->pending_planes) {
-		for (i = 0; i < mtk_crtc->layer_nr; i++) {
-			struct drm_plane *plane = &mtk_crtc->planes[i];
-			struct mtk_plane_state *plane_state;
+				plane_state = to_mtk_plane_state(plane->state);
 
-			plane_state = to_mtk_plane_state(plane->state);
-
-			plane_state->pending.config = false;
+				plane_state->pending.config = false;
+			}
+			mtk_crtc->pending_planes = false;
 		}
-		mtk_crtc->pending_planes = false;
-	}
 
-	if (mtk_crtc->pending_async_planes) {
-		for (i = 0; i < mtk_crtc->layer_nr; i++) {
-			struct drm_plane *plane = &mtk_crtc->planes[i];
-			struct mtk_plane_state *plane_state;
+		if (mtk_crtc->pending_async_planes) {
+			for (i = 0; i < mtk_crtc->layer_nr; i++) {
+				struct drm_plane *plane = &mtk_crtc->planes[i];
+				struct mtk_plane_state *plane_state;
 
-			plane_state = to_mtk_plane_state(plane->state);
+				plane_state = to_mtk_plane_state(plane->state);
 
-			plane_state->pending.async_config = false;
+				plane_state->pending.async_config = false;
+			}
+			mtk_crtc->pending_async_planes = false;
 		}
-		mtk_crtc->pending_async_planes = false;
 	}
 
 	if (mtk_crtc->sec_cmdq_working) {
 		mtk_crtc->sec_cmdq_working = false;
 		wake_up(&mtk_crtc->sec_cb_blocking_queue);
+	}
+
+	if (is_secure) {
+		mtk_drm_cmdq_pkt_destroy(data->pkt);
+		kfree(data->pkt);
 	}
 
 	mtk_crtc->cmdq_vblank_cnt = 0;
@@ -773,21 +780,25 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
 	}
 #if IS_REACHABLE(CONFIG_MTK_CMDQ)
 	if (mtk_crtc->sec_on) {
-		mbox_flush(mtk_crtc->sec_cmdq_client.chan, 0);
-		mtk_crtc->sec_cmdq_handle.cmd_buf_size = 0;
-
-		if (mtk_crtc->sec_cmdq_handle.sec_data) {
-			struct cmdq_sec_data *sec_data = mtk_crtc->sec_cmdq_handle.sec_data;
-
-			memset(sec_data->meta_list, 0,
-			       sec_data->meta_cnt * sizeof(struct iwc_cmdq_addr_metadata_t));
-			sec_data->meta_cnt = 0;
+		cmdq_handle = kzalloc(sizeof(*cmdq_handle), GFP_KERNEL);
+		if (!cmdq_handle) {
+			DRM_ERROR("mtk_crtc %d failed to kzalloc secure cmdq packet\n",
+				  drm_crtc_index(&mtk_crtc->base));
+			return;
+		}
+		if (mtk_drm_cmdq_pkt_create(&mtk_crtc->sec_cmdq_client,
+					    cmdq_handle, PAGE_SIZE) < 0) {
+			DRM_ERROR("mtk_crtc %d failed to create secure cmdq packet\n",
+				  drm_crtc_index(&mtk_crtc->base));
+			return;
+		}
+		if (cmdq_sec_pkt_alloc_sec_data(cmdq_handle) < 0) {
+			DRM_ERROR("mtk_crtc %d failed to create secure cmdq packet data\n",
+				  drm_crtc_index(&mtk_crtc->base));
+			return;
 		}
 
-		mtk_crtc_enable_secure_state(crtc);
-
 		cmdq_client = mtk_crtc->sec_cmdq_client;
-		cmdq_handle = &mtk_crtc->sec_cmdq_handle;
 	} else if (mtk_crtc->cmdq_client.chan) {
 		mbox_flush(mtk_crtc->cmdq_client.chan, 2000);
 		mtk_crtc->cmdq_handle.cmd_buf_size = 0;
@@ -800,7 +811,7 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
 		cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->cmdq_event);
 		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->cmdq_event, false);
 		mtk_crtc_ddp_config(crtc, cmdq_handle);
-		if (cmdq_handle->sec_data)
+		if (mtk_crtc->sec_on)
 			cmdq_sec_insert_backup_cookie(cmdq_handle);
 		cmdq_pkt_finalize(cmdq_handle);
 		dma_sync_single_for_device(cmdq_client.chan->mbox->dev,
@@ -1389,42 +1400,23 @@ int mtk_crtc_create(struct drm_device *drm_dev, const unsigned int *path,
 		init_waitqueue_head(&mtk_crtc->cb_blocking_queue);
 	}
 
-	mtk_crtc->sec_cmdq_client.client.dev = mtk_crtc->mmsys_dev;
-	mtk_crtc->sec_cmdq_client.client.tx_block = false;
-	mtk_crtc->sec_cmdq_client.client.knows_txdone = true;
-	mtk_crtc->sec_cmdq_client.client.rx_callback = ddp_cmdq_cb;
-	mtk_crtc->sec_cmdq_client.chan =
-			mbox_request_channel(&mtk_crtc->sec_cmdq_client.client, i + 1);
-	if (IS_ERR(mtk_crtc->sec_cmdq_client.chan)) {
-		dev_err(dev, "mtk_crtc %d failed to create sec mailbox client\n",
-			drm_crtc_index(&mtk_crtc->base));
-		mtk_crtc->sec_cmdq_client.chan = NULL;
-	}
-
-	if (mtk_crtc->sec_cmdq_client.chan) {
-		struct device_link *link;
-
-		/* add devlink to cmdq dev to make sure suspend/resume order is correct */
-		link = device_link_add(priv->dev, mtk_crtc->sec_cmdq_client.chan->mbox->dev,
-				       DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
-		if (!link) {
-			dev_err(priv->dev, "Unable to link dev=%s\n",
-				dev_name(mtk_crtc->sec_cmdq_client.chan->mbox->dev));
-			ret = -ENODEV;
-			goto cmdq_err;
-		}
-
-		ret = mtk_drm_cmdq_pkt_create(&mtk_crtc->sec_cmdq_client,
-					      &mtk_crtc->sec_cmdq_handle,
-					      PAGE_SIZE);
-		if (ret) {
-			dev_dbg(dev, "mtk_crtc %d failed to create cmdq secure packet\n",
+	if (priv->data->has_secure) {
+		mtk_crtc->sec_cmdq_client.client.dev = mtk_crtc->mmsys_dev;
+		mtk_crtc->sec_cmdq_client.client.tx_block = false;
+		mtk_crtc->sec_cmdq_client.client.knows_txdone = true;
+		mtk_crtc->sec_cmdq_client.client.rx_callback = ddp_cmdq_cb;
+		mtk_crtc->sec_cmdq_client.chan =
+				mbox_request_channel(&mtk_crtc->sec_cmdq_client.client, i + 1);
+		if (IS_ERR(mtk_crtc->sec_cmdq_client.chan)) {
+			dev_err(dev, "mtk_crtc %d failed to create sec mailbox client\n",
 				drm_crtc_index(&mtk_crtc->base));
-			goto cmdq_err;
+			mtk_crtc->sec_cmdq_client.chan = NULL;
 		}
 
-		/* for sending blocking cmd in crtc disable */
-		init_waitqueue_head(&mtk_crtc->sec_cb_blocking_queue);
+		if (mtk_crtc->sec_cmdq_client.chan) {
+			/* for sending blocking cmd in crtc disable */
+			init_waitqueue_head(&mtk_crtc->sec_cb_blocking_queue);
+		}
 	}
 
 cmdq_err:

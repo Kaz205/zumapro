@@ -14,11 +14,6 @@
 };
 
 &i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pin>;
-	clock-frequency = <400000>;
-	status = "okay";
-
 	es8326: es8326@19 {
 		#sound-dai-cells = <0>;
 		compatible = "everest,es8326";
