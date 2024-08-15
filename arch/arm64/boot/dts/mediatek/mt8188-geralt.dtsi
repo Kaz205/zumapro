@@ -58,20 +58,6 @@
 		kaslr-seed = <0 0>;
 	};
 
-	firmware {
-		optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 547 IRQ_TYPE_LEVEL_HIGH 0>;
-		};
-
-		mtk-svp-heap {
-			compatible = "mediatek,secure_heap";
-			memory-region = <&secure_cma_reserved>;
-		};
-	};
-
         dmic_codec: dmic-codec {
 		compatible = "dmic-codec";
 		num-channels = <2>;
@@ -242,12 +228,6 @@
 		scp_isp_cma_reserved: scp-isp-cma-region {
 			compatible = "shared-dma-pool";
 			reg = <0 0x7a000000 0 0x05000000>;
-			reusable;
-		};
-
-		secure_cma_reserved: secure-cma-region {
-			compatible = "mediatek,dynamic-restricted-region";
-			reg = <0 0x7f000000 0 0x400000>;
 			reusable;
 		};
 	};
