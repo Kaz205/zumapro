@@ -411,22 +411,9 @@
 		soc_max {
 			polling-delay = <1000>; /* milliseconds */
 			polling-delay-passive = <1000>; /* milliseconds */
-			sustainable-power = <1500>;
 			thermal-sensors = <&lvts 0>;
 
 			trips {
-				threshold: trip-point@0 {
-					temperature = <68000>;
-					hysteresis = <2000>;
-					type = "passive";
-				};
-
-				target: target@1 {
-					temperature = <85000>;
-					hysteresis = <2000>;
-					type = "passive";
-				};
-
 				soc_max_crit: soc_max_crit@0 {
 					temperature = <115000>;
 					hysteresis = <2000>;
@@ -438,207 +425,86 @@
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 1>;
-
-			trips {
-				cpu_big1_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cpu_big2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 2>;
-
-			trips {
-				cpu_big2_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cpu_big3 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 3>;
-			trips {
-				cpu_big3_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cpu_big4 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 4>;
-			trips {
-				cpu_big4_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cci1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 5>;
-			trips {
-				cci1_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cci2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 6>;
-			trips {
-				cci2_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cpu_little1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 7>;
-			trips {
-				cpu_little1_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		cpu_little2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 8>;
-			trips {
-				cpu_little2_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		apu {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 9>;
-			trips {
-				apu_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		mlda {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 10>;
-			trips {
-				mlda_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		gpu1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 11>;
-			trips {
-				gpu1_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		gpu2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 12>;
-			trips {
-				gpu2_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		infra {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 13>;
-			trips {
-				infra_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		camsys {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 14>;
-			trips {
-				camsys_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		md1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 15>;
-			trips {
-				md1_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		md2{
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 16>;
-			trips {
-				md2_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 		md3 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 17>;
-			trips {
-				md3_crit: trip-crit {
-					temperature = <100000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 	};
 
