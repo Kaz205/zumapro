@@ -556,24 +556,24 @@
 				};
 			};
 		};
-		gpu-thermal {
+		gpu1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 11>;
 			trips {
-				gpu_crit: trip-crit {
+				gpu1_crit: trip-crit {
 					temperature = <100000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
 			};
 		};
-		gpu1-thermal {
+		gpu2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 12>;
 			trips {
-				gpu1_crit: trip-crit {
+				gpu2_crit: trip-crit {
 					temperature = <100000>;
 					hysteresis = <2000>;
 					type = "critical";
@@ -1023,7 +1023,7 @@
 			status = "disabled";
 		};
 
-		lvts: thermal-sensor@1100b000 {
+		lvts: lvts@1100b000 {
 			compatible = "mediatek,mt6873-lvts";
 			#thermal-sensor-cells = <1>;
 			reg = <0 0x1100b000 0 0x1000>, <0 0x11278000 0 0x1000>;
