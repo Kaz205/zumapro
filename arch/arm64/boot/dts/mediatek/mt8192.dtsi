@@ -14,7 +14,6 @@
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/power/mt8192-power.h>
 #include <dt-bindings/reset/mt8192-resets.h>
-#include <dt-bindings/thermal/thermal.h>
 
 / {
 	compatible = "mediatek,mt8192";
@@ -73,7 +72,6 @@
 			next-level-cache = <&l2_0>;
 			performance-domains = <&performance 0>;
 			capacity-dmips-mhz = <427>;
-			#cooling-cells = <2>;
 		};
 
 		cpu1: cpu@100 {
@@ -92,7 +90,6 @@
 			next-level-cache = <&l2_0>;
 			performance-domains = <&performance 0>;
 			capacity-dmips-mhz = <427>;
-			#cooling-cells = <2>;
 		};
 
 		cpu2: cpu@200 {
@@ -111,7 +108,6 @@
 			next-level-cache = <&l2_0>;
 			performance-domains = <&performance 0>;
 			capacity-dmips-mhz = <427>;
-			#cooling-cells = <2>;
 		};
 
 		cpu3: cpu@300 {
@@ -130,7 +126,6 @@
 			next-level-cache = <&l2_0>;
 			performance-domains = <&performance 0>;
 			capacity-dmips-mhz = <427>;
-			#cooling-cells = <2>;
 		};
 
 		cpu4: cpu@400 {
@@ -149,7 +144,6 @@
 			next-level-cache = <&l2_1>;
 			performance-domains = <&performance 1>;
 			capacity-dmips-mhz = <1024>;
-			#cooling-cells = <2>;
 		};
 
 		cpu5: cpu@500 {
@@ -168,7 +162,6 @@
 			next-level-cache = <&l2_1>;
 			performance-domains = <&performance 1>;
 			capacity-dmips-mhz = <1024>;
-			#cooling-cells = <2>;
 		};
 
 		cpu6: cpu@600 {
@@ -187,7 +180,6 @@
 			next-level-cache = <&l2_1>;
 			performance-domains = <&performance 1>;
 			capacity-dmips-mhz = <1024>;
-			#cooling-cells = <2>;
 		};
 
 		cpu7: cpu@700 {
@@ -206,7 +198,6 @@
 			next-level-cache = <&l2_1>;
 			performance-domains = <&performance 1>;
 			capacity-dmips-mhz = <1024>;
-			#cooling-cells = <2>;
 		};
 
 		cpu-map {
@@ -440,41 +431,6 @@
 					temperature = <115000>;
 					hysteresis = <2000>;
 					type = "critical";
-				};
-			};
-
-			cooling-maps {
-				map0 {
-					trip = <&target>;
-					cooling-device = <&cpu0
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu1
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu2
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu3
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>;
-					contribution = <3072>;
-				};
-				map1 {
-					trip = <&target>;
-					cooling-device = <&cpu4
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu5
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu6
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>,
-							 <&cpu7
-						THERMAL_NO_LIMIT
-						THERMAL_NO_LIMIT>;
-					contribution = <1024>;
 				};
 			};
 		};
