@@ -909,6 +909,7 @@ void mtk_smi_larb_clamp(struct device *larbdev, bool on)
 clamp_out:
 	spin_unlock_irqrestore(&smi_prot_lock, flags);
 }
+EXPORT_SYMBOL_GPL(mtk_smi_larb_clamp);
 
 static const struct dev_pm_ops smi_larb_pm_ops = {
 	SET_RUNTIME_PM_OPS(mtk_smi_larb_suspend, mtk_smi_larb_resume, NULL)
