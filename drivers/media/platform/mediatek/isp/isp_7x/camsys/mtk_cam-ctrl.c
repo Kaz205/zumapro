@@ -96,7 +96,8 @@ static bool mtk_cam_req_frame_sync_start(struct mtk_cam_request *req)
 		container_of(req->req.mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_ctx *sync_ctx[MTKCAM_SUBDEV_MAX];
-	int i, ctx_cnt = 0, synced_cnt = 0;
+	int i;
+	u32 ctx_cnt = 0, synced_cnt = 0;
 	bool ret = false;
 
 	/* pick out the used ctxs */
@@ -909,10 +910,11 @@ apply_cq:
 			buf->state.estate = E_BUF_STATE_CQ;
 			return;
 		}
-		/* req_stream_data of req_cq*/
-		req_stream_data = mtk_cam_ctrl_state_to_req_s_data(current_state);
+
 		/* Transit state from Sensor -> CQ */
 		if (ctx->sensor) {
+			/* req_stream_data of req_cq*/
+			req_stream_data = mtk_cam_ctrl_state_to_req_s_data(current_state);
 			state_transition(current_state,
 					 E_STATE_SENSOR, E_STATE_CQ);
 
@@ -992,8 +994,12 @@ static void mtk_camsys_raw_cq_done(struct mtk_raw_device *raw_dev,
 		}
 		spin_unlock(&ctx->cam->dma_processing_lock);
 		req_stream_data = mtk_cam_get_req_s_data(ctx, ctx->stream_id, 1);
-		if (req_stream_data->state.estate >= E_STATE_SENSOR ||
-		    !ctx->sensor) {
+		if (!req_stream_data) {
+			dev_err(raw_dev->dev, "Cannot find req stream data with stream_id:%d\n",
+				ctx->stream_id);
+			return;
+		}
+		if (req_stream_data->state.estate >= E_STATE_SENSOR || !ctx->sensor) {
 			mtk_cam_stream_on(raw_dev, ctx);
 		} else {
 			dev_dbg(raw_dev->dev,
@@ -1288,6 +1294,12 @@ static void mtk_camsys_m2m_frame_done(struct mtk_cam_ctx *ctx,
 	struct mtk_cam_request_stream_data *req_stream_data;
 
 	req_stream_data = mtk_cam_get_req_s_data(ctx, pipe_id, frame_seq_no);
+	if (!req_stream_data) {
+		dev_err(ctx->cam->dev,
+			"cannot find req stream data, pipe_id:%d frm_seq_no:%d\n",
+			pipe_id, frame_seq_no);
+		return;
+	}
 	if (atomic_read(&req_stream_data->frame_done_work.is_queued)) {
 		dev_info(ctx->cam->dev,
 			 "already queue done work %d\n", req_stream_data->frame_seq_no);
@@ -1627,11 +1639,16 @@ static int timer_setsensor(int fps_ratio)
 int mtk_camsys_ctrl_start(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_camsys_sensor_ctrl *camsys_sensor_ctrl = &ctx->sensor_ctrl;
-	struct v4l2_subdev_frame_interval fi;
+	struct v4l2_subdev_frame_interval fi = {
+		.pad = 0,
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int fps_factor = 1;
 
 	if (ctx->used_raw_num) {
-		fi.pad = 0;
 		v4l2_subdev_call(ctx->sensor, video, g_frame_interval, &fi);
 		fps_factor = (fi.interval.numerator > 0) ?
 				(fi.interval.denominator / fi.interval.numerator / 30) : 1;
@@ -1673,7 +1690,13 @@ int mtk_camsys_ctrl_start(struct mtk_cam_ctx *ctx)
 void mtk_camsys_ctrl_update(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_camsys_sensor_ctrl *camsys_sensor_ctrl = &ctx->sensor_ctrl;
-	struct v4l2_subdev_frame_interval fi;
+	struct v4l2_subdev_frame_interval fi = {
+		.pad = 0,
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int fps_factor = 1;
 
 	if (ctx->used_raw_num) {

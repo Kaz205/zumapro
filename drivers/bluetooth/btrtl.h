@@ -109,9 +109,28 @@ struct rtl_dump_info {
 	u32  fw_version;
 };
 
+enum {
+	REALTEK_ALT6_CONTINUOUS_TX_CHIP,
+
+	__REALTEK_NUM_FLAGS,
+};
+
 struct btrealtek_data {
+	DECLARE_BITMAP(flags, __REALTEK_NUM_FLAGS);
+
 	struct rtl_dump_info rtl_dump;
 };
+
+#define btrealtek_set_flag(hdev, nr)					\
+	do {								\
+		struct btrealtek_data *realtek = hci_get_priv((hdev));	\
+		set_bit((nr), realtek->flags);				\
+	} while (0)
+
+#define btrealtek_get_flag(hdev)					\
+	(((struct btrealtek_data *)hci_get_priv(hdev))->flags)
+
+#define btrealtek_test_flag(hdev, nr)	test_bit((nr), btrealtek_get_flag(hdev))
 
 #if IS_ENABLED(CONFIG_BT_RTL)
 
@@ -129,6 +148,8 @@ int btrtl_get_uart_settings(struct hci_dev *hdev,
 			    unsigned int *controller_baudrate,
 			    u32 *device_baudrate, bool *flow_control);
 void btrtl_set_driver_name(struct hci_dev *hdev, const char *driver_name);
+int btrtl_usb_recv_isoc(u16 pos, u8 *data, u8 *buffer, int len,
+			u16 wMaxPacketSize);
 
 #else
 
@@ -174,6 +195,12 @@ static inline int btrtl_get_uart_settings(struct hci_dev *hdev,
 
 static inline void btrtl_set_driver_name(struct hci_dev *hdev, const char *driver_name)
 {
+}
+
+static inline int btrtl_usb_recv_isoc(u16 pos, u8 *data, u8 *buffer, int len,
+				      u16 wMaxPacketSize)
+{
+	return -EOPNOTSUPP;
 }
 
 #endif
