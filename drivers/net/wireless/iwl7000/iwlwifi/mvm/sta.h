@@ -361,7 +361,7 @@ struct iwl_mvm_mpdu_counter {
  */
 struct iwl_mvm_tpt_counter {
 	spinlock_t lock;
-	struct iwl_mvm_mpdu_counter per_link[IWL_MVM_FW_MAX_LINK_ID];
+	struct iwl_mvm_mpdu_counter per_link[IWL_FW_MAX_LINK_ID];
 	unsigned long window_start;
 } ____cacheline_aligned_in_smp;
 
@@ -477,7 +477,7 @@ struct iwl_mvm_int_sta {
 };
 
 /**
- * Send the STA info to the FW.
+ * iwl_mvm_sta_send_to_fw - Send the STA info to the FW.
  *
  * @mvm: the iwl_mvm* to use
  * @sta: the STA

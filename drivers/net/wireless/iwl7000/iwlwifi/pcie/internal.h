@@ -272,7 +272,7 @@ enum iwl_pcie_fw_reset_state {
 };
 
 /**
- * enum wl_pcie_imr_status - imr dma transfer state
+ * enum iwl_pcie_imr_status - imr dma transfer state
  * @IMR_D2S_IDLE: default value of the dma transfer
  * @IMR_D2S_REQUESTED: dma transfer requested
  * @IMR_D2S_COMPLETED: dma transfer completed
@@ -300,6 +300,10 @@ enum iwl_pcie_imr_status {
  * @bc_tbl_size: bytecount table size
  * @tso_hdr_page: page allocated (per CPU) for A-MSDU headers when doing TSO
  *	(and similar usage)
+ * @cmd: command queue data
+ * @cmd.fifo: FIFO number
+ * @cmd.q_id: queue ID
+ * @cmd.wdg_timeout: watchdog timeout
  * @tfd: TFD data
  * @tfd.max_tbs: max number of buffers per TFD
  * @tfd.size: TFD size
@@ -598,6 +602,22 @@ struct iwl_tso_hdr_page {
 	u8 *pos;
 };
 
+/*
+ * Note that we put this struct *last* in the page. By doing that, we ensure
+ * that no TB referencing this page can trigger the 32-bit boundary hardware
+ * bug.
+ */
+struct iwl_tso_page_info {
+	dma_addr_t dma_addr;
+	struct page *next;
+	refcount_t use_count;
+};
+
+#define IWL_TSO_PAGE_DATA_SIZE	(PAGE_SIZE - sizeof(struct iwl_tso_page_info))
+#define IWL_TSO_PAGE_INFO(addr)	\
+	((struct iwl_tso_page_info *)(((unsigned long)addr & PAGE_MASK) + \
+				      IWL_TSO_PAGE_DATA_SIZE))
+
 int iwl_pcie_tx_init(struct iwl_trans *trans);
 void iwl_pcie_tx_start(struct iwl_trans *trans, u32 scd_base_addr);
 int iwl_pcie_tx_stop(struct iwl_trans *trans);
@@ -618,9 +638,23 @@ void iwl_trans_pcie_tx_reset(struct iwl_trans *trans);
 int iwl_pcie_txq_alloc(struct iwl_trans *trans, struct iwl_txq *txq,
 		       int slots_num, bool cmd_queue);
 
-struct iwl_tso_hdr_page *iwl_pcie_get_page_hdr(struct iwl_trans *trans,
-					       size_t len, struct sk_buff *skb);
-void iwl_pcie_free_tso_page(struct iwl_trans *trans, struct sk_buff *skb);
+dma_addr_t iwl_pcie_get_sgt_tb_phys(struct sg_table *sgt, unsigned int offset);
+struct sg_table *iwl_pcie_prep_tso(struct iwl_trans *trans, struct sk_buff *skb,
+				   struct iwl_cmd_meta *cmd_meta,
+				   u8 **hdr, unsigned int hdr_room);
+
+void iwl_pcie_free_tso_pages(struct iwl_trans *trans, struct sk_buff *skb,
+			     struct iwl_cmd_meta *cmd_meta);
+
+static inline dma_addr_t iwl_pcie_get_tso_page_phys(void *addr)
+{
+	dma_addr_t res;
+
+	res = IWL_TSO_PAGE_INFO(addr)->dma_addr;
+	res += (unsigned long)addr & ~PAGE_MASK;
+
+	return res;
+}
 
 static inline dma_addr_t
 iwl_txq_get_first_tb_dma(struct iwl_txq *txq, int idx)
@@ -1100,7 +1134,7 @@ void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power);
 /* transport gen 2 exported functions */
 int iwl_trans_pcie_gen2_start_fw(struct iwl_trans *trans,
 				 const struct fw_img *fw, bool run_in_rfkill);
-void iwl_trans_pcie_gen2_fw_alive(struct iwl_trans *trans, u32 scd_addr);
+void iwl_trans_pcie_gen2_fw_alive(struct iwl_trans *trans);
 int iwl_trans_pcie_gen2_send_hcmd(struct iwl_trans *trans,
 				  struct iwl_host_cmd *cmd);
 void iwl_trans_pcie_gen2_stop_device(struct iwl_trans *trans);

@@ -282,6 +282,9 @@ static int iwl_mvm_esr_mode_active(struct iwl_mvm *mvm,
 	 */
 	iwl_mvm_restart_mpdu_count(mvm, mvmvif);
 
+	iwl_dbg_tlv_time_point(&mvm->fwrt, IWL_FW_INI_TIME_ESR_LINK_UP,
+			       NULL);
+
 	return ret;
 }
 
@@ -468,6 +471,9 @@ static int iwl_mvm_esr_mode_inactive(struct iwl_mvm *mvm,
 
 	/* Start a new counting window */
 	iwl_mvm_restart_mpdu_count(mvm, mvmvif);
+
+	iwl_dbg_tlv_time_point(&mvm->fwrt, IWL_FW_INI_TIME_ESR_LINK_DOWN,
+			       NULL);
 
 	return ret;
 }
@@ -885,6 +891,8 @@ static void iwl_mvm_mld_vif_cfg_changed_station(struct iwl_mvm *mvm,
 
 	if (changes & BSS_CHANGED_ASSOC) {
 		if (vif->cfg.assoc) {
+			mvmvif->session_prot_connection_loss = false;
+
 			/* clear statistics to get clean beacon counter */
 			iwl_mvm_request_statistics(mvm, true);
 			iwl_mvm_sf_update(mvm, vif, false);
@@ -1367,18 +1375,34 @@ iwl_mvm_mld_mac_pre_channel_switch(struct ieee80211_hw *hw,
 	return ret;
 }
 
-static void iwl_mvm_mld_iface_usage(struct ieee80211_hw *hw,
-				    struct cfg80211_iface_usage *iface_usage)
+#define IWL_MVM_MLD_UNBLOCK_ESR_NON_BSS_TIMEOUT (5 * HZ)
+
+static void iwl_mvm_mld_prep_add_interface(struct ieee80211_hw *hw,
+					   enum nl80211_iftype type)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
-	u32 p2p_iftypes = BIT(NL80211_IFTYPE_P2P_GO) |
-		BIT(NL80211_IFTYPE_P2P_CLIENT);
+	struct ieee80211_vif *bss_vif = iwl_mvm_get_bss_vif(mvm);
+	struct iwl_mvm_vif *mvmvif;
+	int ret;
 
-	IWL_DEBUG_MAC80211(mvm, "iface_usage_notif: mask=0x%x\n",
-			   iface_usage->types_mask);
+	IWL_DEBUG_MAC80211(mvm, "prep_add_interface: type=%u\n",
+			   type);
 
-	if (iface_usage->types_mask & p2p_iftypes)
-		iwl_mvm_esr_non_bss_link(mvm, NULL, 0, true);
+	if (IS_ERR_OR_NULL(bss_vif) ||
+	    !(type == NL80211_IFTYPE_AP ||
+	      type == NL80211_IFTYPE_P2P_GO ||
+	      type == NL80211_IFTYPE_P2P_CLIENT))
+		return;
+
+	mvmvif = iwl_mvm_vif_from_mac80211(bss_vif);
+	ret = iwl_mvm_block_esr_sync(mvm, bss_vif,
+				     IWL_MVM_ESR_BLOCKED_TMP_NON_BSS);
+	if (ret)
+		return;
+
+	wiphy_delayed_work_queue(mvmvif->mvm->hw->wiphy,
+				 &mvmvif->unblock_esr_tmp_non_bss_wk,
+				 IWL_MVM_MLD_UNBLOCK_ESR_NON_BSS_TIMEOUT);
 }
 
 const struct ieee80211_ops iwl_mvm_mld_hw_ops = {
@@ -1481,5 +1505,5 @@ const struct ieee80211_ops iwl_mvm_mld_hw_ops = {
 	.change_sta_links = iwl_mvm_mld_change_sta_links,
 	.can_activate_links = iwl_mvm_mld_can_activate_links,
 	.can_neg_ttlm = iwl_mvm_mld_can_neg_ttlm,
-	.iface_usage = iwl_mvm_mld_iface_usage,
+	.prep_add_interface = iwl_mvm_mld_prep_add_interface,
 };

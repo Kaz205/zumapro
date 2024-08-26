@@ -1234,7 +1234,7 @@ static bool ieee80211_add_vht_ie(struct ieee80211_sub_if_data *sdata,
 		bool disable_mu_mimo = false;
 		struct ieee80211_sub_if_data *other;
 
-		list_for_each_entry_rcu(other, &local->interfaces, list) {
+		list_for_each_entry(other, &local->interfaces, list) {
 			if (other->vif.bss_conf.mu_mimo_owner) {
 				disable_mu_mimo = true;
 				break;
@@ -3524,6 +3524,10 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	u64 changed = 0;
 	struct ieee80211_prep_tx_info info = {
 		.subtype = stype,
+		.was_assoc = true,
+		.link_id = sdata->vif.active_links ?
+				__ffs(sdata->vif.active_links) :
+				0,
 	};
 
 	lockdep_assert_wiphy(local->hw.wiphy);
@@ -3572,29 +3576,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 
 	/* deauthenticate/disassociate now */
 	if (tx || frame_buf) {
-		/*
-		 * In multi channel scenarios guarantee that the virtual
-		 * interface is granted immediate airtime to transmit the
-		 * deauthentication frame by calling mgd_prepare_tx, if the
-		 * driver requested so.
-		 */
-		if (ieee80211_hw_check(&local->hw, DEAUTH_NEED_MGD_TX_PREP)) {
-			for (link_id = 0; link_id < ARRAY_SIZE(sdata->link);
-			     link_id++) {
-				struct ieee80211_link_data *link;
-
-				link = sdata_dereference(sdata->link[link_id],
-							 sdata);
-				if (!link)
-					continue;
-				if (link->u.mgd.have_beacon)
-					break;
-			}
-			if (link_id == IEEE80211_MLD_MAX_NUM_LINKS) {
-				info.link_id = ffs(sdata->vif.active_links) - 1;
-				drv_mgd_prepare_tx(sdata->local, sdata, &info);
-			}
-		}
+		drv_mgd_prepare_tx(sdata->local, sdata, &info);
 
 		ieee80211_send_deauth_disassoc(sdata, sdata->vif.cfg.ap_addr,
 					       sdata->vif.cfg.ap_addr, stype,
@@ -9328,6 +9310,8 @@ void ieee80211_mgd_stop(struct ieee80211_sub_if_data *sdata)
 			  &ifmgd->beacon_connection_loss_work);
 	wiphy_work_cancel(sdata->local->hw.wiphy,
 			  &ifmgd->csa_connection_drop_work);
+	wiphy_work_cancel(sdata->local->hw.wiphy,
+			  &ifmgd->teardown_ttlm_work);
 	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
 				  &ifmgd->tdls_peer_del_work);
 
