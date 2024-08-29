@@ -15,6 +15,12 @@
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM mac80211
 
+#if LINUX_VERSION_IS_GEQ(6,10,0)
+#define ASSIGN_VIF_STR	__assign_str(vif_name)
+#else
+#define ASSIGN_VIF_STR	__assign_str(vif_name, sdata->name)
+#endif
+
 #define MAXNAME		32
 #define LOCAL_ENTRY	__array(char, wiphy_name, 32)
 #define LOCAL_ASSIGN	strscpy(__entry->wiphy_name, wiphy_name(local->hw.wiphy), MAXNAME)
@@ -33,7 +39,7 @@
 			__string(vif_name, sdata->name)
 #define VIF_ASSIGN	__entry->vif_type = sdata->vif.type; __entry->sdata = sdata;	\
 			__entry->p2p = sdata->vif.p2p;					\
-			__assign_str(vif_name, sdata->name)
+			ASSIGN_VIF_STR
 #define VIF_PR_FMT	" vif:%s(%d%s)"
 #define VIF_PR_ARG	__get_str(vif_name), __entry->vif_type, __entry->p2p ? "/p2p" : ""
 
@@ -3181,25 +3187,21 @@ TRACE_EVENT(drv_neg_ttlm_res,
 	)
 );
 
-TRACE_EVENT(drv_iface_usage,
-	TP_PROTO(struct ieee80211_local *local,
-		 struct cfg80211_iface_usage *iface_usage),
+TRACE_EVENT(drv_prep_add_interface,
+	    TP_PROTO(struct ieee80211_local *local,
+		     enum nl80211_iftype type),
 
-	TP_ARGS(local, iface_usage),
-
-	TP_STRUCT__entry(
-		LOCAL_ENTRY
-		__field(u32, types_mask)
+	TP_ARGS(local, type),
+	TP_STRUCT__entry(LOCAL_ENTRY
+			 __field(u32, type)
 	),
 
-	TP_fast_assign(
-		LOCAL_ASSIGN;
-		__entry->types_mask = iface_usage->types_mask;
+	TP_fast_assign(LOCAL_ASSIGN;
+		       __entry->type = type;
 	),
 
-	TP_printk(
-		LOCAL_PR_FMT " types_mask=0x%x",
-		LOCAL_PR_ARG, __entry->types_mask
+	TP_printk(LOCAL_PR_FMT  " type: %u\n ",
+		  LOCAL_PR_ARG, __entry->type
 	)
 );
 

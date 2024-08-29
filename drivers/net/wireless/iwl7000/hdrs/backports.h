@@ -434,6 +434,7 @@ static inline void LINUX_BACKPORT(free_netdev)(struct net_device *dev)
 }
 #define free_netdev LINUX_BACKPORT(free_netdev)
 
+
 enum ieee80211_ap_reg_power {
 	IEEE80211_REG_UNSET_AP,
 	IEEE80211_REG_LPI_AP,

@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
- * Copyright (C) 2018-2023 Intel Corporation
+ * Copyright (C) 2018-2024 Intel Corporation
  */
 #ifndef __iwl_fw_api_commands_h__
 #define __iwl_fw_api_commands_h__
@@ -25,6 +25,8 @@
  * @NAN_GROUP: NAN group, uses command IDs from &enum iwl_nan_subcmd_ids
  * @LOCATION_GROUP: location group, uses command IDs from
  *	&enum iwl_location_subcmd_ids
+ * @BT_COEX_GROUP: bt coex group, uses command IDs from
+ *	&enum iwl_bt_coex_subcmd_ids
  * @PROT_OFFLOAD_GROUP: protocol offload group, uses command IDs from
  *	&enum iwl_prot_offload_subcmd_ids
  * @REGULATORY_AND_NVM_GROUP: regulatory/NVM group, uses command IDs from
@@ -44,6 +46,7 @@ enum iwl_mvm_command_groups {
 	SCAN_GROUP = 0x6,
 	NAN_GROUP = 0x7,
 	LOCATION_GROUP = 0x8,
+	BT_COEX_GROUP = 0x9,
 	PROT_OFFLOAD_GROUP = 0xb,
 	REGULATORY_AND_NVM_GROUP = 0xc,
 	XVT_GROUP = 0xe,
@@ -474,7 +477,7 @@ enum iwl_legacy_cmds {
 	MARKER_CMD = 0xcb,
 
 	/**
-	 * @BT_PROFILE_NOTIFICATION: &struct iwl_bt_coex_profile_notif
+	 * @BT_PROFILE_NOTIFICATION: &struct iwl_bt_coex_prof_old_notif
 	 */
 	BT_PROFILE_NOTIFICATION = 0xce,
 

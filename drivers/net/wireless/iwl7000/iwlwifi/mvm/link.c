@@ -11,6 +11,8 @@
 	HOW(BLOCKED_TPT)		\
 	HOW(BLOCKED_FW)			\
 	HOW(BLOCKED_NON_BSS)		\
+	HOW(BLOCKED_ROC)		\
+	HOW(BLOCKED_TMP_NON_BSS)	\
 	HOW(EXIT_MISSED_BEACON)		\
 	HOW(EXIT_LOW_RSSI)		\
 	HOW(EXIT_COEX)			\
@@ -291,6 +293,17 @@ int iwl_mvm_link_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			link_conf->uora_ocw_range & 0x7;
 		cmd.rand_alloc_ecwmax =
 			(link_conf->uora_ocw_range >> 3) & 0x7;
+	}
+
+	/* ap_sta may be NULL if we're disconnecting */
+	if (changes & LINK_CONTEXT_MODIFY_HE_PARAMS && mvmvif->ap_sta) {
+		struct ieee80211_link_sta *link_sta =
+			link_sta_dereference_check(mvmvif->ap_sta, link_id);
+
+		if (!WARN_ON(!link_sta) && link_sta->he_cap.has_he &&
+		    link_sta->he_cap.he_cap_elem.mac_cap_info[5] &
+		    IEEE80211_HE_MAC_CAP5_OM_CTRL_UL_MU_DATA_DIS_RX)
+			cmd.ul_mu_data_disable = 1;
 	}
 
 	/* TODO  how to set ndp_fdbk_buff_th_exp? */
@@ -1036,14 +1049,16 @@ void iwl_mvm_block_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	if (WARN_ON(!(reason & IWL_MVM_BLOCK_ESR_REASONS)))
 		return;
 
-	if (!(mvmvif->esr_disable_reason & reason)) {
-		IWL_DEBUG_INFO(mvm,
-			       "Blocking EMLSR mode. reason = %s (0x%x)\n",
-			       iwl_get_esr_state_string(reason), reason);
-		iwl_mvm_print_esr_state(mvm, mvmvif->esr_disable_reason);
-	}
+	if (mvmvif->esr_disable_reason & reason)
+		return;
+
+	IWL_DEBUG_INFO(mvm,
+		       "Blocking EMLSR mode. reason = %s (0x%x)\n",
+		       iwl_get_esr_state_string(reason), reason);
 
 	mvmvif->esr_disable_reason |= reason;
+
+	iwl_mvm_print_esr_state(mvm, mvmvif->esr_disable_reason);
 
 	iwl_mvm_exit_esr(mvm, vif, reason, link_to_keep);
 }

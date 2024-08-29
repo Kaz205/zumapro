@@ -750,7 +750,9 @@ static void __iterate_interfaces(struct ieee80211_local *local,
 	struct ieee80211_sub_if_data *sdata;
 	bool active_only = iter_flags & IEEE80211_IFACE_ITER_ACTIVE;
 
-	list_for_each_entry_rcu(sdata, &local->interfaces, list) {
+	list_for_each_entry_rcu(sdata, &local->interfaces, list,
+				lockdep_is_held(&local->iflist_mtx) ||
+				lockdep_is_held(&local->hw.wiphy->mtx)) {
 		switch (sdata->vif.type) {
 		case NL80211_IFTYPE_MONITOR:
 			if (!(sdata->u.mntr.flags & MONITOR_FLAG_ACTIVE))
@@ -1547,6 +1549,10 @@ u32 ieee80211_sta_get_rates(struct ieee80211_sub_if_data *sdata,
 
 void ieee80211_stop_device(struct ieee80211_local *local, bool suspend)
 {
+	local_bh_disable();
+	ieee80211_handle_queued_frames(local);
+	local_bh_enable();
+
 	ieee80211_led_radio(local, false);
 	ieee80211_mod_tpt_led_trig(local, 0, IEEE80211_TPT_LEDTRIG_FL_RADIO);
 
@@ -1821,7 +1827,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 
 	/* add interfaces */
 	sdata = wiphy_dereference(local->hw.wiphy, local->monitor_sdata);
-	if (sdata) {
+	if (sdata && ieee80211_hw_check(&local->hw, WANT_MONITOR_VIF)) {
 		/* in HW restart it exists already */
 		WARN_ON(local->resuming);
 		res = drv_add_interface(local, sdata);
@@ -2312,7 +2318,7 @@ void ieee80211_recalc_min_chandef(struct ieee80211_sub_if_data *sdata,
 
 		chanctx = container_of(chanctx_conf, struct ieee80211_chanctx,
 				       conf);
-		ieee80211_recalc_chanctx_min_def(local, chanctx, NULL);
+		ieee80211_recalc_chanctx_min_def(local, chanctx, NULL, false);
 	}
 }
 
@@ -3971,7 +3977,7 @@ int ieee80211_check_combinations(struct ieee80211_sub_if_data *sdata,
 		params.num_different_channels++;
 	}
 
-	list_for_each_entry_rcu(sdata_iter, &local->interfaces, list) {
+	list_for_each_entry(sdata_iter, &local->interfaces, list) {
 		struct wireless_dev *wdev_iter;
 
 		wdev_iter = &sdata_iter->wdev;
@@ -4022,7 +4028,7 @@ int ieee80211_max_num_channels(struct ieee80211_local *local)
 			ieee80211_chanctx_radar_detect(local, ctx);
 	}
 
-	list_for_each_entry_rcu(sdata, &local->interfaces, list)
+	list_for_each_entry(sdata, &local->interfaces, list)
 		params.iftype_num[sdata->wdev.iftype]++;
 
 	err = cfg80211_iter_combinations(local->hw.wiphy, &params,

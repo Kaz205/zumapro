@@ -339,7 +339,7 @@ static void iwl_pcie_get_rf_name(struct iwl_trans *trans)
 	pos += scnprintf(buf + pos, buflen - pos, "\n");
 }
 
-void iwl_trans_pcie_gen2_fw_alive(struct iwl_trans *trans, u32 scd_addr)
+void iwl_trans_pcie_gen2_fw_alive(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -528,6 +528,8 @@ int iwl_trans_pcie_gen2_start_fw(struct iwl_trans *trans,
 	keep_ram_busy = !iwl_pcie_set_ltr(trans);
 
 	if (trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
+		IWL_DEBUG_POWER(trans, "function scratch register value is 0x%08x\n",
+				iwl_read32(trans, CSR_FUNC_SCRATCH));
 		iwl_write32(trans, CSR_FUNC_SCRATCH, CSR_FUNC_SCRATCH_INIT_VALUE);
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_ROM_START);
