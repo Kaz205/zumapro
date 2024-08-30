@@ -180,6 +180,48 @@
 	};
 };
 
+&cpu_little0_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&cpu_little1_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&cpu_little2_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&cpu_little3_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&cpu_big0_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&cpu_big1_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
+&soc_max_alert0 {
+	temperature = <90000>;
+	hysteresis = <2000>;
+	type = "passive";
+};
+
 &pio {
 	gpio-line-names =
 		"GSC_AP_INT_ODL",
