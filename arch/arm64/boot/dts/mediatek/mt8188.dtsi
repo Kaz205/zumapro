@@ -4230,7 +4230,7 @@
 
 		disp_dsi0: dsi@1c008000 {
 			compatible = "mediatek,mt8188-dsi";
-			reg = <0 0x1c008000 0 0x1000>, <0 0x1c01d000 0 0x1000>;
+			reg = <0 0x1c008000 0 0x1000>;
 			clocks = <&vdosys0 CLK_VDO0_DSI0>,
 				 <&vdosys0 CLK_VDO0_DSI0_DSI>,
 				 <&mipi_tx_config0>;
