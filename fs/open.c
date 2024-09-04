@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/fs/open.c
  *
@@ -36,6 +35,7 @@
 
 #include "internal.h"
 
+#include <trace/events/cros_file.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/fs_trace.h>
 
@@ -596,9 +596,12 @@ int chmod_common(const struct path *path, umode_t mode)
 	struct iattr newattrs;
 	int error;
 
+	trace_cros_chmod_common_enter(path, mode);
 	error = mnt_want_write(path->mnt);
-	if (error)
+	if (error) {
+		trace_cros_chmod_common_exit(path, mode, error);
 		return error;
+	}
 retry_deleg:
 	inode_lock(inode);
 	error = security_path_chmod(path, mode);
@@ -616,6 +619,7 @@ out_unlock:
 			goto retry_deleg;
 	}
 	mnt_drop_write(path->mnt);
+	trace_cros_chmod_common_exit(path, mode, error);
 	return error;
 }
 
@@ -711,6 +715,7 @@ int chown_common(const struct path *path, uid_t user, gid_t group)
 	struct iattr newattrs;
 	kuid_t uid;
 	kgid_t gid;
+	trace_cros_chown_common_enter(path, user, group);
 
 	uid = make_kuid(current_user_ns(), user);
 	gid = make_kgid(current_user_ns(), group);
@@ -722,10 +727,14 @@ retry_deleg:
 	newattrs.ia_vfsuid = INVALID_VFSUID;
 	newattrs.ia_vfsgid = INVALID_VFSGID;
 	newattrs.ia_valid =  ATTR_CTIME;
-	if ((user != (uid_t)-1) && !setattr_vfsuid(&newattrs, uid))
+	if ((user != (uid_t)-1) && !setattr_vfsuid(&newattrs, uid)) {
+		trace_cros_chown_common_exit(path, user, group, -EINVAL);
 		return -EINVAL;
-	if ((group != (gid_t)-1) && !setattr_vfsgid(&newattrs, gid))
+	}
+	if ((group != (gid_t)-1) && !setattr_vfsgid(&newattrs, gid)) {
+		trace_cros_chown_common_exit(path, user, group, -EINVAL);
 		return -EINVAL;
+	}
 	inode_lock(inode);
 	if (!S_ISDIR(inode->i_mode))
 		newattrs.ia_valid |= ATTR_KILL_SUID | ATTR_KILL_PRIV |
@@ -744,6 +753,7 @@ retry_deleg:
 		if (!error)
 			goto retry_deleg;
 	}
+	trace_cros_chown_common_exit(path, user, group, error);
 	return error;
 }
 
@@ -1426,6 +1436,7 @@ int filp_close(struct file *filp, fl_owner_t id)
 	if (CHECK_DATA_CORRUPTION(file_count(filp) == 0,
 			"VFS: Close: file count is 0 (f_op=%ps)",
 			filp->f_op)) {
+		trace_cros_filp_close_exit(filp, id, 0);
 		return 0;
 	}
 
@@ -1437,6 +1448,7 @@ int filp_close(struct file *filp, fl_owner_t id)
 		locks_remove_posix(filp, id);
 	}
 	fput(filp);
+	trace_cros_filp_close_exit(filp, id, retval);
 	return retval;
 }
 
