@@ -4111,7 +4111,7 @@
 			apu-pwr-rx {
 				compatible = "mediatek,apupwr-rx-rpmsg";
 				mediatek,rpmsg-name = "apupwr-rx-rpmsg";
-				apusys,thermal-zones = "apu";
+				apusys,thermal-zones = "apu-thermal";
 			};
 
 			apu-mdw {
