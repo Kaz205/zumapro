@@ -1515,9 +1515,6 @@
 			clock-names = "pmif_sys_ck",
 				      "pmif_tmr_ck",
 				      "spmimst_clk_mux";
-			interrupts = <GIC_SPI 244 IRQ_TYPE_LEVEL_HIGH 0>,
-				     <GIC_SPI 256 IRQ_TYPE_LEVEL_HIGH 0>;
-			irq_event_en = <0x18000000 0x0001c000 0x0 0x0 0x0>;
 		};
 
 		infra_iommu: iommu@10315000 {
