@@ -1475,18 +1475,6 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type, int n
 }
 EXPORT_SYMBOL_GPL(thermal_zone_device_register);
 
-void *thermal_zone_device_priv(struct thermal_zone_device *tzd)
-{
-	return tzd->devdata;
-}
-EXPORT_SYMBOL_GPL(thermal_zone_device_priv);
-
-const char *thermal_zone_device_type(struct thermal_zone_device *tzd)
-{
-	return tzd->type;
-}
-EXPORT_SYMBOL_GPL(thermal_zone_device_type);
-
 /**
  * thermal_zone_device_unregister - removes the registered thermal zone device
  * @tz: the thermal zone device to remove

@@ -166,6 +166,18 @@
 	};
 };
 
+&thermal_zones {
+	soc_max {
+		trips {
+			target: target@1 {
+				temperature = <90000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
 &aud_etdm_hp_on {
 	pins-mclk {
 		pinmux = <PINMUX_GPIO114__FUNC_O_I2SO2_MCK>;
@@ -178,48 +190,6 @@
 		bias-pull-down;
 		input-enable;
 	};
-};
-
-&cpu_little0_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&cpu_little1_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&cpu_little2_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&cpu_little3_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&cpu_big0_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&cpu_big1_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
-};
-
-&soc_max_alert0 {
-	temperature = <90000>;
-	hysteresis = <2000>;
-	type = "passive";
 };
 
 &pio {
