@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 //
-// TAS2563/TAS2781 Common functions for HDA and ASoC Audio drivers
+// TAS2781 Common functions for HDA and ASoC Audio drivers
 //
 // Copyright 2023 - 2024 Texas Instruments, Inc.
 //
@@ -64,8 +64,8 @@ static int tasdevice_change_chn_book(struct tasdevice_priv *tas_priv,
 			 */
 			ret = regmap_write(map, TASDEVICE_PAGE_SELECT, 0);
 			if (ret < 0) {
-				dev_err(tas_priv->dev, "%s, E=%d channel:%d\n",
-					__func__, ret, chn);
+				dev_err(tas_priv->dev, "%s, E=%d\n",
+					__func__, ret);
 				goto out;
 			}
 		}
@@ -88,32 +88,6 @@ static int tasdevice_change_chn_book(struct tasdevice_priv *tas_priv,
 out:
 	return ret;
 }
-
-int tasdev_chn_switch(struct tasdevice_priv *tas_priv,
-	unsigned short chn)
-{
-	struct i2c_client *client = (struct i2c_client *)tas_priv->client;
-	struct tasdevice *tasdev = &tas_priv->tasdevice[chn];
-	struct regmap *map = tas_priv->regmap;
-	int ret;
-
-	if (client->addr != tasdev->dev_addr) {
-		client->addr = tasdev->dev_addr;
-		/* All devices share the same regmap, clear the page
-		 * inside regmap once switching to another device.
-		 * Register 0 at any pages and any books inside tas2781
-		 * is the same one for page-switching.
-		 */
-		ret = regmap_write(map, TASDEVICE_PAGE_SELECT, 0);
-		if (ret < 0) {
-			dev_err(tas_priv->dev, "%s, E=%d\n", __func__, ret);
-			return ret;
-		}
-		return 1;
-	}
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tasdev_chn_switch);
 
 int tasdevice_dev_read(struct tasdevice_priv *tas_priv,
 	unsigned short chn, unsigned int reg, unsigned int *val)
@@ -269,7 +243,7 @@ struct tasdevice_priv *tasdevice_kzalloc(struct i2c_client *i2c)
 }
 EXPORT_SYMBOL_GPL(tasdevice_kzalloc);
 
-void tasdevice_reset(struct tasdevice_priv *tas_dev)
+void tas2781_reset(struct tasdevice_priv *tas_dev)
 {
 	int ret, i;
 
@@ -280,8 +254,8 @@ void tasdevice_reset(struct tasdevice_priv *tas_dev)
 	} else {
 		for (i = 0; i < tas_dev->ndev; i++) {
 			ret = tasdevice_dev_write(tas_dev, i,
-				TASDEVICE_REG_SWRESET,
-				TASDEVICE_REG_SWRESET_RESET);
+				TAS2781_REG_SWRESET,
+				TAS2781_REG_SWRESET_RESET);
 			if (ret < 0)
 				dev_err(tas_dev->dev,
 					"dev %d swreset fail, %d\n",
@@ -290,7 +264,7 @@ void tasdevice_reset(struct tasdevice_priv *tas_dev)
 	}
 	usleep_range(1000, 1050);
 }
-EXPORT_SYMBOL_GPL(tasdevice_reset);
+EXPORT_SYMBOL_GPL(tas2781_reset);
 
 int tascodec_init(struct tasdevice_priv *tas_priv, void *codec,
 	struct module *module,
