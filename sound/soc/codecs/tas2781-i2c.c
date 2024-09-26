@@ -29,7 +29,6 @@
 #include <sound/soc.h>
 #include <sound/tas2781.h>
 #include <sound/tlv.h>
-#include <sound/tas2563-tlv.h>
 #include <sound/tas2781-tlv.h>
 #include <asm/unaligned.h>
 
@@ -573,11 +572,30 @@ static int tasdev_cali_data_put(struct snd_kcontrol *kcontrol,
 		goto out;
 	}
 	tas_priv->is_user_space_calidata = true;
-	data[0] = bytes_ext->max;
-	memcpy(&data[1], ucontrol->value.bytes.data, bytes_ext->max - 1);
+	memcpy(data, ucontrol->value.bytes.data, bytes_ext->max);
 out:
 	mutex_unlock(&tas_priv->codec_lock);
 	return rc;
+}
+
+static int tasdev_safe_mode_id_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *comp = snd_soc_kcontrol_component(kcontrol);
+	struct tasdevice_priv *tas_priv = snd_soc_component_get_drvdata(comp);
+	int i;
+
+	mutex_lock(&tas_priv->codec_lock);
+
+	for (i = 0; i < tas_priv->rcabin.ncfgs; i++) {
+		if (strstr(tas_priv->rcabin.cfg_info[i]->conf_name, "safe")) {
+			ucontrol->value.integer.value[0] = i;
+			break;
+		}
+	}
+
+	mutex_unlock(&tas_priv->codec_lock);
+	return 0;
 }
 
 static int tas2781_latch_reg_get(struct snd_kcontrol *kcontrol,
@@ -768,42 +786,41 @@ static int tas2563_digital_gain_put(
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
 	struct tasdevice_priv *tas_dev = snd_soc_component_get_drvdata(codec);
-	int vol = ucontrol->value.integer.value[0];
-	int status = 0, max = mc->max, rc = 1;
-	int i, ret;
 	unsigned int reg = mc->reg;
 	unsigned int volrd, volwr;
+	int vol = ucontrol->value.integer.value[0];
+	int max = mc->max, i, ret = 1;
 	unsigned char data[4];
+
 	vol = clamp(vol, 0, max);
 	mutex_lock(&tas_dev->codec_lock);
 	/* Read the primary device */
 	ret =  tasdevice_dev_bulk_read(tas_dev, 0, reg, data, 4);
 	if (ret) {
 		dev_err(tas_dev->dev, "%s, get AMP vol error\n", __func__);
-		rc = -1;
 		goto out;
 	}
+
 	volrd = get_unaligned_be32(&data[0]);
 	volwr = get_unaligned_be32(tas2563_dvc_table[vol]);
+
 	if (volrd == volwr) {
-		rc = 0;
+		ret = 0;
 		goto out;
 	}
+
 	for (i = 0; i < tas_dev->ndev; i++) {
 		ret = tasdevice_dev_bulk_write(tas_dev, i, reg,
 			(unsigned char *)tas2563_dvc_table[vol], 4);
-		if (ret) {
+		if (ret)
 			dev_err(tas_dev->dev,
-				"%s, set digital vol error in dev %d\n",
+				"%s, set digital vol error in device %d\n",
 				__func__, i);
-			status |= BIT(i);
-		}
 	}
-	if (status)
-		rc = -1;
+
 out:
 	mutex_unlock(&tas_dev->codec_lock);
-	return rc;
+	return ret;
 }
 
 static const struct snd_kcontrol_new tasdevice_snd_controls[] = {
@@ -958,7 +975,7 @@ static int tasdevice_get_chip_id(struct snd_kcontrol *kcontrol,
 static int tasdevice_create_control(struct tasdevice_priv *tas_priv)
 {
 	struct snd_kcontrol_new *prof_ctrls;
-	char *name;
+	char *name, *safe_mode;
 	int nr_controls = 2;
 	int mix_index = 0;
 	int ret;
@@ -971,7 +988,9 @@ static int tasdevice_create_control(struct tasdevice_priv *tas_priv)
 	/* Create a mixer item for selecting the active profile */
 	name = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
 		GFP_KERNEL);
-	if (!name)
+	safe_mode = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
+		GFP_KERNEL);
+	if (!name || !safe_mode)
 		return -ENOMEM;
 
 	strscpy(name, "Speaker Profile Id", SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
@@ -980,6 +999,14 @@ static int tasdevice_create_control(struct tasdevice_priv *tas_priv)
 	prof_ctrls[mix_index].info = tasdevice_info_profile;
 	prof_ctrls[mix_index].get = tasdevice_get_profile_id;
 	prof_ctrls[mix_index].put = tasdevice_set_profile_id;
+	mix_index++;
+
+	strscpy(safe_mode, "Speaker Safe mode profile id",
+		SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
+	prof_ctrls[mix_index].name = safe_mode;
+	prof_ctrls[mix_index].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+	prof_ctrls[mix_index].info = tasdevice_info_profile;
+	prof_ctrls[mix_index].get = tasdev_safe_mode_id_get;
 	mix_index++;
 
 	ret = snd_soc_add_component_controls(tas_priv->codec,
@@ -1082,10 +1109,12 @@ static int tasdevice_active_num_put(struct snd_kcontrol *kcontrol,
 
 static int tasdevice_dsp_create_ctrls(struct tasdevice_priv *tas_priv)
 {
+	struct calidata *cali_data = &tas_priv->cali_data;
 	struct snd_kcontrol_new *dsp_ctrls;
-	char *active_dev_num, *chip_id;
+	struct soc_bytes_ext *ext_cali_data;
+	char *active_dev_num, *cali_name, *chip_id;
 	char *conf_name, *prog_name;
-	int nr_controls = 4;
+	int nr_controls = 5;
 	int mix_index = 0;
 	int ret;
 
@@ -1096,20 +1125,29 @@ static int tasdevice_dsp_create_ctrls(struct tasdevice_priv *tas_priv)
 	 */
 	dsp_ctrls = devm_kcalloc(tas_priv->dev, nr_controls,
 		sizeof(dsp_ctrls[0]), GFP_KERNEL);
-	if (!dsp_ctrls)
-		return -ENOMEM;
+	if (!dsp_ctrls) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	/* Create a mixer item for selecting the active profile */
 	active_dev_num = devm_kzalloc(tas_priv->dev,
 		SNDRV_CTL_ELEM_ID_NAME_MAXLEN, GFP_KERNEL);
+	cali_name = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
+		GFP_KERNEL);
 	conf_name = devm_kzalloc(tas_priv->dev,
 		SNDRV_CTL_ELEM_ID_NAME_MAXLEN, GFP_KERNEL);
 	prog_name = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
 		GFP_KERNEL);
 	chip_id = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
 		GFP_KERNEL);
-	if (!active_dev_num || !conf_name || !chip_id || !prog_name)
-		return -ENOMEM;
+	ext_cali_data = devm_kzalloc(tas_priv->dev, sizeof(*ext_cali_data),
+		GFP_KERNEL);
+	if (!active_dev_num || !cali_name || !conf_name || !chip_id ||
+		!ext_cali_data || !prog_name) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	strscpy(prog_name, "Speaker Program Id",
 		SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
@@ -1144,9 +1182,55 @@ static int tasdevice_dsp_create_ctrls(struct tasdevice_priv *tas_priv)
 	dsp_ctrls[mix_index].get = tasdevice_get_chip_id;
 	mix_index++;
 
+	strscpy(cali_name, "Speaker Calibrated Data",
+		SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
+	ext_cali_data->max = tas_priv->ndev * (CAL_DAT_SZ + 1);
+	tas_priv->cali_data.total_sz = ext_cali_data->max;
+	tas_priv->cali_data.data = devm_kzalloc(tas_priv->dev,
+		ext_cali_data->max, GFP_KERNEL);
+	dsp_ctrls[mix_index].name = cali_name;
+	dsp_ctrls[mix_index].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+	dsp_ctrls[mix_index].info = snd_soc_bytes_info_ext;
+	dsp_ctrls[mix_index].get = tasdev_cali_data_get;
+	dsp_ctrls[mix_index].put = tasdev_cali_data_put;
+	dsp_ctrls[mix_index].private_value = (unsigned long)ext_cali_data;
+	mix_index++;
+
+	cali_data->data = devm_kzalloc(tas_priv->dev, tas_priv->ndev *
+		(cali_data->reg_array_sz * 4 + 1), GFP_KERNEL);
+	if (!cali_data->data)
+		return -ENOMEM;
+
+	if (tas_priv->chip_id == TAS2781) {
+		struct soc_bytes_ext *ext_cali_start;
+		char *cali_start_name;
+
+		cali_start_name = devm_kzalloc(tas_priv->dev,
+			SNDRV_CTL_ELEM_ID_NAME_MAXLEN, GFP_KERNEL);
+		ext_cali_start = devm_kzalloc(tas_priv->dev,
+			sizeof(*ext_cali_start), GFP_KERNEL);
+		if (!cali_start_name || !ext_cali_start) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		strscpy(cali_start_name, "Calibration Start",
+			SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
+		ext_cali_data->max = tas_priv->ndev * 9;
+		dsp_ctrls[mix_index].name = cali_start_name;
+		dsp_ctrls[mix_index].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+		dsp_ctrls[mix_index].info = snd_soc_bytes_info_ext;
+		dsp_ctrls[mix_index].put = tas2781_calib_start_put;
+		dsp_ctrls[mix_index].get = tasdev_nop_get;
+		dsp_ctrls[mix_index].private_value =
+			(unsigned long)ext_cali_start;
+		mix_index++;
+	}
+
 	ret = snd_soc_add_component_controls(tas_priv->codec, dsp_ctrls,
 		nr_controls < mix_index ? nr_controls : mix_index);
 
+out:
 	return ret;
 }
 
@@ -1154,16 +1238,14 @@ static int tasdevice_create_cali_ctrls(struct tasdevice_priv *tas_priv)
 {
 	struct calidata *cali_data = &tas_priv->cali_data;
 	struct tasdevice *tasdev = tas_priv->tasdevice;
-	struct soc_bytes_ext *ext_cali_data;
 	struct snd_kcontrol_new *cali_ctrls;
 	unsigned int num_controls;
-	char *cali_name;
 	int rc, i;
 
 	rc = snd_soc_add_component_controls(tas_priv->codec,
 		tasdevice_cali_controls, ARRAY_SIZE(tasdevice_cali_controls));
 	if (rc < 0) {
-		dev_err(tas_priv->dev, "%s: Add cali controls err rc = %d",
+		dev_err(tas_priv->dev, "%s: Add cali control err rc = %d",
 			__func__, rc);
 		return rc;
 	}
@@ -1197,81 +1279,10 @@ static int tasdevice_create_cali_ctrls(struct tasdevice_priv *tas_priv)
 	rc = snd_soc_add_component_controls(tas_priv->codec, cali_ctrls,
 		num_controls);
 	if (rc < 0) {
-		dev_err(tas_priv->dev, "%s: Add chip cali ctrls err rc = %d",
+		dev_err(tas_priv->dev, "%s: Add control err rc = %d",
 			__func__, rc);
 		return rc;
 	}
-
-	/* index for cali_ctrls */
-	i = 0;
-	if (tas_priv->chip_id == TAS2781)
-		num_controls = 2;
-	else
-		num_controls = 1;
-
-	/*
-	 * Alloc kcontrol via devm_kzalloc, which don't manually
-	 * free the kcontrol
-	 */
-	cali_ctrls = devm_kcalloc(tas_priv->dev, num_controls,
-		sizeof(cali_ctrls[0]), GFP_KERNEL);
-	if (!cali_ctrls)
-		return -ENOMEM;
-
-	cali_name = devm_kzalloc(tas_priv->dev, SNDRV_CTL_ELEM_ID_NAME_MAXLEN,
-		GFP_KERNEL);
-	ext_cali_data = devm_kzalloc(tas_priv->dev, sizeof(*ext_cali_data),
-		GFP_KERNEL);
-	if (!cali_name || !ext_cali_data)
-		return -ENOMEM;
-
-	strscpy(cali_name, "Speaker Calibrated Data",
-		SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
-	/* the number of calibrated data per tas2563/tas2781 */
-	cali_data->cali_dat_sz = cali_data->reg_array_sz * 4;
-	ext_cali_data->max = tas_priv->ndev *
-		(cali_data->cali_dat_sz + 1) + 1;
-	tas_priv->cali_data.total_sz = ext_cali_data->max;
-	tas_priv->cali_data.data = devm_kzalloc(tas_priv->dev,
-		ext_cali_data->max, GFP_KERNEL);
-	cali_ctrls[i].name = cali_name;
-	cali_ctrls[i].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-	cali_ctrls[i].info = snd_soc_bytes_info_ext;
-	cali_ctrls[i].get = tasdev_cali_data_get;
-	cali_ctrls[i].put = tasdev_cali_data_put;
-	cali_ctrls[i].private_value = (unsigned long)ext_cali_data;
-	i++;
-
-	cali_data->data = devm_kzalloc(tas_priv->dev, cali_data->total_sz,
-		GFP_KERNEL);
-	if (!cali_data->data)
-		return -ENOMEM;
-
-	if (tas_priv->chip_id == TAS2781) {
-		struct soc_bytes_ext *ext_cali_start;
-		char *cali_start_name;
-
-		cali_start_name = devm_kzalloc(tas_priv->dev,
-			SNDRV_CTL_ELEM_ID_NAME_MAXLEN, GFP_KERNEL);
-		ext_cali_start = devm_kzalloc(tas_priv->dev,
-			sizeof(*ext_cali_start), GFP_KERNEL);
-		if (!cali_start_name || !ext_cali_start)
-			return -ENOMEM;
-
-		strscpy(cali_start_name, "Calibration Start",
-			SNDRV_CTL_ELEM_ID_NAME_MAXLEN);
-		ext_cali_data->max = tas_priv->ndev * 9;
-		cali_ctrls[i].name = cali_start_name;
-		cali_ctrls[i].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-		cali_ctrls[i].info = snd_soc_bytes_info_ext;
-		cali_ctrls[i].put = tas2781_calib_start_put;
-		cali_ctrls[i].get = tasdev_nop_get;
-		cali_ctrls[i].private_value = (unsigned long)ext_cali_start;
-		i++;
-	}
-
-	rc = snd_soc_add_component_controls(tas_priv->codec, cali_ctrls,
-		num_controls < i ? num_controls : i);
 
 	return rc;
 }
@@ -1363,14 +1374,18 @@ out:
 		release_firmware(fmw);
 }
 
-static int tasdevice_mute(struct snd_soc_dai *dai, int mute, int stream)
+static int tasdevice_dapm_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_component *codec = dai->component;
+	struct snd_soc_component *codec = snd_soc_dapm_to_component(w->dapm);
 	struct tasdevice_priv *tas_priv = snd_soc_component_get_drvdata(codec);
+	int state = 0;
 
 	/* Codec Lock Hold */
 	mutex_lock(&tas_priv->codec_lock);
-	tasdevice_tuning_switch(tas_priv, mute);
+	if (event == SND_SOC_DAPM_PRE_PMD)
+		state = 1;
+	tasdevice_tuning_switch(tas_priv, state);
 	/* Codec Lock Release*/
 	mutex_unlock(&tas_priv->codec_lock);
 
@@ -1379,16 +1394,18 @@ static int tasdevice_mute(struct snd_soc_dai *dai, int mute, int stream)
 
 static const struct snd_soc_dapm_widget tasdevice_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("ASI", "ASI Playback", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("ASI OUT", "ASI Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_SPK("SPK", NULL),
+	SND_SOC_DAPM_AIF_OUT_E("ASI OUT", "ASI Capture", 0, SND_SOC_NOPM,
+		0, 0, tasdevice_dapm_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_SPK("SPK", tasdevice_dapm_event),
 	SND_SOC_DAPM_OUTPUT("OUT"),
-	SND_SOC_DAPM_INPUT("DMIC"),
+	SND_SOC_DAPM_INPUT("DMIC")
 };
 
 static const struct snd_soc_dapm_route tasdevice_audio_map[] = {
 	{"SPK", NULL, "ASI"},
 	{"OUT", NULL, "SPK"},
-	{"ASI OUT", NULL, "DMIC"},
+	{"ASI OUT", NULL, "DMIC"}
 };
 
 static int tasdevice_startup(struct snd_pcm_substream *substream,
@@ -1467,7 +1484,6 @@ static const struct snd_soc_dai_ops tasdevice_dai_ops = {
 	.startup = tasdevice_startup,
 	.hw_params = tasdevice_hw_params,
 	.set_sysclk = tasdevice_set_dai_sysclk,
-	.mute_stream = tasdevice_mute,
 };
 
 static struct snd_soc_dai_driver tasdevice_dai_driver[] = {
@@ -1670,7 +1686,7 @@ static int tasdevice_i2c_probe(struct i2c_client *i2c)
 	ret = tasdevice_init(tas_priv);
 	if (ret)
 		goto err;
-	tasdevice_reset(tas_priv);
+
 	ret = devm_snd_soc_register_component(tas_priv->dev,
 		&soc_codec_driver_tasdevice,
 		tasdevice_dai_driver, ARRAY_SIZE(tasdevice_dai_driver));

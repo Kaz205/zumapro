@@ -22,6 +22,7 @@
 #define TAS2781_DRV_VER			1
 #define SMARTAMP_MODULE_NAME		"tas2781"
 #define TAS2781_GLOBAL_ADDR	0x40
+#define CAL_DAT_SZ		20
 
 #define TASDEVICE_RATES			(SNDRV_PCM_RATE_44100 |\
 	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |\
@@ -156,7 +157,6 @@ struct calidata {
 	unsigned long total_sz;
 	unsigned int *reg_array;
 	unsigned int reg_array_sz;
-	unsigned int cali_dat_sz;
 };
 
 struct tasdevice_priv {

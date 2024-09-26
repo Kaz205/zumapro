@@ -2155,12 +2155,11 @@ static void tasdev_load_calibrated_data(struct tasdevice_priv *priv, int i)
 {
 	struct tasdevice_fw *cal_fmw = priv->tasdevice[i].cali_data_fmw;
 	struct calidata *cali_data = &priv->cali_data;
-	unsigned char *data = &cali_data->data[1];
+	unsigned char *data = cali_data->data;
 	struct tasdevice_calibration *cal;
-	int k = i * (cali_data->cali_dat_sz + 1);
+	int k = i * (CAL_DAT_SZ + 1);
 	int j, rc;
 
-	/* Load the calibrated data from cal bin file */
 	if (!priv->is_user_space_calidata && cal_fmw) {
 		cal = cal_fmw->calibrations;
 
