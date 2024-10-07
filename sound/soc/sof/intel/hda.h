@@ -489,6 +489,15 @@ struct sof_intel_hda_dev {
 
 	int boot_iteration;
 
+	/*
+	 * DMA buffers for base firmware download. By default the buffers are
+	 * allocated once and kept through the lifetime of the driver.
+	 * See module parameter: persistent_cl_buffer
+	 */
+	struct snd_dma_buffer cl_dmab;
+	bool cl_dmab_contains_basefw;
+	struct snd_dma_buffer iccmax_dmab;
+
 	struct hda_bus hbus;
 
 	/* hw config */
@@ -686,9 +695,9 @@ int hda_dsp_cl_boot_firmware_iccmax(struct snd_sof_dev *sdev);
 int hda_cl_copy_fw(struct snd_sof_dev *sdev, struct hdac_ext_stream *hext_stream);
 struct hdac_ext_stream *hda_cl_stream_prepare(struct snd_sof_dev *sdev, unsigned int format,
 					      unsigned int size, struct snd_dma_buffer *dmab,
-					      int direction);
+					      bool persistent_buffer, int direction);
 int hda_cl_cleanup(struct snd_sof_dev *sdev, struct snd_dma_buffer *dmab,
-		   struct hdac_ext_stream *hext_stream);
+			bool persistent_buffer, struct hdac_ext_stream *hext_stream);
 int cl_dsp_init(struct snd_sof_dev *sdev, int stream_tag, bool imr_boot);
 #define HDA_CL_STREAM_FORMAT 0x40
 
