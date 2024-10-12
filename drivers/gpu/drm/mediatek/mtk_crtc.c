@@ -481,30 +481,29 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
 	state = to_mtk_crtc_state(mtk_crtc->base.state);
 
 	state->pending_config = false;
-	if (!mtk_crtc->config_updating) {
-		if (mtk_crtc->pending_planes) {
-			for (i = 0; i < mtk_crtc->layer_nr; i++) {
-				struct drm_plane *plane = &mtk_crtc->planes[i];
-				struct mtk_plane_state *plane_state;
 
-				plane_state = to_mtk_plane_state(plane->state);
+	if (mtk_crtc->pending_planes) {
+		for (i = 0; i < mtk_crtc->layer_nr; i++) {
+			struct drm_plane *plane = &mtk_crtc->planes[i];
+			struct mtk_plane_state *plane_state;
 
-				plane_state->pending.config = false;
-			}
-			mtk_crtc->pending_planes = false;
+			plane_state = to_mtk_plane_state(plane->state);
+
+			plane_state->pending.config = false;
 		}
+		mtk_crtc->pending_planes = false;
+	}
 
-		if (mtk_crtc->pending_async_planes) {
-			for (i = 0; i < mtk_crtc->layer_nr; i++) {
-				struct drm_plane *plane = &mtk_crtc->planes[i];
-				struct mtk_plane_state *plane_state;
+	if (mtk_crtc->pending_async_planes) {
+		for (i = 0; i < mtk_crtc->layer_nr; i++) {
+			struct drm_plane *plane = &mtk_crtc->planes[i];
+			struct mtk_plane_state *plane_state;
 
-				plane_state = to_mtk_plane_state(plane->state);
+			plane_state = to_mtk_plane_state(plane->state);
 
-				plane_state->pending.async_config = false;
-			}
-			mtk_crtc->pending_async_planes = false;
+			plane_state->pending.async_config = false;
 		}
+		mtk_crtc->pending_async_planes = false;
 	}
 
 	if (mtk_crtc->sec_cmdq_working) {
