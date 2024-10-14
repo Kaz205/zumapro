@@ -89,11 +89,11 @@ struct seninf_ctx {
 	struct seninf_core *core;
 	struct list_head list;
 
-	int port;
-	int port_a;
-	int port_b;
-	int port_num;
-	int num_data_lanes;
+	u32 port;
+	u32 port_a;
+	u32 port_b;
+	u32 port_num;
+	u32 num_data_lanes;
 	s64 mipi_pixel_rate;
 	s64 buffered_pixel_rate;
 	s64 customized_pixel_rate;
@@ -104,12 +104,12 @@ struct seninf_ctx {
 	unsigned int is_test_model:4;
 	unsigned int is_secure:1;
 	unsigned int sec_info_addr;
-	int seninf_idx;
+	u32 seninf_idx;
 	int pad2cam[PAD_MAXCNT];
 
 	/* remote sensor */
 	struct v4l2_subdev *sensor_sd;
-	int sensor_pad_idx;
+	u32 sensor_pad_idx;
 
 	/* provided by sensor */
 	struct seninf_vcinfo vcinfo;

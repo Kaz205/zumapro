@@ -574,7 +574,12 @@ static int mtk_cam_raw_try_ctrl(struct v4l2_ctrl *ctrl)
 	struct device *dev;
 	struct mtk_raw_pipeline *pipeline;
 	struct mtk_cam_resource *res_user;
-	struct mtk_cam_resource_config res_cfg;
+	struct mtk_cam_resource_config res_cfg = {
+		.interval = {
+			.numerator = 1,
+			.denominator = 30
+		},
+	};
 	int ret = 0;
 
 	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
@@ -2444,8 +2449,6 @@ static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 	unsigned int i;
 
 	pipe = container_of(sd, struct mtk_raw_pipeline, subdev);
-	if (!pipe)
-		return -1;
 	raw = pipe->raw;
 	if (!raw)
 		return -1;
@@ -2527,9 +2530,15 @@ static bool mtk_raw_try_fmt(struct v4l2_subdev *sd,
 
 static struct v4l2_mbus_framefmt*
 mtk_raw_pipeline_get_fmt(struct mtk_raw_pipeline *pipe,
-			 struct v4l2_subdev_state *sd_state, int padid,
+			 struct v4l2_subdev_state *sd_state, u32 padid,
 			 int which)
 {
+	struct mtk_raw *raw = pipe->raw;
+
+	if (padid >= MTK_RAW_PIPELINE_PADS_NUM) {
+		dev_err(raw->cam_dev, "Wrong pad id:%d\n", padid);
+		return NULL;
+	}
 	/* format invalid and return default format */
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
 		return v4l2_subdev_get_try_format(&pipe->subdev, sd_state, padid);
@@ -2542,9 +2551,15 @@ mtk_raw_pipeline_get_fmt(struct mtk_raw_pipeline *pipe,
 
 static struct v4l2_rect*
 mtk_raw_pipeline_get_selection(struct mtk_raw_pipeline *pipe,
-			       struct v4l2_subdev_state *sd_state, int pad,
+			       struct v4l2_subdev_state *sd_state, u32 pad,
 			       int which)
 {
+	struct mtk_raw *raw = pipe->raw;
+
+	if (pad >= MTK_RAW_PIPELINE_PADS_NUM) {
+		dev_err(raw->cam_dev, "Wrong pad id:%d\n", pad);
+		return NULL;
+	}
 	/* format invalid and return default format */
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
 		return v4l2_subdev_get_try_crop(&pipe->subdev, sd_state, pad);
@@ -2957,6 +2972,13 @@ static int mtk_raw_set_src_pad_fmt(struct v4l2_subdev *sd,
 
 	if (ret)
 		return ret;
+
+	if (!source_fmt) {
+		dev_info(dev,
+			 "%s(%d): Set fmt pad:%d(%s), no s_fmt on source pad\n",
+			 __func__, fmt->which, fmt->pad, node->desc.name);
+		return -EINVAL;
+	}
 
 	dev_dbg(dev,
 		"%s(%d): s_fmt to pad:%d(%s), user(0x%x/%d/%d) driver(0x%x/%d/%d)\n",
@@ -4812,6 +4834,9 @@ static int mtk_raw_pipeline_register(unsigned int id, struct device *dev,
 	return 0;
 
 fail_unregister_video:
+	if (!i)
+		return ret;
+
 	for (i = i - 1; i >= 0; i--)
 		mtk_cam_video_unregister(pipe->vdev_nodes + i);
 

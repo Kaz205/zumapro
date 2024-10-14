@@ -638,19 +638,27 @@ static ssize_t exp_read(struct file *file, char __user *user_buf,
 	struct mtk_cam_debug_fs *debug_fs;
 	size_t read_count;
 
-	if (!dev)
+	if (!dev) {
 		pr_debug("%s: dev can't be null\n", __func__);
+		return 0;
+	}
 
 	cam = (struct mtk_cam_device *)dev_get_drvdata(dev);
-	if (!cam)
+	if (!cam) {
 		dev_dbg(dev, "%s: cam can't be null\n", __func__);
+		return 0;
+	}
 
 	debug_fs = cam->debug_fs;
-	if (!debug_fs)
+	if (!debug_fs) {
 		dev_dbg(dev, "%s: debug_fs can't be null\n", __func__);
+		return 0;
+	}
 
-	if (!debug_fs->exp_dump_buf)
+	if (!debug_fs->exp_dump_buf) {
 		dev_dbg(dev, "%s: dump buf can't be null\n", __func__);
+		return 0;
+	}
 
 	/* If no dump, return 0 byte read directly */
 	if (!mtk_cam_debug_has_exp_dump(debug_fs))
@@ -923,7 +931,7 @@ static void mtk_cam_exceptoin_detect_work(struct work_struct *work)
 	struct mtk_cam_request *req = mtk_cam_s_data_get_req(s_data);
 	struct mtk_cam_ctx *ctx = mtk_cam_s_data_get_ctx(s_data);
 	int ret;
-	bool streamoff;
+	bool streamoff = false;
 
 	ret = wait_event_freezable_timeout(ctx->cam->debug_exception_waitq,
 					   mtk_cam_exceptoin_is_job_done(s_data, &streamoff),
@@ -1149,7 +1157,6 @@ mtk_cam_debug_seninf_dump(struct mtk_cam_request_stream_data *s_data)
 {
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_seninf_dump_work *dump_work;
-	int err = 0;
 
 	ctx = mtk_cam_s_data_get_ctx(s_data);
 	if (!ctx) {
@@ -1177,10 +1184,7 @@ mtk_cam_debug_seninf_dump(struct mtk_cam_request_stream_data *s_data)
 
 	dump_work = kmalloc(sizeof(*dump_work), GFP_ATOMIC);
 	if (!dump_work)
-		err = -ENOMEM;
-
-	if (err)
-		dev_info(ctx->cam->dev, "failed to alloc dump_work\n");
+		return;
 
 	dump_work->seninf = ctx->seninf;
 	INIT_WORK(&dump_work->work, mtk_cam_req_seninf_dump_work);

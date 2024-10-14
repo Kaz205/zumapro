@@ -163,7 +163,6 @@ struct tasdev_blk_data {
 };
 
 struct tasdevice_config_info {
-	char conf_name[64];
 	unsigned int nblocks;
 	unsigned int real_nblocks;
 	unsigned char active_dev;

@@ -1240,11 +1240,6 @@ void btrtl_set_quirks(struct hci_dev *hdev, struct btrtl_device_info *btrtl_dev)
 	/* Enable WBS supported for the specific Realtek devices. */
 	switch (btrtl_dev->project_id) {
 	case CHIP_ID_8822C:
-		/* Disallow RTL8822 to remote wakeup, in order to enter
-		 * global suspend and save power.
-		 */
-		set_bit(HCI_QUIRK_DISABLE_REMOTE_WAKE, &hdev->quirks);
-		fallthrough;
 	case CHIP_ID_8852A:
 	case CHIP_ID_8852B:
 	case CHIP_ID_8852C:
@@ -1264,6 +1259,20 @@ void btrtl_set_quirks(struct hci_dev *hdev, struct btrtl_device_info *btrtl_dev)
 		rtl_dev_dbg(hdev, "WBS supported not enabled.");
 		break;
 	}
+
+	/* Disallow RTL8822 to remote wakeup, in order to enter
+	 * global suspend and save power.
+	 */
+	if (btrtl_dev->project_id == CHIP_ID_8822C)
+		set_bit(HCI_QUIRK_DISABLE_REMOTE_WAKE, &hdev->quirks);
+
+	/* Force RTL8852A/RTL8852B to enable remote wakeup in order to
+	 * prevent it from resetting itself and taking longer to resume
+	 * from suspend
+	 */
+	if (btrtl_dev->project_id == CHIP_ID_8852A ||
+	    btrtl_dev->project_id == CHIP_ID_8852B)
+		set_bit(HCI_QUIRK_FORCE_REMOTE_WAKE, &hdev->quirks);
 
 	if (!btrtl_dev->ic_info)
 		return;
@@ -1428,6 +1437,33 @@ int btrtl_get_uart_settings(struct hci_dev *hdev,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(btrtl_get_uart_settings);
+
+int btrtl_usb_recv_isoc(u16 pos, u8 *data, u8 *p, int len,
+			u16 wMaxPacketSize)
+{
+	u8 *prev;
+
+	if (pos >= HCI_SCO_HDR_SIZE && pos >= wMaxPacketSize &&
+	    len == wMaxPacketSize && !(pos % wMaxPacketSize) &&
+	    wMaxPacketSize >= 10 && p[0] == data[0] && p[1] == data[1]) {
+		prev = data + (pos - wMaxPacketSize);
+
+		/* Detect the sco data of usb isoc pkt duplication. */
+		if (!memcmp(p + 2, prev + 2, 8))
+			return -EILSEQ;
+
+		if (wMaxPacketSize >= 12 &&
+		    p[2] == prev[6] && p[3] == prev[7] &&
+		    p[4] == prev[4] && p[5] == prev[5] &&
+		    p[6] == prev[10] && p[7] == prev[11] &&
+		    p[8] == prev[8] && p[9] == prev[9]) {
+			return -EILSEQ;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(btrtl_usb_recv_isoc);
 
 MODULE_AUTHOR("Daniel Drake <drake@endlessm.com>");
 MODULE_DESCRIPTION("Bluetooth support for Realtek devices ver " VERSION);

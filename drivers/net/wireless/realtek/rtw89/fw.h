@@ -2173,9 +2173,15 @@ enum rtw89_btc_btf_set {
 	SET_BT_IGNORE_WLAN_ACT,
 	SET_BT_TX_PWR,
 	SET_BT_LNA_CONSTRAIN,
-	SET_BT_GOLDEN_RX_RANGE,
+	SET_BT_QUERY_DEV_LIST,
+	SET_BT_QUERY_DEV_INFO,
 	SET_BT_PSD_REPORT,
 	SET_H2C_TEST,
+	SET_IOFLD_RF,
+	SET_IOFLD_BB,
+	SET_IOFLD_MAC,
+	SET_IOFLD_SCBD,
+	SET_H2C_MACRO,
 	SET_MAX1,
 };
 
@@ -2189,6 +2195,10 @@ enum rtw89_btc_cxdrvinfo {
 	CXDRVINFO_CTRL,
 	CXDRVINFO_SCAN,
 	CXDRVINFO_TRX,  /* WL traffic to WL fw */
+	CXDRVINFO_TXPWR,
+	CXDRVINFO_FDDT,
+	CXDRVINFO_MLO,
+	CXDRVINFO_OSI,
 	CXDRVINFO_MAX,
 };
 
@@ -2215,7 +2225,45 @@ struct rtw89_h2c_cxhdr {
 	u8 len;
 } __packed;
 
+struct rtw89_h2c_cxhdr_v7 {
+	u8 type;
+	u8 ver;
+	u8 len;
+} __packed;
+
+struct rtw89_h2c_cxctrl_v7 {
+	struct rtw89_h2c_cxhdr_v7 hdr;
+	struct rtw89_btc_ctrl_v7 ctrl;
+} __packed;
+
 #define H2C_LEN_CXDRVHDR sizeof(struct rtw89_h2c_cxhdr)
+#define H2C_LEN_CXDRVHDR_V7 sizeof(struct rtw89_h2c_cxhdr_v7)
+
+struct rtw89_btc_wl_role_info_v8_u8 {
+	u8 connect_cnt;
+	u8 link_mode;
+	u8 link_mode_chg;
+	u8 p2p_2g;
+
+	u8 pta_req_band;
+	u8 dbcc_en;
+	u8 dbcc_chg;
+	u8 dbcc_2g_phy;
+
+	struct rtw89_btc_wl_rlink rlink[RTW89_BE_BTC_WL_MAX_ROLE_NUMBER][RTW89_MAC_NUM];
+} __packed;
+
+struct rtw89_btc_wl_role_info_v8_u32 {
+	__le32 role_map;
+	__le32 mrole_type;
+	__le32 mrole_noa_duration;
+} __packed;
+
+struct rtw89_h2c_cxrole_v8 {
+	struct rtw89_h2c_cxhdr hdr;
+	struct rtw89_btc_wl_role_info_v8_u8 _u8;
+	struct rtw89_btc_wl_role_info_v8_u32 _u32;
+} __packed;
 
 struct rtw89_h2c_cxinit {
 	struct rtw89_h2c_cxhdr hdr;
@@ -2248,6 +2296,11 @@ struct rtw89_h2c_cxinit {
 #define RTW89_H2C_CXINIT_INFO_DBCC_EN BIT(2)
 #define RTW89_H2C_CXINIT_INFO_CX_OTHER BIT(3)
 #define RTW89_H2C_CXINIT_INFO_BT_ONLY BIT(4)
+
+struct rtw89_h2c_cxinit_v7 {
+	struct rtw89_h2c_cxhdr_v7 hdr;
+	struct rtw89_btc_init_info_v7 init;
+} __packed;
 
 static inline void RTW89_SET_FWCMD_CXROLE_CONNECT_CNT(void *cmd, u8 val)
 {
@@ -3655,13 +3708,16 @@ int rtw89_fw_h2c_rssi_offload(struct rtw89_dev *rtwdev,
 			      struct rtw89_rx_phy_ppdu *phy_ppdu);
 int rtw89_fw_h2c_tp_offload(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
 int rtw89_fw_h2c_ra(struct rtw89_dev *rtwdev, struct rtw89_ra_info *ra, bool csi);
-int rtw89_fw_h2c_cxdrv_init(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_role(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_role_v1(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_role_v2(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_ctrl(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_trx(struct rtw89_dev *rtwdev);
-int rtw89_fw_h2c_cxdrv_rfk(struct rtw89_dev *rtwdev);
+int rtw89_fw_h2c_cxdrv_init(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_init_v7(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_role(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_role_v1(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_role_v2(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_role_v8(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_ctrl(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_ctrl_v7(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_trx(struct rtw89_dev *rtwdev, u8 type);
+int rtw89_fw_h2c_cxdrv_rfk(struct rtw89_dev *rtwdev, u8 type);
 int rtw89_fw_h2c_del_pkt_offload(struct rtw89_dev *rtwdev, u8 id);
 int rtw89_fw_h2c_add_pkt_offload(struct rtw89_dev *rtwdev, u8 *id,
 				 struct sk_buff *skb_ofld);

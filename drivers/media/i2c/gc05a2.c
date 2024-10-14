@@ -114,8 +114,6 @@ struct gc05a2_reg_list {
 static const struct cci_reg_sequence mode_2592x1944[] = {
 	/* system */
 	{ CCI_REG8(0x0135), 0x01 },
-
-	/* pre_setting */
 	{ CCI_REG8(0x0084), 0x21 },
 	{ CCI_REG8(0x0d05), 0xcc },
 	{ CCI_REG8(0x0218), 0x00 },
@@ -177,8 +175,7 @@ static const struct cci_reg_sequence mode_2592x1944[] = {
 	{ CCI_REG8(0x0350), 0x01 },
 	{ CCI_REG8(0x0353), 0x00 },
 	{ CCI_REG8(0x0354), 0x08 },
-	{ CCI_REG8(0x034c), 0x0a },
-	{ CCI_REG8(0x034d), 0x20 },
+	{ CCI_REG16(0x034c), 2592 }, /* Width */
 	{ CCI_REG8(0x021f), 0x14 },
 
 	/* MIPI */
@@ -200,16 +197,12 @@ static const struct cci_reg_sequence mode_2592x1944[] = {
 	{ CCI_REG8(0x0d95), 0x0d },
 	{ CCI_REG8(0x0d99), 0x0b },
 	{ CCI_REG8(0x0084), 0x01 },
-
-	/* OUT */
 	{ CCI_REG8(0x0110), 0x01 },
 };
 
 static const struct cci_reg_sequence mode_1280x720[] = {
 	/* system */
 	{ CCI_REG8(0x0135), 0x05 },
-
-	/*pre_setting*/
 	{ CCI_REG8(0x0084), 0x21 },
 	{ CCI_REG8(0x0d05), 0xcc },
 	{ CCI_REG8(0x0218), 0x80 },
@@ -271,8 +264,7 @@ static const struct cci_reg_sequence mode_1280x720[] = {
 	{ CCI_REG8(0x0350), 0x01 },
 	{ CCI_REG8(0x0353), 0x00 },
 	{ CCI_REG8(0x0354), 0x0c },
-	{ CCI_REG8(0x034c), 0x05 },
-	{ CCI_REG8(0x034d), 0x00 },
+	{ CCI_REG16(0x034c), 1280 }, /* Width */
 	{ CCI_REG8(0x021f), 0x14 },
 
 	/* MIPI */
@@ -294,8 +286,6 @@ static const struct cci_reg_sequence mode_1280x720[] = {
 	{ CCI_REG8(0x0d95), 0x05 },
 	{ CCI_REG8(0x0d99), 0x06 },
 	{ CCI_REG8(0x0084), 0x01 },
-
-	/* OUT */
 	{ CCI_REG8(0x0110), 0x01 },
 };
 
@@ -315,13 +305,9 @@ static const struct cci_reg_sequence mode_table_common[] = {
 	{ CCI_REG8(0x031c), 0xe0 },
 	{ CCI_REG8(0x0d82), 0x14 },
 	{ CCI_REG8(0x0dd1), 0x56 },
-
-	/* gate_mode */
 	{ CCI_REG8(0x0af4), 0x01 },
 	{ CCI_REG8(0x0002), 0x10 },
 	{ CCI_REG8(0x00c3), 0x34 },
-
-	/* auto load start */
 	{ CCI_REG8(0x00c4), 0x00 },
 	{ CCI_REG8(0x00c5), 0x01 },
 	{ CCI_REG8(0x0af6), 0x00 },
@@ -368,8 +354,6 @@ static const struct cci_reg_sequence mode_table_common[] = {
 	{ CCI_REG8(0x0a90), 0x03 },
 	{ CCI_REG8(0x0a91), 0x0e },
 	{ CCI_REG8(0x0a94), 0x80 },
-
-	/* standby */
 	{ CCI_REG8(0x0af6), 0x20 },
 	{ CCI_REG8(0x0b00), 0x91 },
 	{ CCI_REG8(0x0b01), 0x17 },
@@ -383,8 +367,6 @@ static const struct cci_reg_sequence mode_table_common[] = {
 	{ CCI_REG8(0x0aea), 0x02 },
 	{ CCI_REG8(0x0ae8), 0x53 },
 	{ CCI_REG8(0x0ae8), 0x43 },
-
-	/* gain_partition */
 	{ CCI_REG8(0x0af6), 0x30 },
 	{ CCI_REG8(0x0b00), 0x08 },
 	{ CCI_REG8(0x0b01), 0x0f },
@@ -516,8 +498,6 @@ static const struct cci_reg_sequence mode_table_common[] = {
 	{ CCI_REG8(0x0207), 0x04 },
 	{ CCI_REG8(0x02c2), 0x10 },
 	{ CCI_REG8(0x02c5), 0x09 },
-
-	/* auto load CH_GAIN */
 	{ CCI_REG8(0x0aa1), 0x15 },
 	{ CCI_REG8(0x0aa2), 0x50 },
 	{ CCI_REG8(0x0aa3), 0x00 },
@@ -545,8 +525,6 @@ static const struct cci_reg_sequence mode_table_common[] = {
 	{ CCI_REG8(0x0043), 0x0a },
 	{ CCI_REG8(0x009d), 0x08 },
 	{ CCI_REG8(0x0236), 0x40 },
-
-	/* gain */
 	{ CCI_REG8(0x0204), 0x04 },
 	{ CCI_REG8(0x0205), 0x00 },
 	{ CCI_REG8(0x02b3), 0x00 },
@@ -881,7 +859,8 @@ static int gc05a2_test_pattern(struct gc05a2 *gc05a2, u32 pattern_menu)
 			break;
 
 		default:
-			pattern = 0x00;
+			/* Set pattern to 0, it's a safe default. */
+			pattern = 0;
 			break;
 		}
 
@@ -1114,14 +1093,12 @@ static int gc05a2_parse_fwnode(struct gc05a2 *gc05a2)
 	endpoint =
 		fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), 0, 0,
 						FWNODE_GRAPH_ENDPOINT_NEXT);
-	if (!endpoint) {
-		dev_err(dev, "endpoint node not found\n");
-		return -EINVAL;
-	}
+	if (!endpoint)
+		return dev_err_probe(dev, -EINVAL, "Missing endpoint node\n");
 
 	ret = v4l2_fwnode_endpoint_alloc_parse(endpoint, &bus_cfg);
 	if (ret) {
-		dev_err(dev, "parsing endpoint node failed\n");
+		dev_err_probe(dev, ret, "parsing endpoint node failed\n");
 		goto done;
 	}
 
@@ -1298,14 +1275,14 @@ static int gc05a2_probe(struct i2c_client *client)
 
 	ret = media_entity_pads_init(&gc05a2->sd.entity, 1, &gc05a2->pad);
 	if (ret < 0) {
-		dev_err(dev, "could not register media entity\n");
+		dev_err_probe(dev, ret, "could not register media entity\n");
 		goto err_v4l2_ctrl_handler_free;
 	}
 
 	gc05a2->sd.state_lock = gc05a2->ctrls.lock;
 	ret = v4l2_subdev_init_finalize(&gc05a2->sd);
 	if (ret < 0) {
-		dev_err(dev, "v4l2 subdev init error: %d\n", ret);
+		dev_err_probe(dev, ret, "v4l2 subdev init error\n");
 		goto err_media_entity_cleanup;
 	}
 
@@ -1316,7 +1293,7 @@ static int gc05a2_probe(struct i2c_client *client)
 
 	ret = v4l2_async_register_subdev_sensor(&gc05a2->sd);
 	if (ret < 0) {
-		dev_err(dev, "could not register v4l2 device\n");
+		dev_err_probe(dev, ret, "could not register v4l2 device\n");
 		goto err_rpm;
 	}
 

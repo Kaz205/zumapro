@@ -1643,6 +1643,7 @@ static int mtk_imgsys_of_rproc(struct mtk_imgsys_dev *imgsys,
 static int mtk_imgsys_probe(struct platform_device *pdev)
 {
 	struct mtk_imgsys_dev *imgsys_dev;
+	struct device **larb_devs;
 	const struct cust_data *data;
 	struct device_link *link;
 	int larbs_num, i;
@@ -1686,19 +1687,27 @@ static int mtk_imgsys_probe(struct platform_device *pdev)
 			dev_info(imgsys_dev->dev, "Failed to set DMA segment size\n");
 	}
 
-	if (mtk_imgsys_of_rproc(imgsys_dev, pdev))
-		return -EFAULT;
+	if (mtk_imgsys_of_rproc(imgsys_dev, pdev)) {
+		ret = -EFAULT;
+		goto err_free_dev_alloc;
+	}
 
 	imgsys_dev->scp_pdev = mtk_hcp_get_plat_device(pdev);
 	if (!imgsys_dev->scp_pdev) {
 		dev_info(imgsys_dev->dev,
 			 "failed to get hcp device\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_free_dev_alloc;
 	}
 
 	larbs_num = of_count_phandle_with_args(pdev->dev.of_node,
 					       "mediatek,larbs", NULL);
 	dev_dbg(imgsys_dev->dev, "%d larbs to be added", larbs_num);
+	larb_devs = devm_kzalloc(&pdev->dev, sizeof(larb_devs) * larbs_num, GFP_KERNEL);
+	if (!larb_devs) {
+		ret = -ENOMEM;
+		goto err_free_dev_alloc;
+	}
 	for (i = 0; i < larbs_num; i++) {
 		struct device_node *larb_node;
 		struct platform_device *larb_pdev;
@@ -1723,7 +1732,11 @@ static int mtk_imgsys_probe(struct platform_device *pdev)
 				       DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 		if (!link)
 			dev_info(imgsys_dev->dev, "unable to link SMI LARB idx %d\n", i);
+
+		larb_devs[i] = &larb_pdev->dev;
 	}
+	imgsys_dev->larbs = larb_devs;
+	imgsys_dev->larbs_num = larbs_num;
 
 	atomic_set(&imgsys_dev->imgsys_enqueue_cnt, 0);
 	atomic_set(&imgsys_dev->imgsys_user_cnt, 0);
@@ -1735,7 +1748,7 @@ static int mtk_imgsys_probe(struct platform_device *pdev)
 	ret = mtk_imgsys_hw_working_buf_pool_init(imgsys_dev);
 	if (ret) {
 		dev_info(&pdev->dev, "working buffer init failed(%d)\n", ret);
-		return ret;
+		goto err_free_larb_alloc;
 	}
 
 	ret = mtk_imgsys_dev_v4l2_init(imgsys_dev);
@@ -1765,7 +1778,7 @@ static int mtk_imgsys_probe(struct platform_device *pdev)
 	ret = register_pm_notifier(&imgsys_notifier_block);
 	if (ret) {
 		dev_info(imgsys_dev->dev, "failed to register notifier block.\n");
-		return ret;
+		goto err_release_deinit_v4l2;
 	}
 #endif
 
@@ -1781,6 +1794,10 @@ err_release_deinit_v4l2:
 	mtk_imgsys_dev_v4l2_release(imgsys_dev);
 err_release_working_buf_pool:
 	mtk_imgsys_hw_working_buf_pool_release(imgsys_dev);
+err_free_larb_alloc:
+	devm_kfree(&pdev->dev, imgsys_dev->larbs);
+err_free_dev_alloc:
+	devm_kfree(&pdev->dev, imgsys_dev);
 	return ret;
 }
 
@@ -1795,7 +1812,8 @@ static int mtk_imgsys_remove(struct platform_device *pdev)
 	mtk_imgsys_hw_working_buf_pool_release(imgsys_dev);
 	mutex_destroy(&imgsys_dev->hw_op_lock);
 	imgsys_cmdq_release(imgsys_dev);
-
+	devm_kfree(&pdev->dev, imgsys_dev->larbs);
+	devm_kfree(&pdev->dev, imgsys_dev);
 	return 0;
 }
 

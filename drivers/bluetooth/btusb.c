@@ -531,6 +531,8 @@ static const struct usb_device_id blacklist_table[] = {
 						     BTUSB_WIDEBAND_SPEECH },
 	{ USB_DEVICE(0x13d3, 0x3591), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
+	{ USB_DEVICE(0x0489, 0xe123), .driver_info = BTUSB_REALTEK |
+						     BTUSB_WIDEBAND_SPEECH },
 	{ USB_DEVICE(0x0489, 0xe125), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
 
@@ -1157,6 +1159,7 @@ static int btusb_recv_isoc(struct btusb_data *data, void *buffer, int count)
 	struct sk_buff *skb;
 	unsigned long flags;
 	int err = 0;
+	u16 wMaxPacketSize = le16_to_cpu(data->isoc_rx_ep->wMaxPacketSize);
 
 	spin_lock_irqsave(&data->rxlock, flags);
 	skb = data->sco_skb;
@@ -1176,6 +1179,18 @@ static int btusb_recv_isoc(struct btusb_data *data, void *buffer, int count)
 		}
 
 		len = min_t(uint, hci_skb_expect(skb), count);
+
+		/* Gaps in audio could be heard while streaming WBS using USB
+		 * alt settings 3, since this is only used with RTK chips so
+		 * let vendor function detect it.
+		 */
+		if (test_bit(BTUSB_USE_ALT3_FOR_WBS, &data->flags)) {
+			err = btrtl_usb_recv_isoc(skb->len, skb->data, buffer,
+							len, wMaxPacketSize);
+			if (err)
+				break;
+		}
+
 		skb_put_data(skb, buffer, len);
 
 		count -= len;
@@ -4671,14 +4686,19 @@ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
 	 */
 	if (test_bit(BTUSB_WAKEUP_AUTOSUSPEND, &data->flags)) {
 		if (PMSG_IS_AUTO(message) &&
-		    device_can_wakeup(&data->udev->dev))
+		    device_can_wakeup(&data->udev->dev)) {
 			data->udev->do_remote_wakeup = 1;
-		else if (!PMSG_IS_AUTO(message) &&
-			 (!device_may_wakeup(&data->udev->dev) ||
-			  test_bit(HCI_QUIRK_DISABLE_REMOTE_WAKE,
-				   &data->hdev->quirks))) {
-			data->udev->do_remote_wakeup = 0;
-			data->udev->reset_resume = 1;
+		} else if (!PMSG_IS_AUTO(message)) {
+			if (test_bit(HCI_QUIRK_FORCE_REMOTE_WAKE,
+				     &data->hdev->quirks)) {
+				data->udev->do_remote_wakeup = 1;
+				data->udev->reset_resume = 0;
+			} else if (!device_may_wakeup(&data->udev->dev) ||
+				   test_bit(HCI_QUIRK_DISABLE_REMOTE_WAKE,
+					    &data->hdev->quirks)) {
+				data->udev->do_remote_wakeup = 0;
+				data->udev->reset_resume = 1;
+			}
 		}
 	}
 

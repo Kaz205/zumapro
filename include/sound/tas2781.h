@@ -22,7 +22,6 @@
 #define TAS2781_DRV_VER			1
 #define SMARTAMP_MODULE_NAME		"tas2781"
 #define TAS2781_GLOBAL_ADDR	0x40
-
 #define TASDEVICE_RATES			(SNDRV_PCM_RATE_44100 |\
 	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |\
 	SNDRV_PCM_RATE_88200)
@@ -50,9 +49,9 @@
 #define TASDEVICE_I2CChecksum		TASDEVICE_REG(0x0, 0x0, 0x7E)
 
 /* XM_340 */
-#define	TASDEVICE_XM_A1_REG	TASDEVICE_REG(0x64, 0x02, 0x4c)
+#define	TASDEVICE_XM_A1_REG	TASDEVICE_REG(0x64, 0x63, 0x3c)
 /* XM_341 */
-#define	TASDEVICE_XM_A2_REG	TASDEVICE_REG(0x64, 0x02, 0x64)
+#define	TASDEVICE_XM_A2_REG	TASDEVICE_REG(0x64, 0x63, 0x38)
 
 /* Volume control */
 #define TAS2563_DVC_LVL			TASDEVICE_REG(0x00, 0x02, 0x0C)
@@ -62,10 +61,6 @@
 
 #define TAS2563_IDLE		TASDEVICE_REG(0x00, 0x00, 0x3e)
 #define TAS2563_PRM_R0_REG		TASDEVICE_REG(0x00, 0x0f, 0x34)
-#define TAS2563_PRM_R0_LOW_REG		TASDEVICE_REG(0x00, 0x0f, 0x48)
-#define TAS2563_PRM_INVR0_REG		TASDEVICE_REG(0x00, 0x0f, 0x40)
-#define TAS2563_PRM_POW_REG		TASDEVICE_REG(0x00, 0x0d, 0x3c)
-#define TAS2563_PRM_TLIMIT_REG		TASDEVICE_REG(0x00, 0x10, 0x14)
 
 #define TAS2563_RUNTIME_RE_REG_TF	TASDEVICE_REG(0x64, 0x02, 0x70)
 #define TAS2563_RUNTIME_RE_REG		TASDEVICE_REG(0x64, 0x02, 0x48)
@@ -85,12 +80,6 @@
 #define TAS2563_TE_AT_REG		TASDEVICE_REG(0x00, 0x0f, 0x68)
 /* prm_TE_1_Beta1 */
 #define TAS2563_TE_DT_REG		TASDEVICE_REG(0x00, 0x0f, 0x70)
-
-#define TAS2781_PRM_R0_REG		TASDEVICE_REG(0x00, 0x17, 0x74)
-#define TAS2781_PRM_R0_LOW_REG		TASDEVICE_REG(0x00, 0x18, 0x0c)
-#define TAS2781_PRM_INVR0_REG		TASDEVICE_REG(0x00, 0x18, 0x14)
-#define TAS2781_PRM_POW_REG		TASDEVICE_REG(0x00, 0x13, 0x70)
-#define TAS2781_PRM_TLIMIT_REG		TASDEVICE_REG(0x00, 0x18, 0x7c)
 
 #define TAS2781_PRM_INT_MASK_REG	TASDEVICE_REG(0x00, 0x00, 0x3b)
 #define TAS2781_PRM_CLK_CFG_REG		TASDEVICE_REG(0x00, 0x00, 0x5c)
@@ -135,7 +124,7 @@ struct bulk_reg_val {
 };
 
 struct tasdevice {
-	struct bulk_reg_val *cali_data_restore;
+	struct bulk_reg_val *cali_data_backup;
 	struct tasdevice_fw *cali_data_fmw;
 	unsigned int dev_addr;
 	unsigned int err_code;
@@ -146,22 +135,23 @@ struct tasdevice {
 	bool is_loaderr;
 };
 
-struct tasdevice_irqinfo {
-	int irq_gpio;
-	int irq;
+struct cali_reg {
+	unsigned int r0_reg;
+	unsigned int r0_low_reg;
+	unsigned int invr0_reg;
+	unsigned int pow_reg;
+	unsigned int tlimit_reg;
 };
 
 struct calidata {
 	unsigned char *data;
 	unsigned long total_sz;
-	unsigned int *reg_array;
-	unsigned int reg_array_sz;
-	unsigned int cali_dat_sz;
+	struct cali_reg cali_reg_array;
+	unsigned int cali_dat_sz_per_dev;
 };
 
 struct tasdevice_priv {
 	struct tasdevice tasdevice[TASDEVICE_MAX_CHANNELS];
-	struct tasdevice_irqinfo irq_info;
 	struct tasdevice_rca rcabin;
 	struct calidata cali_data;
 	struct tasdevice_fw *fmw;
@@ -183,6 +173,7 @@ struct tasdevice_priv {
 	unsigned int chip_id;
 	unsigned int sysclk;
 
+	int irq;
 	int cur_prog;
 	int cur_conf;
 	int fw_state;
@@ -193,6 +184,7 @@ struct tasdevice_priv {
 	bool playback_started;
 	bool isacpi;
 	bool is_user_space_calidata;
+
 	int (*fw_parse_variable_header)(struct tasdevice_priv *tas_priv,
 		const struct firmware *fmw, int offset);
 	int (*fw_parse_program_data)(struct tasdevice_priv *tas_priv,

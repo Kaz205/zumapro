@@ -13,7 +13,6 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
@@ -175,7 +174,6 @@ static struct tasdevice_config_info *tasdevice_add_config(
 			dev_err(tas_priv->dev, "add conf: Out of boundary\n");
 			goto out;
 		}
-		memcpy(cfg_info->conf_name, &config_data[config_offset], 64);
 		config_offset += 64;
 	}
 
@@ -2155,10 +2153,11 @@ static void tasdev_load_calibrated_data(struct tasdevice_priv *priv, int i)
 {
 	struct tasdevice_fw *cal_fmw = priv->tasdevice[i].cali_data_fmw;
 	struct calidata *cali_data = &priv->cali_data;
-	unsigned char *data = &cali_data->data[1];
+	struct cali_reg *p = &cali_data->cali_reg_array;
+	unsigned char *data = cali_data->data;
 	struct tasdevice_calibration *cal;
-	int k = i * (cali_data->cali_dat_sz + 1);
-	int j, rc;
+	int k = i * (cali_data->cali_dat_sz_per_dev + 1);
+	int rc;
 
 	/* Load the calibrated data from cal bin file */
 	if (!priv->is_user_space_calidata && cal_fmw) {
@@ -2177,13 +2176,35 @@ static void tasdev_load_calibrated_data(struct tasdevice_priv *priv, int i)
 		return;
 	}
 	k++;
-	for (j = 0; j < cali_data->reg_array_sz; j++) {
-		rc = tasdevice_dev_bulk_write(priv, i,
-			cali_data->reg_array[j], &(data[k + 4 * j]), 4);
-		if (rc < 0)
-			dev_err(priv->dev,
-				"chn %d calib %d bulk_wr err = %d\n",
-				i, j, rc);
+
+	rc = tasdevice_dev_bulk_write(priv, i, p->r0_reg, &(data[k]), 4);
+	if (rc < 0) {
+		dev_err(priv->dev, "chn %d r0_reg bulk_wr err = %d\n", i, rc);
+		return;
+	}
+	k += 4;
+	rc = tasdevice_dev_bulk_write(priv, i, p->r0_low_reg, &(data[k]), 4);
+	if (rc < 0) {
+		dev_err(priv->dev, "chn %d r0_low_reg err = %d\n", i, rc);
+		return;
+	}
+	k += 4;
+	rc = tasdevice_dev_bulk_write(priv, i, p->invr0_reg, &(data[k]), 4);
+	if (rc < 0) {
+		dev_err(priv->dev, "chn %d invr0_reg err = %d\n", i, rc);
+		return;
+	}
+	k += 4;
+	rc = tasdevice_dev_bulk_write(priv, i, p->pow_reg, &(data[k]), 4);
+	if (rc < 0) {
+		dev_err(priv->dev, "chn %d pow_reg bulk_wr err = %d\n", i, rc);
+		return;
+	}
+	k += 4;
+	rc = tasdevice_dev_bulk_write(priv, i, p->tlimit_reg, &(data[k]), 4);
+	if (rc < 0) {
+		dev_err(priv->dev, "chn %d tlimit_reg err = %d\n", i, rc);
+		return;
 	}
 }
 

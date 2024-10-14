@@ -55,7 +55,6 @@
 	/* chosen */
 	chosen: chosen {
 		stdout-path = "serial0:115200n8";
-		kaslr-seed = <0 0>;
 	};
 
 	firmware {

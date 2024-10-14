@@ -145,12 +145,12 @@ struct mtk_cam_sensor_work {
  *
  */
 struct mtk_cam_request_stream_data {
-	int index;
+	u32 index;
 	struct mtk_cam_request *req;
 	struct mtk_cam_ctx *ctx;
-	int pipe_id;
-	unsigned int frame_seq_no;
-	unsigned int flags;
+	u32 pipe_id;
+	u32 frame_seq_no;
+	u32 flags;
 	unsigned long raw_dmas;
 	u64 timestamp;
 	u64 timestamp_mono;
@@ -419,10 +419,10 @@ mtk_cam_ctrl_state_get_req(struct mtk_camsys_ctrl_state *state)
 	return request_stream_data->req;
 }
 
-static inline int
-mtk_cam_req_get_num_s_data(struct mtk_cam_request *req, int pipe_id)
+static inline u32
+mtk_cam_req_get_num_s_data(struct mtk_cam_request *req, u32 pipe_id)
 {
-	if (pipe_id < 0 || pipe_id > MTKCAM_SUBDEV_MAX)
+	if (pipe_id >= MTKCAM_SUBDEV_MAX)
 		return 0;
 
 	return req->p_data[pipe_id].s_data_num;
@@ -433,18 +433,18 @@ mtk_cam_req_get_num_s_data(struct mtk_cam_request *req, int pipe_id)
  * For example, request-based set fmt and selection.
  */
 static inline struct mtk_cam_request_stream_data*
-mtk_cam_req_get_s_data_no_chk(struct mtk_cam_request *req, int pipe_id, int idx)
+mtk_cam_req_get_s_data_no_chk(struct mtk_cam_request *req, u32 pipe_id, u32 idx)
 {
 	return &req->p_data[pipe_id].s_data[idx];
 }
 
 static inline struct mtk_cam_request_stream_data*
-mtk_cam_req_get_s_data(struct mtk_cam_request *req, int pipe_id, int idx)
+mtk_cam_req_get_s_data(struct mtk_cam_request *req, u32 pipe_id, u32 idx)
 {
-	if (!req || pipe_id < 0 || pipe_id > MTKCAM_SUBDEV_MAX)
+	if (!req || pipe_id >= MTKCAM_SUBDEV_MAX)
 		return NULL;
 
-	if (idx < 0 || idx >= req->p_data[pipe_id].s_data_num)
+	if (idx >= req->p_data[pipe_id].s_data_num)
 		return NULL;
 
 	return mtk_cam_req_get_s_data_no_chk(req, pipe_id, idx);

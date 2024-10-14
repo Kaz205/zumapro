@@ -830,7 +830,7 @@ int mtk_cam_seninf_set_cammux_src(struct seninf_ctx *ctx, int src,
 	return 0;
 }
 
-int mtk_cam_seninf_set_vc(struct seninf_ctx *ctx, int seninf_idx,
+int mtk_cam_seninf_set_vc(struct seninf_ctx *ctx, u32 seninf_idx,
 			  struct seninf_vcinfo *vcinfo)
 {
 	void __iomem *seninf_csi2 = ctx->reg_if_csi2[seninf_idx];
@@ -885,7 +885,7 @@ int mtk_cam_seninf_set_vc(struct seninf_ctx *ctx, int seninf_idx,
 	return 0;
 }
 
-int mtk_cam_seninf_set_mux_ctrl(struct seninf_ctx *ctx, int mux, int hs_pol,
+int mtk_cam_seninf_set_mux_ctrl(struct seninf_ctx *ctx, u32 mux, int hs_pol,
 				int vs_pol, int src_sel, int pixel_mode)
 {
 	u32 temp = 0;
@@ -913,7 +913,7 @@ int mtk_cam_seninf_set_mux_ctrl(struct seninf_ctx *ctx, int mux, int hs_pol,
 	return 0;
 }
 
-int mtk_cam_seninf_update_mux_pixel_mode(struct seninf_ctx *ctx, int mux,
+int mtk_cam_seninf_update_mux_pixel_mode(struct seninf_ctx *ctx, u32 mux,
 					 int pixel_mode)
 {
 	u32 temp = 0;
@@ -937,7 +937,7 @@ int mtk_cam_seninf_update_mux_pixel_mode(struct seninf_ctx *ctx, int mux,
 	return 0;
 }
 
-int mtk_cam_seninf_set_mux_crop(struct seninf_ctx *ctx, int mux, int start_x,
+int mtk_cam_seninf_set_mux_crop(struct seninf_ctx *ctx, u32 mux, int start_x,
 				int end_x, int enable)
 {
 	void __iomem *seninf_mux = ctx->reg_if_mux[mux];
@@ -961,14 +961,14 @@ int mtk_cam_seninf_set_mux_crop(struct seninf_ctx *ctx, int mux, int start_x,
 	return 0;
 }
 
-int mtk_cam_seninf_is_mux_used(struct seninf_ctx *ctx, int mux)
+int mtk_cam_seninf_is_mux_used(struct seninf_ctx *ctx, u32 mux)
 {
 	void __iomem *seninf_mux = ctx->reg_if_mux[mux];
 
 	return SENINF_READ_BITS(seninf_mux, SENINF_MUX_CTRL_0, SENINF_MUX_EN);
 }
 
-int mtk_cam_seninf_mux(struct seninf_ctx *ctx, int mux)
+int mtk_cam_seninf_mux(struct seninf_ctx *ctx, u32 mux)
 {
 	void __iomem *seninf_mux = ctx->reg_if_mux[mux];
 
@@ -976,7 +976,7 @@ int mtk_cam_seninf_mux(struct seninf_ctx *ctx, int mux)
 	return 0;
 }
 
-int mtk_cam_seninf_disable_mux(struct seninf_ctx *ctx, int mux)
+int mtk_cam_seninf_disable_mux(struct seninf_ctx *ctx, u32 mux)
 {
 	int i;
 	void __iomem *seninf_mux = ctx->reg_if_mux[mux];
@@ -1130,7 +1130,7 @@ int mtk_cam_seninf_set_test_model(struct seninf_ctx *ctx, int mux, int cam_mux,
 	return 0;
 }
 
-static int csirx_phyA_power_on(struct seninf_ctx *ctx, int port_idx, int en)
+static int csirx_phyA_power_on(struct seninf_ctx *ctx, u32 port_idx, int en)
 {
 	void __iomem *base = ctx->reg_ana_csi_rx[port_idx];
 
@@ -1172,7 +1172,7 @@ static int csirx_phyA_power_on(struct seninf_ctx *ctx, int port_idx, int en)
 static int apply_efuse_data(struct seninf_ctx *ctx)
 {
 	int ret = 0;
-	int port;
+	u32 port;
 	void __iomem *base;
 	u32 m_csi_efuse = ctx->m_csi_efuse;
 
@@ -1243,7 +1243,7 @@ static int apply_efuse_data(struct seninf_ctx *ctx)
 
 static int csirx_phyA_init(struct seninf_ctx *ctx)
 {
-	int i, port;
+	u32 i, port;
 	void __iomem *base;
 
 	port = ctx->port;
@@ -1911,7 +1911,7 @@ int mtk_cam_seninf_poweroff(struct seninf_ctx *ctx)
 	return 0;
 }
 
-int mtk_cam_seninf_reset(struct seninf_ctx *ctx, int seninf_idx)
+int mtk_cam_seninf_reset(struct seninf_ctx *ctx, u32 seninf_idx)
 {
 	int i;
 	void __iomem *seninf_mux;
@@ -1956,7 +1956,7 @@ int mtk_cam_seninf_set_idle(struct seninf_ctx *ctx)
 	return 0;
 }
 
-int mtk_cam_seninf_get_mux_meter(struct seninf_ctx *ctx, int mux,
+int mtk_cam_seninf_get_mux_meter(struct seninf_ctx *ctx, u32 mux,
 				 struct mtk_cam_seninf_mux_meter *meter)
 {
 	void __iomem *seninf_mux;

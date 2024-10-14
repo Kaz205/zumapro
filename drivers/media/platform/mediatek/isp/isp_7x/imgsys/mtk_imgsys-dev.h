@@ -185,7 +185,9 @@ struct mtk_imgsys_dev {
 	struct workqueue_struct *composer_wq;
 	struct workqueue_struct *runner_wq;
 	wait_queue_head_t flushing_waitq;
-
+	/* larb control */
+	struct device **larbs;
+	unsigned int larbs_num;
 	atomic_t num_composing;	/* increase after ipi */
 	/* MDP/GCE callback workqueue */
 	struct workqueue_struct *mdpcb_wq;

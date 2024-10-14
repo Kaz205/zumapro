@@ -587,6 +587,9 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 	seq_puts(m, "[SAR]\n");
 	rtw89_print_sar(m, rtwdev);
 
+	seq_puts(m, "[TAS]\n");
+	rtw89_print_tas(m, rtwdev);
+
 	seq_puts(m, "\n[TX power byrate]\n");
 	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);
 	if (ret)
@@ -3148,14 +3151,17 @@ static ssize_t rtw89_debug_priv_btc_manual_set(struct file *filp,
 	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
 	struct rtw89_btc *btc = &rtwdev->btc;
-	bool btc_manual;
+	const struct rtw89_btc_ver *ver = btc->ver;
 	int ret;
 
-	ret = kstrtobool_from_user(user_buf, count, &btc_manual);
+	ret = kstrtobool_from_user(user_buf, count, &btc->manual_ctrl);
 	if (ret)
 		return ret;
 
-	btc->ctrl.manual = btc_manual;
+	if (ver->fcxctrl == 7)
+		btc->ctrl.ctrl_v7.manual = btc->manual_ctrl;
+	else
+		btc->ctrl.ctrl.manual = btc->manual_ctrl;
 
 	return count;
 }

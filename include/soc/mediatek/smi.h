@@ -26,8 +26,12 @@ struct mtk_smi_larb_iommu {
 	unsigned char  bank[32];
 };
 
-#endif
-
 void mtk_smi_larb_clamp(struct device *larbdev, bool on);
+
+#else
+
+static inline void mtk_smi_larb_clamp(struct device *larbdev, bool on) {}
+
+#endif
 
 #endif
