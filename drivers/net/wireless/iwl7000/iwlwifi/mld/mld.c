@@ -6,13 +6,15 @@
 #include <net/mac80211.h>
 
 #include "fw/api/rx.h"
-#include "fw/api/scan.h"
 #include "fw/api/datapath.h"
+#include "fw/api/commands.h"
 #include "fw/dbg.h"
 
 #include "mld.h"
-#include "notif.h"
 #include "mac80211.h"
+#include "led.h"
+#include "scan.h"
+#include "tx.h"
 
 #define DRV_DESCRIPTION "Intel(R) MLD wireless driver for Linux"
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
@@ -45,10 +47,28 @@ iwl_is_mld_op_mode_supported(struct iwl_trans *trans)
 	return trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_BZ;
 }
 
-static void
-iwl_construct_mld(struct iwl_mld *mld, struct iwl_trans *trans,
-		  const struct iwl_cfg *cfg, const struct iwl_fw *fw,
-		  struct ieee80211_hw *hw, struct dentry *debugfs_dir)
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static void iwl_mld_debug_setup_random_nmi(struct iwl_mld *mld)
+{
+	if (mld->trans->dbg_cfg.MLD_RANDOM_NMI_ENABLE) {
+		u8 ceil = mld->trans->dbg_cfg.MLD_RANDOM_NMI_CEIL;
+		u8 floor = mld->trans->dbg_cfg.MLD_RANDOM_NMI_FLOOR;
+
+		if (WARN_ON(floor >= ceil))
+			return;
+
+		/* Avoid 0, since this means that random nmi is disabled */
+		mld->nmi_thresh = get_random_u8() % (ceil - floor) + floor + 1;
+		IWL_WARN(mld, "NMI will be forced on hcmd number: %d\n",
+			 mld->nmi_thresh);
+	}
+}
+#endif
+
+VISIBLE_IF_IWLWIFI_KUNIT
+void iwl_construct_mld(struct iwl_mld *mld, struct iwl_trans *trans,
+		       const struct iwl_cfg *cfg, const struct iwl_fw *fw,
+		       struct ieee80211_hw *hw)
 {
 	mld->dev = trans->dev;
 	mld->trans = trans;
@@ -57,8 +77,6 @@ iwl_construct_mld(struct iwl_mld *mld, struct iwl_trans *trans,
 	mld->hw = hw;
 	mld->wiphy = hw->wiphy;
 
-	iwl_mld_add_debugfs_files(mld, debugfs_dir);
-
 	iwl_notification_wait_init(&mld->notif_wait);
 
 	/* Setup async RX handling */
@@ -66,7 +84,17 @@ iwl_construct_mld(struct iwl_mld *mld, struct iwl_trans *trans,
 	INIT_LIST_HEAD(&mld->async_handlers_list);
 	wiphy_work_init(&mld->async_handlers_wk,
 			iwl_mld_async_handlers_wk);
+
+	/* Dynamic Queue Allocation */
+	spin_lock_init(&mld->add_txqs_lock);
+	INIT_LIST_HEAD(&mld->txqs_to_add);
+	wiphy_work_init(&mld->add_txqs_wk, iwl_mld_add_txqs_wk);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_mld_debug_setup_random_nmi(mld);
+#endif
 }
+EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_construct_mld);
 
 static void __acquires(&mld->wiphy->mtx)
 iwl_mld_fwrt_dump_start(void *ctx)
@@ -106,7 +134,11 @@ iwl_mld_construct_fw_runtime(struct iwl_mld *mld, struct iwl_trans *trans,
 static const struct iwl_hcmd_names iwl_mld_legacy_names[] = {
 	HCMD_NAME(UCODE_ALIVE_NTFY),
 	HCMD_NAME(INIT_COMPLETE_NOTIF),
+	HCMD_NAME(TX_CMD),
+	HCMD_NAME(LEDS_CMD),
+	HCMD_NAME(SCAN_OFFLOAD_UPDATE_PROFILES_CMD),
 	HCMD_NAME(MFUART_LOAD_NOTIFICATION),
+	HCMD_NAME(REPLY_RX_MPDU_CMD),
 	HCMD_NAME(MCC_UPDATE_CMD),
 };
 
@@ -114,7 +146,11 @@ static const struct iwl_hcmd_names iwl_mld_legacy_names[] = {
  * Access is done through binary search
  */
 static const struct iwl_hcmd_names iwl_mld_long_names[] = {
+	HCMD_NAME(PHY_CONTEXT_CMD),
 	HCMD_NAME(SCAN_CFG_CMD),
+	HCMD_NAME(SCAN_REQ_UMAC),
+	HCMD_NAME(SCAN_ABORT_UMAC),
+	HCMD_NAME(TXPATH_FLUSH),
 	HCMD_NAME(POWER_TABLE_CMD),
 	HCMD_NAME(TX_ANT_CONFIGURATION_CMD),
 	HCMD_NAME(RSS_CONFIG_CMD),
@@ -150,15 +186,22 @@ static const struct iwl_hcmd_names iwl_mld_debug_names[] = {
  * Access is done through binary search
  */
 static const struct iwl_hcmd_names iwl_mld_mac_conf_names[] = {
+	HCMD_NAME(SESSION_PROTECTION_CMD),
 	HCMD_NAME(MAC_CONFIG_CMD),
 	HCMD_NAME(LINK_CONFIG_CMD),
+	HCMD_NAME(STA_CONFIG_CMD),
+	HCMD_NAME(STA_REMOVE_CMD),
+	HCMD_NAME(MISSED_BEACONS_NOTIF),
+	HCMD_NAME(SESSION_PROTECTION_NOTIF),
 };
 
 /* Please keep this array *SORTED* by hex value.
  * Access is done through binary search
  */
 static const struct iwl_hcmd_names iwl_mld_data_path_names[] = {
+	HCMD_NAME(RLC_CONFIG_CMD),
 	HCMD_NAME(RFH_QUEUE_CONFIG_CMD),
+	HCMD_NAME(SCD_QUEUE_CONFIG_CMD),
 };
 
 VISIBLE_IF_IWLWIFI_KUNIT
@@ -176,6 +219,8 @@ EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mld_groups);
 static void
 iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 {
+	const struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
+	static const u8 no_reclaim_cmds[] = {TX_CMD};
 	struct iwl_trans_config trans_cfg = {
 		.op_mode = op_mode,
 		/* Rx is not supported yet, but add it to avoid warnings */
@@ -183,8 +228,16 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 		.command_groups = iwl_mld_groups,
 		.command_groups_size = ARRAY_SIZE(iwl_mld_groups),
 		.fw_reset_handshake = true,
+		.queue_alloc_cmd_ver =
+			iwl_fw_lookup_cmd_ver(mld->fw,
+					      WIDE_ID(DATA_PATH_GROUP,
+						      SCD_QUEUE_CONFIG_CMD),
+					      0),
+		.no_reclaim_cmds = no_reclaim_cmds,
+		.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds),
+		.cb_data_offs = offsetof(struct ieee80211_tx_info,
+					 driver_data[2]),
 	};
-	const struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
 	struct iwl_trans *trans = mld->trans;
 
 	trans->rx_mpdu_cmd = REPLY_RX_MPDU_CMD;
@@ -197,34 +250,13 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 	iwl_trans_configure(trans, &trans_cfg);
 }
 
-static int
-iwl_mld_alloc_scan_cmd(struct iwl_mld *mld)
-{
-	u8 scan_cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, SCAN_REQ_UMAC,
-						IWL_FW_CMD_VER_UNKNOWN);
-	size_t scan_cmd_size;
-
-	if (scan_cmd_ver == 17) {
-		scan_cmd_size = sizeof(struct iwl_scan_req_umac_v17);
-	} else {
-		IWL_ERR(mld, "Unexpected scan cmd version %d\n", scan_cmd_ver);
-		return -EINVAL;
-	}
-
-	mld->scan_cmd = kmalloc(scan_cmd_size, GFP_KERNEL);
-	if (!mld->scan_cmd)
-		return -ENOMEM;
-
-	mld->scan_cmd_size = scan_cmd_size;
-
-	return 0;
-}
-
 /*
  *****************************************************
  * op mode ops functions
  *****************************************************
  */
+
+#define NUM_FW_LOAD_RETRIES	3
 static struct iwl_op_mode *
 iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		      const struct iwl_fw *fw, struct dentry *dbgfs_dir)
@@ -250,7 +282,9 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	mld = IWL_OP_MODE_GET_MLD(op_mode);
 
-	iwl_construct_mld(mld, trans, cfg, fw, hw, dbgfs_dir);
+	iwl_construct_mld(mld, trans, cfg, fw, hw);
+
+	iwl_mld_add_debugfs_files(mld, dbgfs_dir);
 
 	iwl_mld_construct_fw_runtime(mld, trans, fw, dbgfs_dir);
 
@@ -260,7 +294,11 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	/* Needed for sending commands */
 	wiphy_lock(mld->wiphy);
 
-	ret = iwl_mld_load_fw(mld);
+	for (int i = 0; i < NUM_FW_LOAD_RETRIES; i++) {
+		ret = iwl_mld_load_fw(mld);
+		if (!ret)
+			break;
+	}
 
 	wiphy_unlock(mld->wiphy);
 
@@ -269,14 +307,22 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	iwl_mld_stop_fw(mld);
 
-	if (iwl_mld_alloc_scan_cmd(mld))
+	ret = iwl_mld_leds_init(mld);
+	if (ret)
 		goto free_hw;
 
+	if (iwl_mld_alloc_scan_cmd(mld))
+		goto leds_exit;
+
 	if (iwl_mld_register_hw(mld))
-		goto free_hw;
+		goto free_scan_cmd;
 
 	return op_mode;
 
+free_scan_cmd:
+	kfree(mld->scan.cmd);
+leds_exit:
+	iwl_mld_leds_exit(mld);
 free_hw:
 	ieee80211_free_hw(mld->hw);
 	return NULL;
@@ -287,6 +333,8 @@ iwl_op_mode_mld_stop(struct iwl_op_mode *op_mode)
 {
 	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
 
+	iwl_mld_leds_exit(mld);
+
 	ieee80211_unregister_hw(mld->hw);
 
 	iwl_fw_runtime_free(&mld->fwrt);
@@ -294,7 +342,7 @@ iwl_op_mode_mld_stop(struct iwl_op_mode *op_mode)
 	iwl_trans_op_mode_leave(mld->trans);
 
 	kfree(mld->nvm_data);
-	kfree(mld->scan_cmd);
+	kfree(mld->scan.cmd);
 
 	ieee80211_free_hw(mld->hw);
 }
@@ -365,6 +413,14 @@ iwl_mld_nic_error(struct iwl_op_mode *op_mode, bool sync)
 
 	/* WRT */
 	iwl_fw_error_collect(&mld->fwrt, sync);
+
+	/* It is necessary to abort any os scan here because mac80211 requires
+	 * having the scan cleared before restarting.
+	 * We'll reset the scan_status to NONE in restart cleanup in
+	 * the next drv_start() call from mac80211. If ieee80211_hw_restart
+	 * isn't called scan status will stay busy.
+	 */
+	iwl_mld_report_scan_aborted(mld);
 
 	/* Do restart only in the following conditions are met:
 	 * 1. sync=false

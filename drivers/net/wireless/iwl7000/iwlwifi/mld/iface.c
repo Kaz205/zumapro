@@ -16,6 +16,10 @@ void iwl_mld_cleanup_vif(void *data, u8 *mac, struct ieee80211_vif *vif)
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	struct iwl_mld_link *link;
 
+	/* TODO: remove (task=p2p) */
+	if (ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_STATION)
+		return;
+
 	for_each_mld_vif_valid_link(mld_vif, link)
 		iwl_mld_cleanup_link(link);
 
@@ -38,8 +42,7 @@ static int iwl_mld_send_mac_cmd(struct iwl_mld *mld,
 	return ret;
 }
 
-static int iwl_mld_mac80211_iftype_to_fw(struct iwl_mld *mld,
-					 struct ieee80211_vif *vif)
+int iwl_mld_mac80211_iftype_to_fw(const struct ieee80211_vif *vif)
 {
 	switch (vif->type) {
 	case NL80211_IFTYPE_STATION:
@@ -92,7 +95,7 @@ static void iwl_mld_mac_cmd_fill_common(struct iwl_mld *mld,
 	cmd->action = cpu_to_le32(action);
 
 	cmd->mac_type =
-		cpu_to_le32(iwl_mld_mac80211_iftype_to_fw(mld, vif));
+		cpu_to_le32(iwl_mld_mac80211_iftype_to_fw(vif));
 
 	memcpy(cmd->local_mld_addr, vif->addr, ETH_ALEN);
 
@@ -155,9 +158,9 @@ static void iwl_mld_fill_mac_cmd_sta(struct iwl_mld *mld,
 	if (vif->cfg.assoc && action != FW_CTXT_ACTION_ADD) {
 		cmd->client.is_assoc = 1;
 
-		/* TODO: set this only before authorized (task=ASSOC) */
-		cmd->client.data_policy |=
-			cpu_to_le16(COEX_HIGH_PRIORITY_ENABLE);
+		if (!iwl_mld_vif_from_mac80211(vif)->authorized)
+			cmd->client.data_policy |=
+				cpu_to_le16(COEX_HIGH_PRIORITY_ENABLE);
 	} else {
 		/* Allow beacons to pass through as long as we are not
 		 * associated
@@ -237,7 +240,7 @@ iwl_mld_init_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 	mld_vif->mld = mld;
 
-	ret = iwl_mld_allocate_vif_fw_id(mld, mld_vif, vif);
+	ret = iwl_mld_allocate_vif_fw_id(mld, &mld_vif->fw_id, vif);
 	if (ret)
 		return ret;
 
@@ -287,4 +290,20 @@ int iwl_mld_rm_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 	RCU_INIT_POINTER(mld->fw_id_to_vif[mld_vif->fw_id], NULL);
 
 	return ret;
+}
+
+void iwl_mld_set_vif_associated(struct iwl_mld *mld,
+				struct ieee80211_vif *vif)
+{
+	struct ieee80211_bss_conf *link;
+	unsigned int link_id;
+
+	for_each_vif_active_link(vif, link, link_id) {
+		if (iwl_mld_link_set_associated(mld, vif, link))
+			IWL_ERR(mld, "failed to update link %d\n", link_id);
+	}
+	/* todo:  update_mu_groups
+	 * todo: recalc_multicast
+	 * todo: coex: coex_vif_change and reset ave_beacon_signal
+	 */
 }
