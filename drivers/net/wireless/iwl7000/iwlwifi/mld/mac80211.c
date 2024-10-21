@@ -10,10 +10,17 @@
 #include "phy.h"
 #include "iface.h"
 #include "power.h"
+#include "sta.h"
+#include "scan.h"
 #include "fw/api/scan.h"
+#include "fw/api/context.h"
 #ifdef CONFIG_PM_SLEEP
 #include "fw/api/d3.h"
 #endif /* CONFIG_PM_SLEEP */
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+#include "vendor-cmd.h"
+#endif
+#include "iwl-trans.h"
 
 #define IWL_MLD_LIMITS(ap)					\
 	{							\
@@ -289,12 +296,8 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	 * infinite loop, so the maximum number of iterations is actually 254.
 	 */
 	wiphy->max_sched_scan_plan_iterations = 254;
-
-	/* driver create the 802.11 header (24 bytes), DS parameter (3 bytes)
-	 * and SSID IE (2 bytes).
-	 */
-	wiphy->max_sched_scan_ie_len = SCAN_OFFLOAD_PROBE_REQ_SIZE - 24 - 3 - 2;
-	wiphy->max_scan_ie_len = SCAN_OFFLOAD_PROBE_REQ_SIZE - 24 - 3 - 2;
+	wiphy->max_sched_scan_ie_len = iwl_mld_scan_max_template_size();
+	wiphy->max_scan_ie_len = iwl_mld_scan_max_template_size();
 	wiphy->max_sched_scan_ssids = PROBE_OPTION_MAX;
 	wiphy->max_scan_ssids = PROBE_OPTION_MAX;
 	wiphy->max_sched_scan_plans = IWL_MAX_SCHED_SCAN_PLANS;
@@ -370,10 +373,8 @@ static void iwl_mac_hw_set_misc(struct iwl_mld *mld)
 
 	hw->chanctx_data_size = sizeof(struct iwl_mld_phy);
 	hw->vif_data_size = sizeof(struct iwl_mld_vif);
-	/* TODO set:
-	 * 1. hw->sta_data_size
-	 * 2. hw->txq_data_size
-	 */
+	hw->sta_data_size = sizeof(struct iwl_mld_sta);
+	hw->txq_data_size = sizeof(struct iwl_mld_txq);
 }
 
 static int iwl_mld_hw_verify_preconditions(struct iwl_mld *mld)
@@ -419,10 +420,9 @@ int iwl_mld_register_hw(struct iwl_mld *mld)
 
 	SET_IEEE80211_DEV(mld->hw, mld->trans->dev);
 
-	/* TODO:
-	 * 1. leds_init
-	 * 2. register vendor cmds
-	 */
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	iwl_mld_vendor_cmds_register(mld);
+#endif
 
 	return ieee80211_register_hw(mld->hw);
 }
@@ -441,6 +441,9 @@ iwl_mld_restart_cleanup(struct iwl_mld *mld)
 
 	ieee80211_iterate_interfaces(mld->hw, IEEE80211_IFACE_ITER_ACTIVE,
 				     iwl_mld_cleanup_vif, NULL);
+
+	ieee80211_iterate_stations_atomic(mld->hw,
+					  iwl_mld_cleanup_sta, NULL);
 }
 
 static
@@ -452,7 +455,7 @@ int iwl_mld_mac80211_start(struct ieee80211_hw *hw)
 	lockdep_assert_wiphy(mld->wiphy);
 
 	/* TODO:
-	 * 1. fast resume
+	 * 1. fast resume (set also mld->scan.last_start_time_jiffies)
 	 */
 
 	if (mld->fw_status.in_hw_restart) {
@@ -463,6 +466,8 @@ int iwl_mld_mac80211_start(struct ieee80211_hw *hw)
 	ret = iwl_mld_start_fw(mld);
 	if (ret)
 		goto error;
+
+	mld->scan.last_start_time_jiffies = jiffies;
 
 	iwl_dbg_tlv_time_point(&mld->fwrt, IWL_FW_INI_TIME_POINT_POST_INIT,
 			       NULL);
@@ -490,6 +495,8 @@ void iwl_mld_mac80211_stop(struct ieee80211_hw *hw, bool suspend)
 	/* execute all pending notifications (async handlers)*/
 	wiphy_work_flush(mld->wiphy, &mld->async_handlers_wk);
 
+	wiphy_work_cancel(mld->wiphy, &mld->add_txqs_wk);
+
 	/* TODO:
 	 * 1. suspend
 	 * 2. ftm_initiator_smooth_stop
@@ -509,6 +516,15 @@ void iwl_mld_mac80211_stop(struct ieee80211_hw *hw, bool suspend)
 	 * execute the restart.
 	 */
 	mld->fw_status.in_hw_restart = false;
+
+	/* We shouldn't have any UIDs still set. Loop over all the UIDs to
+	 * make sure there's nothing left there and warn if any is found.
+	 */
+	for (int i = 0; i < ARRAY_SIZE(mld->scan.uid_status); i++)
+		if (WARN_ONCE(mld->scan.uid_status[i],
+			      "UMAC scan UID %d status was not cleaned (0x%x 0x%x)\n",
+			      i, mld->scan.uid_status[i], mld->scan.status))
+			mld->scan.uid_status[i] = 0;
 }
 
 static
@@ -608,48 +624,186 @@ static
 void iwl_mld_mac80211_wake_tx_queue(struct ieee80211_hw *hw,
 				    struct ieee80211_txq *txq)
 {
-	WARN_ON("Not supported yet\n");
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_txq *mld_txq = iwl_mld_txq_from_mac80211(txq);
+
+	if (likely(mld_txq->status.allocated) || !txq->sta) {
+		iwl_mld_tx_from_txq(mld, txq);
+		return;
+	}
+
+	/* We don't support TSPEC tids. %IEEE80211_NUM_TIDS is for mgmt */
+	if (txq->tid != IEEE80211_NUM_TIDS && txq->tid >= IWL_MAX_TID_COUNT) {
+		IWL_DEBUG_MAC80211(mld, "TID %d is not supported\n", txq->tid);
+		return;
+	}
+
+	/* The worker will handle any packets we leave on the txq now */
+
+	spin_lock_bh(&mld->add_txqs_lock);
+	/* The list is being deleted only after the queue is fully allocated. */
+	if (list_empty(&mld_txq->list) &&
+	    /* recheck under lock, otherwise it can be added twice */
+	    !mld_txq->status.allocated) {
+		list_add_tail(&mld_txq->list, &mld->txqs_to_add);
+		wiphy_work_queue(mld->wiphy, &mld->add_txqs_wk);
+	}
+	spin_unlock_bh(&mld->add_txqs_lock);
 }
 
 static
 int iwl_mld_add_chanctx(struct ieee80211_hw *hw,
 			struct ieee80211_chanctx_conf *ctx)
 {
-	WARN_ON("Not supported yet\n");
-	return -EOPNOTSUPP;
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_phy *phy = iwl_mld_phy_from_mac80211(ctx);
+	int fw_id = iwl_mld_allocate_fw_phy_id(mld);
+	int ret;
+
+	if (fw_id < 0)
+		return fw_id;
+
+	phy->fw_id = fw_id;
+	phy->chandef = *iwl_mld_get_chandef_from_chanctx(ctx);
+
+	ret = iwl_mld_phy_fw_action(mld, ctx, FW_CTXT_ACTION_ADD);
+	if (ret) {
+		mld->used_phy_ids &= ~BIT(phy->fw_id);
+		return ret;
+	}
+
+	/* TODO: remove on RLC offload */
+	return iwl_mld_send_rlc_cmd(mld, fw_id);
 }
 
 static
 void iwl_mld_remove_chanctx(struct ieee80211_hw *hw,
 			    struct ieee80211_chanctx_conf *ctx)
 {
-	WARN_ON("Not supported yet\n");
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_phy *phy = iwl_mld_phy_from_mac80211(ctx);
+
+	iwl_mld_phy_fw_action(mld, ctx, FW_CTXT_ACTION_REMOVE);
+	mld->used_phy_ids &= ~BIT(phy->fw_id);
 }
 
 static
 void iwl_mld_change_chanctx(struct ieee80211_hw *hw,
 			    struct ieee80211_chanctx_conf *ctx, u32 changed)
 {
-	WARN_ON("Not supported yet\n");
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_phy *phy = iwl_mld_phy_from_mac80211(ctx);
+	struct cfg80211_chan_def *chandef =
+		iwl_mld_get_chandef_from_chanctx(ctx);
+
+	/* We don't care about these */
+	if (!(changed & ~(IEEE80211_CHANCTX_CHANGE_RX_CHAINS |
+			  IEEE80211_CHANCTX_CHANGE_RADAR |
+			  IEEE80211_CHANCTX_CHANGE_CHANNEL)))
+		return;
+
+	/* Check if a FW update is required */
+
+	if (changed & IEEE80211_CHANCTX_CHANGE_AP)
+		goto update;
+
+	if (chandef->chan == phy->chandef.chan &&
+	    chandef->center_freq1 == phy->chandef.center_freq1 &&
+	    0 == 0) {
+		/* Check if we are toggling between HT and non-HT, no-op */
+		if (phy->chandef.width == chandef->width ||
+		    (phy->chandef.width <= NL80211_CHAN_WIDTH_20 &&
+		     chandef->width <= NL80211_CHAN_WIDTH_20))
+			return;
+	}
+update:
+	phy->chandef = *chandef;
+
+	iwl_mld_phy_fw_action(mld, ctx, FW_CTXT_ACTION_MODIFY);
 }
 
 static
 int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
-			       struct ieee80211_bss_conf *link_conf,
+			       struct ieee80211_bss_conf *link,
 			       struct ieee80211_chanctx_conf *ctx)
 {
-	WARN_ON("Not supported yet\n");
-	return -EOPNOTSUPP;
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link);
+	int ret;
+
+	lockdep_assert_wiphy(mld->wiphy);
+
+	if (WARN_ON(!mld_link))
+		return -EINVAL;
+
+	/* TODO: for AP, send mac ctxt cmd to update HE cap (or in start_ap?)
+	 * (task=AP)
+	 */
+
+	rcu_assign_pointer(mld_link->chan_ctx, ctx);
+
+	/* TODO: detect entering EMLSR (task=EMLSR) */
+
+	/* First send the link command with the phy context ID.
+	 * Now that we have the phy, we know the band so also the rates
+	 */
+	ret = iwl_mld_change_link_in_fw(mld, link,
+					LINK_CONTEXT_MODIFY_RATES_INFO);
+	if (ret)
+		goto err;
+
+	/* TODO: Initialize rate control for the AP station, since we might be
+	 * doing a link switch here - we cannot initialize it before since
+	 * this needs the phy context assigned (and in FW?), and we cannot
+	 * do it later because it needs to be initialized as soon as we're
+	 * able to TX on the link, i.e. when active. (task=link-switch)
+	 */
+
+	/* Now activate the link */
+	ret = iwl_mld_activate_link(mld, link);
+	if (ret)
+		goto err;
+
+	if (vif->type == NL80211_IFTYPE_STATION)
+		iwl_mld_send_ap_tx_power_constraint_cmd(mld, vif, link);
+
+	return 0;
+err:
+	RCU_INIT_POINTER(mld_link->chan_ctx, NULL);
+	return ret;
 }
 
 static
 void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 				  struct ieee80211_vif *vif,
-				  struct ieee80211_bss_conf *link_conf,
+				  struct ieee80211_bss_conf *link,
 				  struct ieee80211_chanctx_conf *ctx)
 {
-	WARN_ON("Not supported yet\n");
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link);
+	int ret;
+
+	if (WARN_ON(!mld_link))
+		return;
+
+	ret = iwl_mld_deactivate_link(mld, link);
+	if (ret)
+		return;
+
+	/* TODO: detect exiting EMLSR (task=EMLSR)*/
+
+	RCU_INIT_POINTER(mld_link->chan_ctx, NULL);
+
+	/* in the non-MLO case, remove/re-add the link to clean up FW state.
+	 * In MLO, it'll be done in drv_change_vif_link
+	 */
+	if (!ieee80211_vif_is_mld(vif) && !mld_vif->ap_sta &&
+	    !WARN_ON_ONCE(vif->cfg.assoc)) {
+		iwl_mld_remove_link(mld, link);
+		iwl_mld_add_link(mld, link);
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -675,17 +829,61 @@ int iwl_mld_mac80211_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
 }
 
 static
+u32 iwl_mld_link_changed_mapping(struct ieee80211_vif *vif,
+				 struct ieee80211_bss_conf *link_conf,
+				 u64 changes)
+{
+	u32 link_changes = 0;
+	bool has_he, has_eht;
+
+	if (changes & BSS_CHANGED_QOS && vif->cfg.assoc && link_conf->qos)
+		link_changes |= LINK_CONTEXT_MODIFY_QOS_PARAMS;
+
+	if (changes & (BSS_CHANGED_ERP_PREAMBLE | BSS_CHANGED_BASIC_RATES |
+		       BSS_CHANGED_ERP_SLOT))
+		link_changes |= LINK_CONTEXT_MODIFY_RATES_INFO;
+
+	if (changes & (BSS_CHANGED_HT | BSS_CHANGED_ERP_CTS_PROT))
+		link_changes |= LINK_CONTEXT_MODIFY_PROTECT_FLAGS;
+
+	/* todo: check mac80211's HE flags and if command is needed every time
+	 * there's a link change. Currently used flags are
+	 * BSS_CHANGED_HE_OBSS_PD and BSS_CHANGED_HE_BSS_COLOR.
+	 */
+	has_he = link_conf->he_support && !iwlwifi_mod_params.disable_11ax;
+	has_eht = link_conf->eht_support && !iwlwifi_mod_params.disable_11be;
+
+	if (vif->cfg.assoc && (has_he || has_eht))
+		link_changes |= LINK_CONTEXT_MODIFY_HE_PARAMS;
+
+	return link_changes;
+}
+
+static
 void iwl_mld_mac80211_link_info_changed(struct ieee80211_hw *hw,
 					struct ieee80211_vif *vif,
 					struct ieee80211_bss_conf *link_conf,
 					u64 changes)
 {
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	u32 link_changes;
 
-	/* TODO: for now just log the function is not implemented */
-	IWL_ERR(mld, "NOT IMPLEMENTED YET: %s\n", __func__);
+	if (ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_STATION) {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET: %s\n", __func__);
+		return;
+	}
 
-	return;
+	link_changes = iwl_mld_link_changed_mapping(vif, link_conf, changes);
+	if (link_changes)
+		iwl_mld_change_link_in_fw(mld, link_conf, link_changes);
+
+	if (changes & BSS_CHANGED_TPE)
+		iwl_mld_send_ap_tx_power_constraint_cmd(mld, vif, link_conf);
+
+	// todo: BSS_CHANGED_BEACON_INFO (task=beacon_filter, power)
+	// todo: BSS_CHANGED_BANDWIDTH (task=EMLSR)
+	// todo: BSS_CHANGED_CQM
+	// todo: BSS_CHANGED_TXPOWER (task=power)
 }
 
 static
@@ -694,8 +892,28 @@ void iwl_mld_mac80211_vif_cfg_changed(struct ieee80211_hw *hw,
 				      u64 changes)
 {
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	int ret;
 
-	IWL_ERR(mld, "NOT IMPLEMENTED YET\n");
+	lockdep_assert_wiphy(mld->wiphy);
+
+	if (ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_STATION) {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET: %s\n", __func__);
+		return;
+	}
+
+	if (changes & BSS_CHANGED_ASSOC) {
+		ret = iwl_mld_mac_fw_action(mld, vif, FW_CTXT_ACTION_MODIFY);
+		if (ret)
+			IWL_ERR(mld, "failed to update context\n");
+
+		if (vif->cfg.assoc)
+			iwl_mld_set_vif_associated(mld, vif);
+			/* todo: if assoc request statistics (task=statistics)
+			 */
+	}
+
+	//todo: BSS_CHANGED_PS - power_update_mac
+	//todo: BSS_CHANGED_MLD_VALID_LINKS/CHANGED_MLD_TTLM - mlo_int_scan_wk
 }
 
 static
@@ -709,13 +927,71 @@ int iwl_mld_mac80211_set_key(struct ieee80211_hw *hw,
 	return -EOPNOTSUPP;
 }
 
-static
-int iwl_mld_mac80211_hw_scan(struct ieee80211_hw *hw,
-			     struct ieee80211_vif *vif,
-			     struct ieee80211_scan_request *hw_req)
+static int
+iwl_mld_mac80211_hw_scan(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 struct ieee80211_scan_request *hw_req)
 {
-	WARN_ON("Not supported yet\n");
-	return -EOPNOTSUPP;
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	if (WARN_ON(!hw_req->req.n_channels ||
+		    hw_req->req.n_channels >
+		    mld->fw->ucode_capa.n_scan_channels))
+		return -EINVAL;
+
+	return iwl_mld_regular_scan_start(mld, vif, &hw_req->req, &hw_req->ies);
+}
+
+static void
+iwl_mld_mac80211_cancel_hw_scan(struct ieee80211_hw *hw,
+				struct ieee80211_vif *vif)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	/* Due to a race condition, it's possible that mac80211 asks
+	 * us to stop a hw_scan when it's already stopped. This can
+	 * happen, for instance, if we stopped the scan ourselves,
+	 * called ieee80211_scan_completed() and the userspace called
+	 * cancel scan before ieee80211_scan_work() could run.
+	 * To handle that, simply return if the scan is not running.
+	 */
+	if (mld->scan.status & IWL_MLD_SCAN_REGULAR)
+		iwl_mld_scan_stop(mld, IWL_MLD_SCAN_REGULAR, true);
+}
+
+static int
+iwl_mld_mac80211_sched_scan_start(struct ieee80211_hw *hw,
+				  struct ieee80211_vif *vif,
+				  struct cfg80211_sched_scan_request *req,
+				  struct ieee80211_scan_ies *ies)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	return iwl_mld_sched_scan_start(mld, vif, req, ies, IWL_MLD_SCAN_SCHED);
+}
+
+static int
+iwl_mld_mac80211_sched_scan_stop(struct ieee80211_hw *hw,
+				 struct ieee80211_vif *vif)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	int ret;
+
+	/* Due to a race condition, it's possible that mac80211 asks
+	 * us to stop a sched_scan when it's already stopped. This
+	 * can happen, for instance, if we stopped the scan ourselves,
+	 * called ieee80211_sched_scan_stopped() and the userspace called
+	 * stop sched scan before ieee80211_sched_scan_stopped_work()
+	 * could run. To handle this, simply return if the scan is
+	 * not running.
+	 */
+	if (!(mld->scan.status & IWL_MLD_SCAN_SCHED))
+		return 0;
+
+	ret = iwl_mld_scan_stop(mld, IWL_MLD_SCAN_SCHED, false);
+	wiphy_work_flush(mld->wiphy, &mld->async_handlers_wk);
+
+	return ret;
 }
 
 static void
@@ -734,6 +1010,232 @@ iwl_mld_mac80211_reconfig_complete(struct ieee80211_hw *hw,
 	}
 }
 
+static
+void iwl_mld_mac80211_mgd_prepare_tx(struct ieee80211_hw *hw,
+				     struct ieee80211_vif *vif,
+				     struct ieee80211_prep_tx_info *info)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	u32 duration = IWL_MLD_SESSION_PROTECTION_ASSOC_TIME_MS;
+
+	/* After a successful association the connection is etalibeshed
+	 * and we can rely on the quota to send the disassociation frame.
+	 */
+	if (info->was_assoc)
+		return;
+
+	if (info->duration > duration)
+		duration = info->duration;
+
+	iwl_mld_schedule_session_protection(mld, vif, duration,
+					    IWL_MLD_SESSION_PROTECTION_MIN_TIME_MS,
+					    info->link_id);
+}
+
+static
+void iwl_mld_mac_mgd_complete_tx(struct ieee80211_hw *hw,
+				 struct ieee80211_vif *vif,
+				 struct ieee80211_prep_tx_info *info)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	/* Successful authentication is the only case that requires to let the
+	 * the session protection go. We'll need it for the upcoming
+	 * association. For all the other cases, we need to cancel the session
+	 * protection.
+	 * After successful association the connection is established and
+	 * further mgd tx can rely on the quota.
+	 */
+	if (info->success && info->subtype == IEEE80211_STYPE_AUTH)
+		return;
+
+	/* The firmware will be on medium after we configure the vif as
+	 * associated. Removing the session protection allows the firmware
+	 * to stop being on medium. In order to ensure the continuity of our
+	 * presence on medium, we need first to configure the vif as associated
+	 * and only then, remove the session protection.
+	 * Currently, mac80211 calls vif_cfg_changed() first and then,
+	 * drv_mgd_complete_tx(). Ensure that this assumption stays true by
+	 * a warning.
+	 */
+	WARN_ON(info->success &&
+		(info->subtype == IEEE80211_STYPE_ASSOC_REQ ||
+		 info->subtype == IEEE80211_STYPE_REASSOC_REQ) &&
+		!vif->cfg.assoc);
+
+	iwl_mld_cancel_session_protection(mld, vif, info->link_id);
+}
+
+static int
+iwl_mld_mac80211_conf_tx(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 unsigned int link_id, u16 ac,
+			 const struct ieee80211_tx_queue_params *params)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	struct iwl_mld_link *link;
+
+	if (ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_STATION) {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET: %s\n", __func__);
+		return 0;
+	}
+
+	lockdep_assert_wiphy(mld->wiphy);
+
+	link = iwl_mld_link_dereference_check(mld_vif, link_id);
+	if (!link)
+		return -EINVAL;
+
+	link->queue_params[ac] = *params;
+
+	/* No need to update right away, we'll get BSS_CHANGED_QOS
+	 * The exception is P2P_DEVICE interface which needs immediate update.
+	 */
+	/* TODO: change link for p2p device (task=P2P) */
+	return 0;
+}
+
+static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
+				     struct ieee80211_vif *vif,
+				     struct ieee80211_sta *sta,
+				     enum ieee80211_sta_state old_state,
+				     enum ieee80211_sta_state new_state)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	int ret;
+
+	if (old_state == IEEE80211_STA_NOTEXIST &&
+	    new_state == IEEE80211_STA_NONE) {
+		ret = iwl_mld_add_sta(mld, sta, vif, STATION_TYPE_PEER);
+		if (ret)
+			return ret;
+
+		if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls)
+			mld_vif->ap_sta = sta;
+
+		return ret;
+	} else if (old_state == IEEE80211_STA_NONE &&
+		   new_state == IEEE80211_STA_AUTH) {
+		return 0;
+	} else if (old_state == IEEE80211_STA_AUTH &&
+		   new_state == IEEE80211_STA_ASSOC) {
+		return iwl_mld_update_all_link_stations(mld, sta);
+	} else if (old_state == IEEE80211_STA_ASSOC &&
+		   new_state == IEEE80211_STA_AUTHORIZED) {
+		mld_vif->authorized = true;
+
+		/* clear COEX_HIGH_PRIORITY_ENABLE */
+		ret = iwl_mld_mac_fw_action(mld, vif, FW_CTXT_ACTION_MODIFY);
+		if (ret)
+			return ret;
+
+		/* MFP is set by default before the station is authorized.
+		 * Clear it here in case it's not used.
+		 */
+		if (!sta->mfp)
+			ret = iwl_mld_update_all_link_stations(mld, sta);
+
+		return ret;
+	} else {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET\n");
+		return -EINVAL;
+	}
+}
+
+static int iwl_mld_move_sta_state_down(struct iwl_mld *mld,
+				       struct ieee80211_vif *vif,
+				       struct ieee80211_sta *sta,
+				       enum ieee80211_sta_state old_state,
+				       enum ieee80211_sta_state new_state)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+
+	if (old_state == IEEE80211_STA_AUTHORIZED &&
+	    new_state == IEEE80211_STA_ASSOC) {
+		mld_vif->authorized = false;
+	} else if (old_state == IEEE80211_STA_ASSOC &&
+		   new_state == IEEE80211_STA_AUTH) {
+		/* nothing */
+	} else if (old_state == IEEE80211_STA_AUTH &&
+		   new_state == IEEE80211_STA_NONE) {
+		/* nothing */
+	} else if (old_state == IEEE80211_STA_NONE &&
+		   new_state == IEEE80211_STA_NOTEXIST) {
+		mld_vif->ap_sta = NULL;
+		iwl_mld_remove_sta(mld, sta);
+	} else {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int iwl_mld_mac80211_sta_state(struct ieee80211_hw *hw,
+				      struct ieee80211_vif *vif,
+				      struct ieee80211_sta *sta,
+				      enum ieee80211_sta_state old_state,
+				      enum ieee80211_sta_state new_state)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(sta);
+
+	IWL_DEBUG_MAC80211(mld, "station %pM state change %d->%d\n",
+			   sta->addr, old_state, new_state);
+
+	if (ieee80211_vif_type_p2p(vif) != NL80211_IFTYPE_STATION ||
+	    sta->tdls) {
+		IWL_ERR(mld, "NOT IMPLEMENTED YET %s\n", __func__);
+		return -EINVAL;
+	}
+
+	mld_sta->sta_state = new_state;
+
+	if (old_state < new_state)
+		return iwl_mld_move_sta_state_up(mld, vif, sta, old_state,
+						 new_state);
+	else
+		return iwl_mld_move_sta_state_down(mld, vif, sta, old_state,
+						   new_state);
+}
+
+static void iwl_mld_mac80211_flush(struct ieee80211_hw *hw,
+				   struct ieee80211_vif *vif,
+				   u32 queues, bool drop)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	/* Make sure we're done with the deferred traffic before flushing */
+	wiphy_work_flush(mld->wiphy, &mld->add_txqs_wk);
+
+	for (int i = 0; i < mld->fw->ucode_capa.num_stations; i++) {
+		struct ieee80211_link_sta *link_sta =
+			wiphy_dereference(mld->wiphy,
+					  mld->fw_id_to_link_sta[i]);
+
+		if (!link_sta)
+			continue;
+
+		/* Check that the sta belongs to the given vif */
+		if (vif && vif != iwl_mld_sta_from_mac80211(link_sta->sta)->vif)
+			continue;
+
+		if (drop)
+			iwl_mld_flush_sta_txqs(mld, link_sta->sta);
+		else
+			iwl_mld_wait_sta_txqs_empty(mld, link_sta->sta);
+	}
+}
+
+static void iwl_mld_mac80211_flush_sta(struct ieee80211_hw *hw,
+				       struct ieee80211_vif *vif,
+				       struct ieee80211_sta *sta)
+{
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	iwl_mld_flush_sta_txqs(mld, sta);
+}
+
 const struct ieee80211_ops iwl_mld_hw_ops = {
 	.tx = iwl_mld_mac80211_tx,
 	.start = iwl_mld_mac80211_start,
@@ -741,6 +1243,7 @@ const struct ieee80211_ops iwl_mld_hw_ops = {
 	.config = iwl_mld_mac80211_config,
 	.add_interface = iwl_mld_mac80211_add_interface,
 	.remove_interface = iwl_mld_mac80211_remove_interface,
+	.conf_tx = iwl_mld_mac80211_conf_tx,
 	.configure_filter = iwl_mld_mac80211_configure_filter,
 	.reconfig_complete = iwl_mld_mac80211_reconfig_complete,
 	.wake_tx_queue = iwl_mld_mac80211_wake_tx_queue,
@@ -754,8 +1257,20 @@ const struct ieee80211_ops iwl_mld_hw_ops = {
 	.vif_cfg_changed = iwl_mld_mac80211_vif_cfg_changed,
 	.set_key = iwl_mld_mac80211_set_key,
 	.hw_scan = iwl_mld_mac80211_hw_scan,
+	.cancel_hw_scan = iwl_mld_mac80211_cancel_hw_scan,
+	.sched_scan_start = iwl_mld_mac80211_sched_scan_start,
+	.sched_scan_stop = iwl_mld_mac80211_sched_scan_stop,
+	.mgd_prepare_tx = iwl_mld_mac80211_mgd_prepare_tx,
+	.mgd_complete_tx = iwl_mld_mac_mgd_complete_tx,
+	.sta_state = iwl_mld_mac80211_sta_state,
+	.flush = iwl_mld_mac80211_flush,
+	.flush_sta = iwl_mld_mac80211_flush_sta,
 #ifdef CONFIG_PM_SLEEP
 	.suspend = iwl_mld_suspend,
 	.resume = iwl_mld_resume,
 #endif /* CONFIG_PM_SLEEP */
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	.vif_add_debugfs = iwl_mld_add_vif_debugfs,
+	.link_add_debugfs = iwl_mld_add_link_debugfs,
+#endif
 };

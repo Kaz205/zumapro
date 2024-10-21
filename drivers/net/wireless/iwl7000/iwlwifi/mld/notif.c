@@ -5,12 +5,19 @@
 
 #include "mld.h"
 #include "notif.h"
+#include "scan.h"
 #include "iwl-trans.h"
 #include "fw/file.h"
 #include "fw/dbg.h"
 #include "fw/api/cmdhdr.h"
+#include "fw/api/mac-cfg.h"
+#include "session-protect.h"
+#include "fw/api/time-event.h"
+#include "fw/api/tx.h"
 
 #include "mcc.h"
+#include "link.h"
+#include "tx.h"
 
 /**
  * enum iwl_rx_handler_context: context for Rx handler
@@ -87,18 +94,30 @@ static void iwl_mld_handle_mfuart_notif(struct iwl_mld *mld,
 	struct iwl_mfuart_load_notif *mfuart_notif = (void *)pkt->data;
 
 	IWL_DEBUG_INFO(mld,
-		       "MFUART: installed ver: 0x%08x, external ver: 0x%08x, status: 0x%08x, duration: 0x%08x image size: 0x%08x\n",
+		       "MFUART: installed ver: 0x%08x, external ver: 0x%08x\n",
 		       le32_to_cpu(mfuart_notif->installed_ver),
-		       le32_to_cpu(mfuart_notif->external_ver),
+		       le32_to_cpu(mfuart_notif->external_ver));
+	IWL_DEBUG_INFO(mld,
+		       "MFUART: status: 0x%08x, duration: 0x%08x image size: 0x%08x\n",
 		       le32_to_cpu(mfuart_notif->status),
 		       le32_to_cpu(mfuart_notif->duration),
 		       le32_to_cpu(mfuart_notif->image_size));
 }
 
+CMD_VERSIONS(scan_complete_notif,
+	     CMD_VER_ENTRY(1, iwl_umac_scan_complete))
+CMD_VERSIONS(scan_iter_complete_notif,
+	     CMD_VER_ENTRY(2, iwl_umac_scan_iter_complete_notif))
 CMD_VERSIONS(mfuart_notif,
 	     CMD_VER_ENTRY(2, iwl_mfuart_load_notif))
 CMD_VERSIONS(update_mcc,
 	     CMD_VER_ENTRY(1, iwl_mcc_chub_notif))
+CMD_VERSIONS(session_prot_notif,
+	     CMD_VER_ENTRY(3, iwl_session_prot_notif))
+CMD_VERSIONS(missed_beacon_notif,
+	     CMD_VER_ENTRY(5, iwl_missed_beacons_notif))
+CMD_VERSIONS(tx_resp_notif,
+	     CMD_VER_ENTRY(7, iwl_tx_resp))
 
 /*
  * Handlers for fw notifications
@@ -108,10 +127,24 @@ CMD_VERSIONS(update_mcc,
  * The handler can be one from three contexts, see &iwl_rx_handler_context
  */
 static const struct iwl_rx_handler iwl_mld_rx_handlers[] = {
+	RX_HANDLER_SIZES(LEGACY_GROUP, TX_CMD, tx_resp_notif,
+			 RX_HANDLER_SYNC)
 	RX_HANDLER_SIZES(LEGACY_GROUP, MCC_CHUB_UPDATE_CMD, update_mcc,
 			 RX_HANDLER_ASYNC)
+	RX_HANDLER_SIZES(LEGACY_GROUP, SCAN_COMPLETE_UMAC, scan_complete_notif,
+			 RX_HANDLER_ASYNC)
+	RX_HANDLER_SIZES(LEGACY_GROUP, SCAN_ITERATION_COMPLETE_UMAC,
+			 scan_iter_complete_notif,
+			 RX_HANDLER_SYNC)
+	RX_HANDLER_NO_VAL(LEGACY_GROUP, MATCH_FOUND_NOTIFICATION,
+			  match_found_notif, RX_HANDLER_SYNC)
 	RX_HANDLER_SIZES(LEGACY_GROUP, MFUART_LOAD_NOTIFICATION, mfuart_notif,
 			 RX_HANDLER_SYNC)
+
+	RX_HANDLER_SIZES(MAC_CONF_GROUP, SESSION_PROTECTION_NOTIF,
+			 session_prot_notif, RX_HANDLER_ASYNC)
+	RX_HANDLER_SIZES(MAC_CONF_GROUP, MISSED_BEACONS_NOTIF,
+			 missed_beacon_notif, RX_HANDLER_ASYNC)
 };
 
 static bool
@@ -120,6 +153,7 @@ iwl_mld_notif_is_valid(struct iwl_mld *mld, struct iwl_rx_packet *pkt,
 {
 	unsigned int size = iwl_rx_packet_payload_len(pkt);
 	size_t notif_ver;
+	u8 grp;
 
 	/* If n_sizes == 0, it indicates that a validation function may be used
 	 * or that no validation is required.
@@ -130,8 +164,14 @@ iwl_mld_notif_is_valid(struct iwl_mld *mld, struct iwl_rx_packet *pkt,
 		return true;
 	}
 
+	/* Erroneously, FW publishes the TLV of this using LONG_GROUP instead
+	 * of LEGACY_GROUP. WA this until FW is fixed.
+	 */
+	grp = iwl_cmd_opcode(handler->cmd_id) == TX_CMD ? LONG_GROUP :
+		iwl_cmd_groupid(handler->cmd_id);
+
 	notif_ver = iwl_fw_lookup_notif_ver(mld->fw,
-					    iwl_cmd_groupid(handler->cmd_id),
+					    grp,
 					    iwl_cmd_opcode(handler->cmd_id),
 					    IWL_FW_CMD_VER_UNKNOWN);
 
@@ -146,10 +186,10 @@ iwl_mld_notif_is_valid(struct iwl_mld *mld, struct iwl_rx_packet *pkt,
 		return true;
 	}
 
-	IWL_ERR(mld,
-		"notification 0x%04x version %ld doesn't have an expected size, using the size of version %d\n",
-		handler->cmd_id, notif_ver,
-		handler->sizes[handler->n_sizes].ver);
+	IWL_FW_CHECK_FAILED(mld,
+			    "notif 0x%04x ver %ld missing expected size, use version %d size\n",
+			    handler->cmd_id, notif_ver,
+			    handler->sizes[handler->n_sizes - 1].ver);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/* Drop the notification in non-upstream builds to force adding
@@ -257,4 +297,17 @@ void iwl_mld_async_handlers_wk(struct wiphy *wiphy, struct wiphy_work *wk)
 		list_del(&entry->list);
 		kfree(entry);
 	}
+}
+
+void iwl_mld_purge_async_handlers_list(struct iwl_mld *mld)
+{
+	struct iwl_async_handler_entry *entry, *tmp;
+
+	spin_lock_bh(&mld->async_handlers_lock);
+	list_for_each_entry_safe(entry, tmp, &mld->async_handlers_list, list) {
+		iwl_free_rxb(&entry->rxb);
+		list_del(&entry->list);
+		kfree(entry);
+	}
+	spin_unlock_bh(&mld->async_handlers_lock);
 }

@@ -84,7 +84,10 @@ iwl_mld_update_mcc(struct iwl_mld *mld, const char *alpha2,
 	int ret;
 	u16 mcc;
 
-	/* TODO: VENDOR */
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	if (src_id == MCC_SOURCE_MCC_API)
+		mcc_update_cmd.key = cpu_to_le32(0xDEADBEE1);
+#endif
 
 	IWL_DEBUG_LAR(mld, "send MCC update to FW with '%c%c' src = %d\n",
 		      alpha2[0], alpha2[1], src_id);
@@ -130,7 +133,7 @@ exit:
 
 
 /* It is the caller's responsibility to free the pointer returned here */
-static struct ieee80211_regdomain *
+struct ieee80211_regdomain *
 iwl_mld_get_regdomain(struct iwl_mld *mld,
 		      const char *alpha2,
 		      enum iwl_mcc_source src_id,
@@ -261,16 +264,42 @@ int iwl_mld_init_mcc(struct iwl_mld *mld)
 	return retval;
 }
 
+static void iwl_mld_find_assoc_vif_iterator(void *data, u8 *mac,
+					    struct ieee80211_vif *vif)
+{
+	bool *assoc = data;
+
+	if (vif->type == NL80211_IFTYPE_STATION &&
+	    vif->cfg.assoc)
+		*assoc = true;
+}
+
+static bool iwl_mld_is_a_vif_assoc(struct iwl_mld *mld)
+{
+	bool assoc = false;
+
+	ieee80211_iterate_active_interfaces_atomic(mld->hw,
+						   IEEE80211_IFACE_ITER_NORMAL,
+						   iwl_mld_find_assoc_vif_iterator,
+						   &assoc);
+	return assoc;
+}
+
 void iwl_mld_handle_update_mcc(struct iwl_mld *mld, struct iwl_rx_packet *pkt)
 {
 	struct iwl_mcc_chub_notif *notif = (void *)pkt->data;
 	enum iwl_mcc_source src;
 	char mcc[3];
 	struct ieee80211_regdomain *regd;
+	bool changed;
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	/* TODO: task=assoc ignore if we're assoc'ed, see code in mvm */
+	if (iwl_mld_is_a_vif_assoc(mld) &&
+	    notif->source_id == MCC_SOURCE_WIFI) {
+		IWL_DEBUG_LAR(mld, "Ignore mcc update while associated\n");
+		return;
+	}
 
 	mcc[0] = le16_to_cpu(notif->mcc) >> 8;
 	mcc[1] = le16_to_cpu(notif->mcc) & 0xff;
@@ -280,12 +309,13 @@ void iwl_mld_handle_update_mcc(struct iwl_mld *mld, struct iwl_rx_packet *pkt)
 	IWL_DEBUG_LAR(mld,
 		      "RX: received chub update mcc cmd (mcc '%s' src %d)\n",
 		      mcc, src);
-	regd = iwl_mld_get_regdomain(mld, mcc, src, NULL);
+	regd = iwl_mld_get_regdomain(mld, mcc, src, &changed);
 	if (IS_ERR_OR_NULL(regd))
 		return;
 
 	/* TODO: SAR iwl_mvm_get_sar_geo_profile */
 
-	regulatory_set_wiphy_regd(mld->hw->wiphy, regd);
+	if (changed)
+		regulatory_set_wiphy_regd(mld->hw->wiphy, regd);
 	kfree(regd);
 }
