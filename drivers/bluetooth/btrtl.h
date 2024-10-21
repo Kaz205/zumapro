@@ -111,6 +111,7 @@ struct rtl_dump_info {
 
 enum {
 	REALTEK_ALT6_CONTINUOUS_TX_CHIP,
+	REALTEK_ALT6_FORCE,
 
 	__REALTEK_NUM_FLAGS,
 };
