@@ -304,13 +304,10 @@ static void __vb2_plane_dmabuf_put(struct vb2_buffer *vb, struct vb2_plane *p)
 	if (!p->mem_priv)
 		return;
 
-	if (!p->dbuf_duplicated) {
-		if (p->dbuf_mapped)
-			call_void_memop(vb, unmap_dmabuf, p->mem_priv);
+	if (p->dbuf_mapped)
+		call_void_memop(vb, unmap_dmabuf, p->mem_priv);
 
-		call_void_memop(vb, detach_dmabuf, p->mem_priv);
-	}
-
+	call_void_memop(vb, detach_dmabuf, p->mem_priv);
 	dma_buf_put(p->dbuf);
 	p->mem_priv = NULL;
 	p->dbuf = NULL;
@@ -1351,7 +1348,7 @@ static int __prepare_dmabuf(struct vb2_buffer *vb)
 	struct vb2_plane planes[VB2_MAX_PLANES];
 	struct vb2_queue *q = vb->vb2_queue;
 	void *mem_priv;
-	unsigned int plane, i;
+	unsigned int plane;
 	int ret = 0;
 	bool reacquired = vb->planes[0].mem_priv == NULL;
 
@@ -1404,19 +1401,6 @@ static int __prepare_dmabuf(struct vb2_buffer *vb)
 		__vb2_buf_dmabuf_put(vb);
 
 		for (plane = 0; plane < vb->num_planes; ++plane) {
-			for (i = 0; i < plane; ++i) {
-				if (planes[plane].dbuf == vb->planes[i].dbuf) {
-					vb->planes[plane].dbuf_duplicated = true;
-					vb->planes[plane].dbuf = vb->planes[i].dbuf;
-					vb->planes[plane].mem_priv = vb->planes[i].mem_priv;
-					break;
-				}
-			}
-
-			/* There's no need to attach a duplicated dbuf. */
-			if (vb->planes[plane].dbuf_duplicated)
-				continue;
-
 			/* Acquire each plane's memory */
 			mem_priv = call_ptr_memop(attach_dmabuf,
 						  vb,
@@ -1429,7 +1413,6 @@ static int __prepare_dmabuf(struct vb2_buffer *vb)
 				goto err_put_dbuf;
 			}
 
-			vb->planes[plane].dbuf_duplicated = false;
 			vb->planes[plane].dbuf = planes[plane].dbuf;
 			vb->planes[plane].mem_priv = mem_priv;
 		}
@@ -1444,7 +1427,7 @@ static int __prepare_dmabuf(struct vb2_buffer *vb)
 	 * userspace knows sooner rather than later if the dma-buf map fails.
 	 */
 	for (plane = 0; plane < vb->num_planes; ++plane) {
-		if (vb->planes[plane].dbuf_mapped || vb->planes[plane].dbuf_duplicated)
+		if (vb->planes[plane].dbuf_mapped)
 			continue;
 
 		ret = call_memop(vb, map_dmabuf, vb->planes[plane].mem_priv);
