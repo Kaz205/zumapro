@@ -598,6 +598,10 @@
 	domain-supply = <&mt6359_vproc2_buck_reg>;
 };
 
+&mfg1 {
+	domain-supply = <&mt6359_vsram_others_ldo_reg>;
+};
+
 &mipi_tx_config0 {
 	status = "okay";
 };
@@ -673,6 +677,18 @@
 	regulator-max-microvolt = <775000>;
 };
 
+&mt6359_vproc2_buck_reg {
+	/*
+	 * Called "ppvar_dvdd_gpu" in the schematic. Renamed to
+	 * "ppvar_dvdd_vgpu" here to match mtk-regulator-coupler requirements.
+	 */
+	regulator-name = "ppvar_dvdd_vgpu";
+	regulator-min-microvolt = <550000>;
+	regulator-max-microvolt = <800000>;
+	regulator-coupled-with = <&mt6359_vsram_others_ldo_reg>;
+	regulator-coupled-max-spread = <6250>;
+};
+
 &mt6359_vpu_buck_reg {
 	regulator-always-on;
 };
@@ -684,6 +700,14 @@
 &mt6359_vsram_md_ldo_reg {
 	regulator-min-microvolt = <800000>;
 	regulator-max-microvolt = <800000>;
+};
+
+&mt6359_vsram_others_ldo_reg {
+	regulator-name = "pp0850_dvdd_sram_gpu";
+	regulator-min-microvolt = <750000>;
+	regulator-max-microvolt = <800000>;
+	regulator-coupled-with = <&mt6359_vproc2_buck_reg>;
+	regulator-coupled-max-spread = <6250>;
 };
 
 &mt6359_vufs_ldo_reg {
