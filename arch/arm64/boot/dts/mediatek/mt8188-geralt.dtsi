@@ -414,9 +414,9 @@
 };
 
 &gpu {
-	supply-names = "mali","mali_sram";
+	/* supply-names property is non-standard */
+	supply-names = "mali";
 	mali-supply = <&mt6359_vproc2_buck_reg>;
-	mali_sram-supply = <&mt6359_vsram_others_ldo_reg>;
 	volt-bin-mapping = <3 4 5 6>;
 
 	power_model@0 {
