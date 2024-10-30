@@ -45,12 +45,10 @@
 
 &max98390_38 {
 	sound-name-prefix = "Front Right";
-	maxim,dsm_param_name = "dsm_param.bin";
 };
 
 &max98390_39 {
 	sound-name-prefix = "Front Left";
-	maxim,dsm_param_name = "dsm_param.bin";
 };
 
 &mipi_tx_config0 {
