@@ -37,6 +37,8 @@
 		reg = <0x1a>;
 		interrupt-parent = <&pio>;
 		interrupts = <108 IRQ_TYPE_EDGE_BOTH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hp_int>;
 		realtek,jd-src = <1>;
 		#sound-dai-cells = <0>;
 		status = "okay";
