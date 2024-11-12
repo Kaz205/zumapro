@@ -35,7 +35,10 @@
 
 #include "internal.h"
 
+#ifdef __aarch64__
 #include <trace/events/cros_file.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/fs_trace.h>
 
@@ -595,11 +598,14 @@ int chmod_common(const struct path *path, umode_t mode)
 	struct inode *delegated_inode = NULL;
 	struct iattr newattrs;
 	int error;
-
+#ifdef __aarch64__
 	trace_cros_chmod_common_enter(path, mode);
+#endif
 	error = mnt_want_write(path->mnt);
 	if (error) {
+#ifdef __aarch64__
 		trace_cros_chmod_common_exit(path, mode, error);
+#endif
 		return error;
 	}
 retry_deleg:
@@ -619,7 +625,9 @@ out_unlock:
 			goto retry_deleg;
 	}
 	mnt_drop_write(path->mnt);
+#ifdef __aarch64__
 	trace_cros_chmod_common_exit(path, mode, error);
+#endif
 	return error;
 }
 
@@ -715,7 +723,9 @@ int chown_common(const struct path *path, uid_t user, gid_t group)
 	struct iattr newattrs;
 	kuid_t uid;
 	kgid_t gid;
+#ifdef __aarch64__
 	trace_cros_chown_common_enter(path, user, group);
+#endif
 
 	uid = make_kuid(current_user_ns(), user);
 	gid = make_kgid(current_user_ns(), group);
@@ -728,11 +738,16 @@ retry_deleg:
 	newattrs.ia_vfsgid = INVALID_VFSGID;
 	newattrs.ia_valid =  ATTR_CTIME;
 	if ((user != (uid_t)-1) && !setattr_vfsuid(&newattrs, uid)) {
+
+#ifdef __aarch64__
 		trace_cros_chown_common_exit(path, user, group, -EINVAL);
+#endif
 		return -EINVAL;
 	}
 	if ((group != (gid_t)-1) && !setattr_vfsgid(&newattrs, gid)) {
+#ifdef __aarch64__
 		trace_cros_chown_common_exit(path, user, group, -EINVAL);
+#endif
 		return -EINVAL;
 	}
 	inode_lock(inode);
@@ -753,7 +768,9 @@ retry_deleg:
 		if (!error)
 			goto retry_deleg;
 	}
+#ifdef __aarch64__
 	trace_cros_chown_common_exit(path, user, group, error);
+#endif
 	return error;
 }
 
@@ -1438,7 +1455,9 @@ int filp_close(struct file *filp, fl_owner_t id)
 	if (CHECK_DATA_CORRUPTION(file_count(filp) == 0,
 			"VFS: Close: file count is 0 (f_op=%ps)",
 			filp->f_op)) {
+#ifdef __aarch64__
 		trace_cros_filp_close_exit(filp, id, 0);
+#endif
 		return 0;
 	}
 
@@ -1450,7 +1469,9 @@ int filp_close(struct file *filp, fl_owner_t id)
 		locks_remove_posix(filp, id);
 	}
 	fput(filp);
+#ifdef __aarch64__
 	trace_cros_filp_close_exit(filp, id, retval);
+#endif
 	return retval;
 }
 
