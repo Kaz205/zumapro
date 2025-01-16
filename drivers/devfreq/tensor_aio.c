@@ -57,6 +57,8 @@ static u64 cpu_min_sample_cntpct __read_mostly = 3 * NSEC_PER_USEC;
  */
 static u64 cpu_ramp_up_lat_cntpct __read_mostly = 500 * NSEC_PER_USEC;
 
+static u32 max_mif_freq_for_little;
+
 /*
  * Compare two CPU frequencies to see if they are sufficiently close, within ~5%
  * of each other by default. This mimics capacity_greater() in sched/fair.c,
@@ -1627,12 +1629,17 @@ static u32 mif_cpu_vote(struct pmu_stat *stat, int cpu, u32 cur, u32 *dsu_vote)
 				vote++;
 		}
 	} else {
-		/*
-		 * The CPU is at its maximum frequency and isn't influenced by
-		 * changes in MIF frequency, likely because the CPU's frequency
-		 * cannot go any higher. Use the highest MIF frequency.
-		 */
-		vote = 0;
+		if (cpu < 4) {
+			/* Run at highest frequency defined in cpu0-cpu-mif-latmon */
+			vote = max_mif_freq_for_little;
+		} else {
+			/*
+			 * The CPU is at its maximum frequency and isn't influenced by
+			 * changes in MIF frequency, likely because the CPU's frequency
+			 * cannot go any higher. Use the highest MIF frequency.
+			 */
+			vote = 0;
+		}
 	}
 #undef est_cpu_khz
 
@@ -2086,12 +2093,12 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 {
 	struct exynos_devfreq_data *data;
 	struct device *dev = &pdev->dev;
-	struct device_node *np = dev->of_node;
+	struct device_node *np = dev->of_node, *arm_memlat_mon_node;
 	const char *domain_name, *use_acpm;
 	enum exynos_dev edev;
 	unsigned int dfs_id;
-	u32 freq_cfg[5];
-	int ret;
+	u32 freq_cfg[5], temp;
+	int ret, i;
 
 	if (!cache_cpu_policy())
 		return -EPROBE_DEFER;
@@ -2213,6 +2220,24 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 					       (u32 *)mif_int_map, ret)) {
 			ret = -ENODEV;
 			goto free_int_map;
+		}
+
+		arm_memlat_mon_node = of_find_node_by_name(NULL, "cpu0-cpu-mif-latmon");
+		if (!arm_memlat_mon_node) {
+			ret = -ENODEV;
+			goto free_int_map;
+		}
+
+		/* Get the highest mif frequency for the LITTLE core in cpu0-cpu-mif-latmon */
+		while (1) {
+			if (of_property_read_u32_index(arm_memlat_mon_node, "core-dev-table-v2", i,
+						       &max_mif_freq_for_little)) {
+				max_mif_freq_for_little = find_index_l(mif, temp);
+				of_node_put(arm_memlat_mon_node);
+				break;
+			}
+			temp = max_mif_freq_for_little;
+			i++;
 		}
 
 		mif_int_cnt = ret / 2;
