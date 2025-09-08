@@ -2026,7 +2026,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 		/* Default Link Speet is GEN1 */
 		exynos_pcie->max_link_speed = LINK_SPEED_GEN1;
 	}
-	exynos_pcie->target_link_speed = exynos_pcie->max_link_speed;
+	exynos_pcie->target_link_speed = LINK_SPEED_GEN1;
 
 	if (of_property_read_u32(np, "perst-delay-us", &exynos_pcie->perst_delay_us)) {
 		dev_err(dev, "PERST delay is NOT defined...default to 20ms\n");
