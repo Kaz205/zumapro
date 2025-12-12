@@ -211,7 +211,8 @@ static void bigo_close(struct kref *ref)
 	struct bigo_inst *inst = container_of(ref, struct bigo_inst, refcount);
 
 	if (inst && inst->core) {
-		clear_job_from_prioq(inst->core, inst);
+		if (clear_job_from_prioq(inst->core, inst))
+			kref_put(&inst->refcount, bigo_close);
 		bigo_unmap_all(inst);
 		bigo_mark_qos_dirty(inst->core);
 		bigo_update_qos(inst->core);
@@ -440,8 +441,10 @@ static long bigo_unlocked_ioctl(struct file *file, unsigned int cmd,
 #else
 		inst->is_decoder_usage = true;
 #endif
+		kref_get(&inst->refcount);
 		if(enqueue_prioq(core, inst)) {
 			pr_err("Failed enqueue frame\n");
+			kref_put(&inst->refcount, bigo_close);
 			rc = -EFAULT;
 			break;
 		}
@@ -450,30 +453,10 @@ static long bigo_unlocked_ioctl(struct file *file, unsigned int cmd,
 			&inst->job_comp,
 			msecs_to_jiffies(JOB_COMPLETE_TIMEOUT_MS * 16));
 		if (!ret) {
-			/* The job timed out. It could be in one of the 3 states:
-			 * 1. The job is not yet processed.
-			 * 2. The job is being processed.
-			 * 3. The job was processed and timed out.
-			 */
-			if (clear_job_from_prioq(core, inst)) {
-				/* The unprocessed job is safely removed from the queue */
-				pr_err("timed out waiting for processing\n");
-				rc = -ETIMEDOUT;
-			} else {
-				/* The job has two possible states here:
-				 * 1. The job is being processed and the completion will be signaled.
-				 * 2. The job was processed and the completion was signaled.
-				 */
-				ret = wait_for_completion_timeout(
-						&inst->job_comp,
-						msecs_to_jiffies(JOB_COMPLETE_TIMEOUT_MS));
-				if (!ret) {
-					pr_err("timed out waiting for HW: %d\n", rc);
-					rc = -ETIMEDOUT;
-				} else {
-					rc = (ret > 0) ? 0 : ret;
-				}
-			}
+			pr_err("timed out waiting for HW: %d\n", rc);
+			if (clear_job_from_prioq(core, inst))
+				kref_put(&inst->refcount, bigo_close);
+			rc = -ETIMEDOUT;
 		} else {
 			rc = (ret > 0) ? 0 : ret;
 		}
@@ -764,6 +747,7 @@ static int bigo_worker_thread(void *data)
 	done:
 		job->status = rc;
 		complete(&inst->job_comp);
+		kref_put(&inst->refcount, bigo_close);
 	}
 	return 0;
 }
