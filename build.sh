@@ -6,7 +6,7 @@ NAME=$(git describe --exact-match --tags 2> /dev/null || git rev-parse --short H
 git submodule init && git submodule update
 
 cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-make $MAKE_PARAMS zumapro_defconfig -j$(nproc --all)
+make $MAKE_PARAMS neutrino_caimito_defconfig -j$(nproc --all)
 make $MAKE_PARAMS Image.lz4 dtbs -j$(nproc --all)
 
 if [ $? -ne 0 ]
